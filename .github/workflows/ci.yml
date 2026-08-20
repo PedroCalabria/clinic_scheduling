@@ -35,9 +35,11 @@ jobs:
       - uses: actions/checkout@v4
 
       # --- toolchain ---------------------------------------------------------------
+      # No `version:` input on purpose. The action reads the version from
+      # package.json#packageManager (pnpm@9.15.2), and it FAILS with "Multiple versions
+      # of pnpm specified" if both are given. One source of truth, same rule as the
+      # other pins (00-context.md §1).
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - uses: actions/setup-node@v4
         with:
