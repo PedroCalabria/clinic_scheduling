@@ -1,0 +1,94 @@
+# Single-VPS deployment shape (04-architecture.md §9, Decision T/U).
+#
+# Only caddy publishes a host port. api and db sit on an internal network and are
+# reachable only from within it — the trust boundary is the Compose network edge.
+#
+# Copy ../.env.example to ../.env first, then from the REPOSITORY ROOT run:
+#
+#   docker compose --env-file .env -f infra/docker-compose.yml up --build
+#
+# The --env-file is required: Compose resolves a bare `.env` relative to the project
+# directory (this file's directory), not the working directory, so the root .env would
+# otherwise be ignored and every ${VAR} would interpolate to an empty string.
+# `pnpm smoke` wraps this invocation so it does not have to be remembered.
+
+name: clinic-scheduling
+
+services:
+  db:
+    # Pinned to the same tag the integration tests use via Testcontainers — that
+    # agreement is the whole point of pinning (00-context.md §1).
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # Named volume so data survives `docker compose down` (Decision: Docker Postgres
+      # with a persistent volume + scheduled backups — 03-nfr.md §8).
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    # No ports: the database is never reachable from the host.
+
+  api:
+    build:
+      # Repository root: the Dockerfile needs global.json and apps/api.
+      context: ..
+      dockerfile: infra/Dockerfile.api
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+      ConnectionStrings__Default: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+    depends_on:
+      db:
+        # Waits for pg_isready, so the startup migration does not race the database.
+        condition: service_healthy
+    networks:
+      - internal
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:8080/api/health || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      # Covers migration time on first boot.
+      start_period: 30s
+    # No ports: reachable only through Caddy.
+
+  caddy:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile.web
+    restart: unless-stopped
+    environment:
+      # ":80" locally; a real hostname in production, where Caddy then obtains a
+      # certificate automatically (design D9).
+      CADDY_SITE_ADDRESS: ${CADDY_SITE_ADDRESS:-:80}
+    ports:
+      # The only host-published port. Production maps 80:80 and 443:443 instead.
+      - '${CADDY_HTTP_PORT:-8080}:80'
+      # - '443:443'
+    depends_on:
+      api:
+        condition: service_healthy
+    networks:
+      - internal
+    volumes:
+      # Persist issued certificates so production restarts don't re-request them.
+      - caddy-data:/data
+      - caddy-config:/config
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  db-data:
+  caddy-data:
+  caddy-config:

@@ -1,0 +1,105 @@
+# CI enforces the Definition of Done instead of trusting it (00-context.md §6, design D7).
+#
+# Step order is deliberate: the cheap, hermetic gates run first and fail fast; the two
+# Docker-dependent tiers run last because they are the slowest.
+#
+#   openspec validate -> i18n keys -> build (both ecosystems) -> unit -> integration -> compose smoke
+
+name: CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# A newer push to the same ref makes the in-flight run obsolete.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Keep these in step with 00-context.md §1 and global.json.
+  NODE_VERSION: '22'
+  DOTNET_VERSION: '10.0.x'
+  DOTNET_NOLOGO: 'true'
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 'true'
+
+jobs:
+  ci:
+    # The Ubuntu runner provides the Docker daemon that Testcontainers and the
+    # compose-smoke tier both need (design D7).
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # --- toolchain ---------------------------------------------------------------
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', 'global.json') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Install JS dependencies
+        run: pnpm install --frozen-lockfile
+
+      # --- gate 1: the spec is valid ------------------------------------------------
+      - name: openspec validate --strict
+        run: |
+          npm install -g @fission-ai/openspec@latest
+          # Validates every active change; archived ones are already folded into the spec.
+          for change in openspec/changes/*/; do
+            name=$(basename "$change")
+            [ "$name" = "archive" ] && continue
+            echo "Validating $name"
+            openspec validate "$name" --strict
+          done
+
+      # --- gate 2: i18n completeness ------------------------------------------------
+      - name: Check i18n keys (pt-BR / en)
+        run: pnpm check:i18n
+
+      # --- gate 3: build both ecosystems -------------------------------------------
+      - name: Typecheck and build frontends
+        run: pnpm -r build
+
+      - name: Build .NET solution
+        # Warnings are errors (apps/api/Directory.Build.props), and the Domain project's
+        # ForbidInfrastructureReferences target fails the build if the protected core ever
+        # takes an infrastructure dependency.
+        run: dotnet build apps/api/ClinicScheduling.slnx --configuration Release
+
+      # --- gate 4: unit tests -------------------------------------------------------
+      - name: Unit tests (domain core)
+        run: >
+          dotnet test apps/api/tests/Domain.UnitTests/Domain.UnitTests.csproj
+          --configuration Release --no-build --verbosity normal
+
+      # --- gate 5: integration tests against a real PostgreSQL ----------------------
+      - name: Integration tests (Testcontainers + Respawn)
+        run: >
+          dotnet test apps/api/tests/Api.IntegrationTests/Api.IntegrationTests.csproj
+          --configuration Release --no-build --verbosity normal
+
+      # --- gate 6: the real stack, through Caddy ------------------------------------
+      - name: Compose smoke (Caddy routing and both base paths)
+        # Covers what WebApplicationFactory structurally cannot: the proxy, the static
+        # builds, the base paths, and per-prefix SPA fallback (design D6).
+        run: |
+          cp .env.example .env
+          pnpm smoke

@@ -1,0 +1,5 @@
+@import 'tailwindcss';
+
+/* Tailwind v4 auto-detects sources from this file's directory. The shared package lives
+   outside it, so its classes must be registered explicitly or they get stripped. */
+@source '../../../packages/shared/src';

@@ -1,0 +1,43 @@
+# Builds the .NET API (Api + Domain).
+#
+# Build context is the REPOSITORY ROOT so that global.json (the SDK pin) is in scope.
+
+# --- build ---------------------------------------------------------------------------
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+
+WORKDIR /src
+
+# global.json pins the SDK feature band — copied first so a mismatch fails immediately.
+COPY global.json ./
+COPY apps/api/Directory.Build.props apps/api/
+COPY apps/api/ClinicScheduling.slnx apps/api/
+COPY apps/api/src/Api/Api.csproj apps/api/src/Api/
+COPY apps/api/src/Domain/Domain.csproj apps/api/src/Domain/
+
+# Restore before copying sources, so it is cached until a package reference changes.
+RUN dotnet restore apps/api/src/Api/Api.csproj
+
+COPY apps/api/ apps/api/
+
+RUN dotnet publish apps/api/src/Api/Api.csproj \
+    --configuration Release \
+    --no-restore \
+    --output /app/publish
+
+# --- runtime ------------------------------------------------------------------------
+FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
+
+# curl is for the container HEALTHCHECK only — the aspnet image ships neither curl nor
+# wget, and Compose needs an in-container command to probe /api/health.
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY --from=build /app/publish ./
+
+# The aspnet image defaults ASPNETCORE_HTTP_PORTS to 8080. Not published to the host —
+# only Caddy is public (Decision U).
+EXPOSE 8080
+
+ENTRYPOINT ["dotnet", "Clinic.Api.dll"]

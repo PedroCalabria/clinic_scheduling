@@ -1,0 +1,6 @@
+# Only the JS side is a pnpm workspace.
+# apps/api is the .NET solution and is deliberately outside it (00-context.md §2).
+packages:
+  - 'apps/patient-portal'
+  - 'apps/staff'
+  - 'packages/shared'

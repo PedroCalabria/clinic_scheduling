@@ -1,0 +1,62 @@
+# Caddy — the only publicly exposed container (Decision T/U, design D2).
+#
+# Serves two independent SPA builds and the API from a single origin:
+#   /        -> patient-portal build   (/srv/patient-portal)
+#   /staff   -> staff build            (/srv/staff)
+#   /api/*   -> the API                (api:8080)
+#
+# Single origin is deliberate: it is what lets both frontends call the API by relative
+# path with no CORS and no build-time API base URL (design D3).
+{
+	# The admin API is not needed and should not be reachable.
+	admin off
+}
+
+# Local: ":80" -> plain HTTP, because Let's Encrypt cannot issue a certificate for
+# localhost (design D9).
+# Production: a real hostname (e.g. clinic.example.com) -> Caddy engages automatic HTTPS
+# from this same file. A config difference, not a code or file difference — the same
+# 12-factor handling as SMTP (03-nfr.md §8).
+{$CADDY_SITE_ADDRESS} {
+	encode gzip
+
+	# --- 1. API ------------------------------------------------------------------
+	# The prefix is NOT stripped: the API owns the full public path `/api/health`, so
+	# the identical relative URL works through Caddy, through the Vite dev proxy, and
+	# in tests. Matched first because it is the most specific matcher.
+	handle /api/* {
+		reverse_proxy api:8080
+	}
+
+	# --- 2. Staff SPA at /staff --------------------------------------------------
+	# Give `/staff` its trailing slash before anything resolves relative to it.
+	#
+	# All three arguments are required. Written as `redir /staff/ 308`, Caddy reads the
+	# first token as a MATCHER (any token beginning with `/` is valid there) and the
+	# second as the destination — so it silently matches nothing and answers an empty
+	# 200 instead of redirecting. Matcher, target, then status.
+	redir /staff /staff/ 308
+
+	# handle_path (not handle) STRIPS the /staff prefix before the file lookup, so
+	# /staff/assets/x.js resolves to /srv/staff/assets/x.js. That pairing — strip here,
+	# Vite `base: '/staff/'` there — is what makes the asset URL and the file path line
+	# up. Change one without the other and the app mounts but loads nothing.
+	handle_path /staff/* {
+		root * /srv/staff
+		# Scoped to THIS block on purpose. A global fallback would answer an unknown
+		# /staff/* path with the patient portal's index.html: the wrong app would boot
+		# under the wrong basename and fail confusingly. Per-prefix fallback is what
+		# makes deep-link reload correct for each surface independently.
+		try_files {path} /index.html
+		file_server
+	}
+
+	# --- 3. Patient portal at the root (catch-all) -------------------------------
+	# Least specific, so it can never swallow /api or /staff — Caddy orders handle
+	# blocks by matcher specificity, not by their order in this file.
+	handle {
+		root * /srv/patient-portal
+		try_files {path} /index.html
+		file_server
+	}
+}

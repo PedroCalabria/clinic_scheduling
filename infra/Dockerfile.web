@@ -1,0 +1,44 @@
+# Builds both SPAs and bakes them into the Caddy image (design D4).
+#
+# Assets are compiled here rather than on the host and bind-mounted, so the image is
+# reproducible and independent of host toolchain state. Local iteration uses the Vite dev
+# servers; this image represents the production shape.
+#
+# Build context is the REPOSITORY ROOT (the pnpm workspace spans apps/ and packages/).
+
+# --- build ---------------------------------------------------------------------------
+FROM node:22-alpine AS build
+
+RUN corepack enable
+
+WORKDIR /repo
+
+# Manifests first, so `pnpm install` is cached until a dependency actually changes.
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml tsconfig.base.json ./
+COPY packages/shared/package.json packages/shared/
+COPY apps/patient-portal/package.json apps/patient-portal/
+COPY apps/staff/package.json apps/staff/
+
+# --frozen-lockfile: the build fails rather than silently resolving different versions
+# than the committed lockfile.
+RUN pnpm install --frozen-lockfile
+
+COPY packages/ packages/
+COPY apps/patient-portal/ apps/patient-portal/
+COPY apps/staff/ apps/staff/
+
+# Each build runs tsc before vite (see each app's build script), so a type error fails
+# the image build rather than shipping.
+RUN pnpm --filter @clinic/patient-portal build \
+    && pnpm --filter @clinic/staff build
+
+# --- runtime ------------------------------------------------------------------------
+FROM caddy:2-alpine AS runtime
+
+COPY infra/Caddyfile /etc/caddy/Caddyfile
+
+# The two roots the Caddyfile serves. Keep these paths in sync with it.
+COPY --from=build /repo/apps/patient-portal/dist /srv/patient-portal
+COPY --from=build /repo/apps/staff/dist /srv/staff
+
+EXPOSE 80 443

@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Lets the compose-smoke check assert WHICH build was served at a given path
+         (design D6) — the two surfaces must never leak into each other. -->
+    <meta name="x-clinic-app" content="patient-portal" />
+    <title>Portal do paciente</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
