@@ -1,0 +1,13 @@
+:root{
+--space-xs:4px;
+--space-sm:8px;
+--space-md:12px;
+--space-lg:20px;
+--space-xl:32px;
+--gutter:24px;
+--margin:32px;
+--grid-columns:12; /* @kind other */
+--row-padding-console:8px;
+--touch-min:44px;
+--breakpoint-single-column:768px;
+}

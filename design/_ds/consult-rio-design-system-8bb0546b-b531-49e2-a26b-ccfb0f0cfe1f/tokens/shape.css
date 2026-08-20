@@ -1,0 +1,9 @@
+:root{
+--radius-none:0px;
+--radius-sm:3px;   /* inputs, buttons, chips, status pills */
+--radius-md:6px;   /* cards, panels, dialogs, banners */
+--radius-full:9999px; /* avatars and status dots only */
+--border-width:1px;
+--focus-ring-width:2px;
+--focus-ring-offset:2px;
+}

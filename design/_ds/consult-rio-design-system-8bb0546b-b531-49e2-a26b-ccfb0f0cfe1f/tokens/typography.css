@@ -1,0 +1,31 @@
+:root{
+--font-sans:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+--font-mono:"IBM Plex Mono",ui-monospace,"Cascadia Code",monospace;
+--weight-regular:400;
+--weight-semibold:600;
+
+--text-display-size:40px; --text-display-lh:1.1; --text-display-ls:-0.02em;
+--text-headline-lg-size:28px; --text-headline-lg-lh:1.2; --text-headline-lg-ls:-0.015em;
+--text-headline-md-size:20px; --text-headline-md-lh:1.3; --text-headline-md-ls:-0.01em;
+--text-body-lg-size:17px; --text-body-lg-lh:1.6;
+--text-body-md-size:16px; --text-body-md-lh:1.55;
+--text-body-sm-size:14px; --text-body-sm-lh:1.5;
+--text-label-md-size:13px; --text-label-md-lh:1.4;
+--text-label-caps-size:11px; --text-label-caps-lh:1.3; --text-label-caps-ls:0.08em;
+--text-data-lg-size:15px; --text-data-lg-lh:1.4;
+--text-data-md-size:13px; --text-data-md-lh:1.45;
+--text-data-sm-size:11px; --text-data-sm-lh:1.4; --text-data-sm-ls:0.02em;
+
+--measure-portal:68ch;
+}
+.type-display{font-family:var(--font-sans);font-size:var(--text-display-size);font-weight:600;line-height:var(--text-display-lh);letter-spacing:var(--text-display-ls)}
+.type-headline-lg{font-family:var(--font-sans);font-size:var(--text-headline-lg-size);font-weight:600;line-height:var(--text-headline-lg-lh);letter-spacing:var(--text-headline-lg-ls)}
+.type-headline-md{font-family:var(--font-sans);font-size:var(--text-headline-md-size);font-weight:600;line-height:var(--text-headline-md-lh);letter-spacing:var(--text-headline-md-ls)}
+.type-body-lg{font-family:var(--font-sans);font-size:var(--text-body-lg-size);font-weight:400;line-height:var(--text-body-lg-lh)}
+.type-body-md{font-family:var(--font-sans);font-size:var(--text-body-md-size);font-weight:400;line-height:var(--text-body-md-lh)}
+.type-body-sm{font-family:var(--font-sans);font-size:var(--text-body-sm-size);font-weight:400;line-height:var(--text-body-sm-lh)}
+.type-label-md{font-family:var(--font-sans);font-size:var(--text-label-md-size);font-weight:600;line-height:var(--text-label-md-lh)}
+.type-label-caps{font-family:var(--font-sans);font-size:var(--text-label-caps-size);font-weight:600;line-height:var(--text-label-caps-lh);letter-spacing:var(--text-label-caps-ls);text-transform:uppercase}
+.type-data-lg{font-family:var(--font-mono);font-size:var(--text-data-lg-size);font-weight:400;line-height:var(--text-data-lg-lh);font-feature-settings:'tnum' 1}
+.type-data-md{font-family:var(--font-mono);font-size:var(--text-data-md-size);font-weight:400;line-height:var(--text-data-md-lh);font-feature-settings:'tnum' 1}
+.type-data-sm{font-family:var(--font-mono);font-size:var(--text-data-sm-size);font-weight:400;line-height:var(--text-data-sm-lh);letter-spacing:var(--text-data-sm-ls);font-feature-settings:'tnum' 1}
