@@ -83,7 +83,7 @@
 - [x] 10.3 Confirm the Testcontainers and compose-smoke steps run on the Ubuntu runner's Docker daemon
 - [x] 10.4 Verify the pipeline fails as intended on a deliberately broken i18n key, then revert the break
 - [x] 10.5 Verify the pipeline fails as intended on a deliberately broken Caddy `try_files` line, then revert the break — proves the smoke tier actually guards the change's central risk
-- [ ] 10.6 Confirm the full pipeline is green on the branch
+- [x] 10.6 Confirm the full pipeline is green on the branch
 
 ## 11. Definition of Done
 
