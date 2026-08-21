@@ -1,0 +1,90 @@
+/*
+ * The Consult Rio design tokens, expressed as Tailwind v4 theme variables.
+ *
+ * Sourced from design/_ds/consult-rio-design-system/tokens/*.css — that directory is the
+ * design source of truth, and this file is the one place the app restates it, so a token
+ * change has exactly one place to land. Registering them under `@theme` is what makes
+ * `bg-primary`, `text-meta`, `rounded-md`, and `shadow-float` real utilities rather than
+ * class names that silently do nothing.
+ *
+ * Imported by each app's stylesheet, which is also where the shared package is declared as
+ * a Tailwind source (`@source`) — classes used only in here live outside each app's own
+ * tree, and Tailwind scans source files, not dependencies.
+ *
+ * The font faces are loaded by each app's stylesheet rather than here: CSS requires every
+ * @import to precede all other rules, and by the time this file is pulled in, Tailwind has
+ * already emitted plenty. Same tokens, one rung up.
+ */
+
+@theme {
+  /* --- base ramp: no pure white or black anywhere, per the brand guide --- */
+  --color-green-900: #05504f;
+  --color-green-800: #006965;
+  --color-green-100: #def4f0;
+  --color-slate-600: #536064;
+  --color-amber-600: #ca9246;
+  --color-amber-100: #fae9cf;
+  --color-paper-100: #fafcfc;
+  --color-paper-200: #f0f5f4;
+  --color-rule-300: #d9dfdf;
+  --color-ink-900: #1b2324;
+  --color-brick-600: #a44033;
+
+  /* --- semantic aliases: what components actually reference --- */
+  --color-primary: var(--color-green-800);
+  --color-primary-strong: var(--color-green-900);
+  --color-primary-subtle: var(--color-green-100);
+  --color-secondary: var(--color-slate-600);
+  --color-tertiary: var(--color-amber-600);
+  --color-tertiary-subtle: var(--color-amber-100);
+  --color-error: var(--color-brick-600);
+
+  --color-surface: var(--color-paper-100);
+  --color-surface-raised: var(--color-paper-200);
+  --color-surface-inverse: var(--color-ink-900);
+
+  --color-body: var(--color-ink-900);
+  --color-heading: var(--color-ink-900);
+  --color-meta: var(--color-slate-600);
+  --color-on-primary: var(--color-paper-100);
+  --color-on-inverse: var(--color-paper-100);
+
+  --color-line: var(--color-rule-300);
+  --color-line-active: var(--color-green-800);
+
+  /* --- type --- */
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+
+  /* --- shape: three radii, and one of them is only for dots --- */
+  --radius-sm: 3px;
+  --radius-md: 6px;
+
+  /* --- elevation: one level, for genuinely floating layers --- */
+  --shadow-float: 0 4px 12px rgb(27 35 36 / 0.12);
+
+  /* --- motion --- */
+  --animate-duration-fast: 120ms;
+  --animate-duration-base: 180ms;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-body);
+  }
+
+  /*
+   * One visible focus style for everything, from the design system's focus tokens. This is
+   * the accessibility floor (WCAG 2.1 AA, 03-nfr.md §6) and it belongs here rather than on
+   * each component, where it would eventually be forgotten on one of them.
+   */
+  :focus-visible {
+    outline: 2px solid var(--color-line-active);
+    outline-offset: 2px;
+  }
+}

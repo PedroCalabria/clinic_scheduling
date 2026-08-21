@@ -16,6 +16,7 @@ context: |
   | `docs/05-openspec-workflow.md` | Capabilities, the 8-change build order, per-change workflow, DoD |
   | `docs/06-ui-surfaces.md` | Screen inventory (P1–P7 patient portal, S0–S11 staff), screen→change mapping |
   | `docs/07-error-codes.md` | Error-code catalogue — the `{ code, params? }` contract |
+  | `docs/08-google-setup.md` | Manual prerequisite: the Google OAuth client for federated sign-in (optional; its absence only disables that one login path) |
 
   ## Non-negotiables
 
@@ -35,8 +36,14 @@ context: |
   - **Soft-delete only** (I10); never hard-delete.
   - **Correlation id**: `X-Correlation-ID`, read-or-generate, echoed in the response,
     present on every log entry for the request.
+  - **Session** (change 2): an opaque session id in an `HttpOnly`, `Secure`,
+    `SameSite=Lax` cookie; the `sessions` row is the only authority, so revoking it takes
+    effect on the next request. `[Authorize]` is the default — anonymous access is an
+    explicit `.AllowAnonymous()`. State-changing requests carry a double-submit CSRF token
+    (`X-CSRF-Token`); the OIDC flow has its own `state`/`nonce`. Never add a session cache.
   - **Frontends call the API by relative path** (`/api/...`) — same origin, no CORS,
-    no build-time API base URL.
+    no build-time API base URL. The frontend keeps **no copy of the session**: it reads
+    `GET /api/auth/session` and treats a 401 as "signed out".
   - **Base paths**: patient-portal at `/` (Vite base `/`), staff at `/staff` (Vite base
     `/staff/`, router basename `/staff`). `base` and `basename` derive from one per-app
     constant so they cannot drift.

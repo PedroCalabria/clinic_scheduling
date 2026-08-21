@@ -40,6 +40,10 @@ Workspace monorepo using **pnpm workspaces** (lightweight; Turborepo is overkill
 
 Only the JS side (`apps/patient-portal`, `apps/staff`, `packages/shared`) is in the pnpm workspace; `apps/api` is the .NET solution.
 
+**shadcn/ui output:** configured to emit shared primitives into `packages/shared` (aliases point there), consumed by both apps — **not** the CLI's default app-local `components/ui`. Deciding this once avoids two divergent copies of every primitive. Established in change 2 (first real UI): `packages/shared/components.json` holds the configuration, `src/ui/cn.ts` the class-merge helper, and `src/ui/theme.css` the Consult Rio tokens as Tailwind `@theme` variables. Each app's stylesheet declares the shared package as a Tailwind `@source` — without it, classes used only inside `packages/shared` are stripped from the production build while looking fine in dev, so the compose-smoke tier asserts a shared primitive's classes survive.
+
+**Primitives so far:** button, input, label, field, select, card, table, badge, alert — what the change-2 screens need. Widgets the platform does not provide accessibly (dialog, combobox, popover) come from the shadcn CLI with their Radix dependencies when a screen requires one; wrapping a native `<input>` or `<select>` in Radix would be ceremony, so those are native and styled.
+
 ## 3. Backend structure (Decision K + P-3 made concrete)
 
 Solution file: `apps/api/ClinicScheduling.slnx` (.NET 10 emits the newer XML solution format). Layout: `src/Api`, `src/Domain`, `tests/Domain.UnitTests`, `tests/Api.IntegrationTests`. Shared build settings live in `apps/api/Directory.Build.props` — warnings are errors.
@@ -60,8 +64,16 @@ Two SPAs (patient-portal, staff) + `packages/shared`. Feature-folder structure m
 - **Error contract (Decision I):** the API returns `{ code, params? }`; the frontend translates. Codes come from the catalogue in `07-error-codes.md` — **reuse existing codes; add new ones there, never invent per-slice shapes.**
 - **Time (Decision H):** store UTC (`tstzrange`); one configured clinic timezone for display.
 - **Soft-delete only** everywhere (I10); never hard-delete.
-- **Session (Decision J):** OIDC + internal accounts both resolve to the app's own session (HttpOnly cookie + revocation).
-- **Authorization:** RBAC by role + ownership check on patient data.
+- **Session (Decision J):** OIDC + internal accounts both resolve to the app's own session. Mechanism (**Option C**): the cookie holds an **opaque session id**; a `Session` table is the single source of truth. Revoke = flag the row, effective on the very next request (revocation *by construction*, not a stale claims copy). A custom `AuthenticationHandler` does only the credential lookup — `[Authorize]`, policies, and RBAC still come from the framework. Password hashing borrows `PasswordHasher<T>` without the Identity store. Session-row cleanup is **expiry-on-read** for now; a periodic sweep is a documented revisit trigger for when Hangfire lands (change 6). Cookies are **`Secure` always** (localhost is a secure context — no env-conditional flags).
+- **Authorization:** RBAC by role + ownership check on patient data. Roles are named
+  policies applied at the endpoint; ownership goes through one guard over a single domain
+  rule, which also decides whether the access is recorded (`AccessLog`). A role is fixed when
+  a user is created and never changes — an administrator disables one account and creates
+  another. Established in change 2.
+- **Provisioning (change 2):** an unknown Google email becomes a **patient**; a professional
+  is **pre-created by an administrator** (S11) and claimed by their first Google sign-in; a
+  Google sign-in whose address belongs to an internal account is **refused**. Roles are never
+  inferred from the identity provider.
 - **Secrets** outside the repo (env / Docker secrets); `.env.example` committed.
 - **Logging:** Serilog structured logs, correlation id per request and per job/webhook. The header is **`X-Correlation-ID`** — read from the inbound request when present, generated when absent, always echoed in the response. Chosen over `traceparent` because W3C trace context buys distributed-tracing interoperability this project has no consumer for (single deployable, no tracing backend — `03-nfr.md` §4 deliberately keeps observability proportional). Revisit only if a real tracing stack is introduced.
 
@@ -69,6 +81,9 @@ Two SPAs (patient-portal, staff) + `packages/shared`. Feature-folder structure m
 
 - **Unit tests:** domain-core invariants.
 - **Integration tests:** against a **real PostgreSQL** via **Testcontainers**; **Respawn** resets state between tests. Covers the `EXCLUDE` constraint, the professional-scoped lock (G1), and Dapper queries.
+- **Acting as a user (change 2):** `ApiFixture.AsRoleAsync(role)` seeds a user and a session and returns a client already holding the cookie — one line, and the seam every later change's tests use. It deliberately skips session issuance, so the login flows carry their own end-to-end tests.
+- **Google, offline (change 2):** the token exchange is stubbed and the signing keys are replaced; the validation itself (signature, `iss`, `aud`, `exp`, `nonce`, `email_verified`) runs for real against a locally minted token. CI therefore needs no Google credentials.
+- **A third tier:** `pnpm smoke` asserts against the running Compose stack what the in-process host cannot — Caddy's routing, the base paths, the session cookie surviving the proxy, and the built CSS.
 - **CI (GitHub Actions):** build → unit → integration (Testcontainers) → `openspec validate --strict` → i18n-key presence check. CI enforces the Definition of Done instead of trusting it.
 
 ## 7. Definition of Done (every change)

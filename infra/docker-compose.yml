@@ -46,6 +46,15 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
       ConnectionStrings__Default: Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      # Identity (change 2). Passed through under the same names the app binds, so .env and
+      # the container agree without a translation table. All optional: absent bootstrap
+      # values skip creating an administrator, and an absent Google client leaves the
+      # federated path off while internal accounts keep working (design A14).
+      Auth__BootstrapAdministrator__Email: ${Auth__BootstrapAdministrator__Email:-}
+      Auth__BootstrapAdministrator__Password: ${Auth__BootstrapAdministrator__Password:-}
+      Auth__Google__ClientId: ${Auth__Google__ClientId:-}
+      Auth__Google__ClientSecret: ${Auth__Google__ClientSecret:-}
+      Auth__Google__RedirectUri: ${Auth__Google__RedirectUri:-}
     depends_on:
       db:
         # Waits for pg_isready, so the startup migration does not race the database.

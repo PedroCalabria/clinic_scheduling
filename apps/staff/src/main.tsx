@@ -1,4 +1,4 @@
-import { createI18n } from '@clinic/shared';
+import { SessionExpiryWatcher, createI18n } from '@clinic/shared';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -21,10 +21,14 @@ createRoot(container).render(
   <StrictMode>
     <I18nextProvider i18n={i18n}>
       <QueryClientProvider client={queryClient}>
-        {/* '/staff' — derives from the same constant as Vite's base (design D1). */}
-        <BrowserRouter basename={ROUTER_BASENAME}>
-          <App />
-        </BrowserRouter>
+        {/* Turns "the API says this session is over" into one visible sign-out rather than a
+            page of quietly failing requests (design A11). */}
+        <SessionExpiryWatcher>
+          {/* '/staff' — derives from the same constant as Vite's base (design D1). */}
+          <BrowserRouter basename={ROUTER_BASENAME}>
+            <App />
+          </BrowserRouter>
+        </SessionExpiryWatcher>
       </QueryClientProvider>
     </I18nextProvider>
   </StrictMode>,

@@ -1,3 +1,5 @@
+using Clinic.Api.Infrastructure.Auth;
+using Clinic.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace Clinic.Api.Infrastructure.Persistence;
@@ -7,17 +9,30 @@ namespace Clinic.Api.Infrastructure.Persistence;
 /// go through Dapper instead, and arrive in change 4.
 /// </summary>
 /// <remarks>
-/// Table and column names are mapped to snake_case explicitly rather than via a naming
-/// convention package — one table does not justify a dependency, and the project's rule is
-/// that every technology must answer what problem it solves here (04-architecture.md).
-/// Revisit if the schema grows past the point where explicit mapping is tedious (change 3).
+/// Mapping lives in <see cref="IEntityTypeConfiguration{TEntity}"/> classes under
+/// <c>Configurations</c>, discovered from this assembly. Change 1 mapped its single marker
+/// table inline here and recorded the trigger for moving out — five identity tables is that
+/// trigger. Naming stays explicit (snake_case spelled out, no convention package): a
+/// dependency that renames columns by inference has to earn its place, and it has not yet.
 /// </remarks>
 internal sealed class ClinicDbContext(DbContextOptions<ClinicDbContext> options) : DbContext(options)
 {
     public DbSet<PlatformMarker> PlatformMarkers => Set<PlatformMarker>();
 
+    public DbSet<User> Users => Set<User>();
+
+    public DbSet<Patient> Patients => Set<Patient>();
+
+    public DbSet<Consent> Consents => Set<Consent>();
+
+    public DbSet<AccessLog> AccessLog => Set<AccessLog>();
+
+    public DbSet<Session> Sessions => Set<Session>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // The change-1 marker table keeps its original inline mapping so the existing
+        // migration and snapshot stay byte-for-byte the schema they described.
         var marker = modelBuilder.Entity<PlatformMarker>();
 
         marker.ToTable("platform_marker");
@@ -25,5 +40,7 @@ internal sealed class ClinicDbContext(DbContextOptions<ClinicDbContext> options)
         marker.Property(m => m.Id).HasColumnName("id");
         marker.Property(m => m.RecordedAtUtc).HasColumnName("recorded_at_utc");
         marker.Property(m => m.Description).HasColumnName("description").HasMaxLength(200);
+
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(ClinicDbContext).Assembly);
     }
 }

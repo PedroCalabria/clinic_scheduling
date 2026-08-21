@@ -55,19 +55,31 @@ function run(command, args, { capture = false } = {}) {
   });
 }
 
-async function readHostPort() {
+/** Reads a variable out of .env, which is the same file Compose interpolates from. */
+async function readEnvValue(name, fallback) {
   try {
     const env = await readFile(resolve(repoRoot, '.env'), 'utf8');
-    const match = env.match(/^CADDY_HTTP_PORT\s*=\s*(\d+)/m);
+    // Spaces and tabs only around the `=`, never `\s`: `\s` matches a newline, so an
+    // empty value (`NAME=`) would quietly capture the NEXT line and report it as this
+    // variable's value.
+    const match = env.match(new RegExp(`^${name}[ \\t]*=[ \\t]*(.*)$`, 'm'));
 
     if (match) {
-      return Number(match[1]);
+      const value = match[1].trim();
+
+      if (value.length > 0) {
+        return value;
+      }
     }
   } catch {
-    // Falls through to the compose default.
+    // Falls through to the caller's default.
   }
 
-  return 8080;
+  return fallback;
+}
+
+async function readHostPort() {
+  return Number(await readEnvValue('CADDY_HTTP_PORT', 8080));
 }
 
 /**
@@ -152,6 +164,27 @@ function servedApp(html) {
 
 function firstScriptSrc(html) {
   return html.match(/<script[^>]+src="([^"]+)"/)?.[1];
+}
+
+function firstStylesheetHref(html) {
+  return html.match(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/)?.[1];
+}
+
+/**
+ * Picks one cookie out of a response.
+ *
+ * Cookies are handled by hand here because Node's fetch has no cookie jar. That is a
+ * feature for this tier: it makes the Set-Cookie attributes something the test can assert
+ * on rather than something a client library quietly applies.
+ */
+function readSetCookie(response, name) {
+  const headers = response.headers.getSetCookie?.() ?? [];
+
+  return headers.find((cookie) => cookie.startsWith(`${name}=`));
+}
+
+function cookieValue(setCookie) {
+  return setCookie.slice(setCookie.indexOf('=') + 1).split(';')[0];
 }
 
 async function main() {
@@ -268,6 +301,152 @@ async function main() {
       response.headers.get('x-correlation-id') === 'smoke-test-correlation-id',
       `expected the inbound correlation id back, got ${response.headers.get('x-correlation-id')}`,
     );
+  });
+
+  // --- the design system survives the production build (design A12) ----------------
+  await check('shared UI primitive classes survive the built CSS', async () => {
+    // The failure this guards is specific and invisible in development: Tailwind emits only
+    // the classes it finds in scanned SOURCE, and the primitives live in packages/shared,
+    // outside each app's own tree. Without the @source directive the components render
+    // unstyled in a production build while looking perfect in dev.
+    for (const [surface, path] of [
+      ['portal', '/'],
+      ['staff', '/staff/'],
+    ]) {
+      const html = await (await fetch(`${base}${path}`)).text();
+      const href = firstStylesheetHref(html);
+
+      assert(href, `no stylesheet <link> found in the ${surface} index.html`);
+
+      const css = await (await fetch(`${base}${href}`)).text();
+
+      // bg-primary is used ONLY by the shared Button, so its presence proves the shared
+      // package was scanned rather than merely bundled.
+      assert(css.includes('bg-primary'), `${surface} CSS is missing the shared Button's classes`);
+      assert(css.includes('--color-primary'), `${surface} CSS is missing the design tokens`);
+    }
+  });
+
+  // --- identity, through the proxy (change 2) ---------------------------------------
+  await check('an unauthenticated protected endpoint answers 401 with the catalogue code', async () => {
+    const response = await fetch(`${base}/api/auth/session`);
+
+    assert(response.status === 401, `expected 401, got ${response.status}`);
+
+    const body = await response.json();
+    assert(
+      body.code === 'auth.session_expired',
+      `expected auth.session_expired, got ${body.code}`,
+    );
+  });
+
+  await check('an internal account signs in through Caddy and the cookie survives the proxy', async () => {
+    const email = await readEnvValue('Auth__BootstrapAdministrator__Email', null);
+    const password = await readEnvValue('Auth__BootstrapAdministrator__Password', null);
+
+    assert(email && password, 'no bootstrap administrator configured in .env');
+
+    // The CSRF token has to be obtained the way a browser would: from a safe request.
+    const primed = await fetch(`${base}/api/health`);
+    const csrfCookie = readSetCookie(primed, 'clinic.csrf');
+
+    assert(csrfCookie, 'the API did not issue a CSRF cookie on a safe request');
+
+    const csrf = cookieValue(csrfCookie);
+
+    const signIn = await fetch(`${base}/api/auth/sign-in`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrf,
+        Cookie: `clinic.csrf=${csrf}`,
+      },
+      body: JSON.stringify({ email, password }),
+    });
+
+    assert(signIn.status === 200, `expected 200, got ${signIn.status}`);
+
+    const sessionCookie = readSetCookie(signIn, 'clinic.session');
+    assert(sessionCookie, 'no session cookie was set');
+
+    // The flags are asserted here rather than in the integration tier because this is the
+    // response a real browser receives, through the real proxy.
+    const lower = sessionCookie.toLowerCase();
+    assert(lower.includes('httponly'), `session cookie must be HttpOnly: ${sessionCookie}`);
+    assert(lower.includes('secure'), `session cookie must be Secure: ${sessionCookie}`);
+    assert(lower.includes('samesite=lax'), `session cookie must be SameSite=Lax: ${sessionCookie}`);
+
+    const session = cookieValue(sessionCookie);
+
+    // And it authenticates the next request, having crossed Caddy in both directions.
+    const whoami = await fetch(`${base}/api/auth/session`, {
+      headers: { Cookie: `clinic.session=${session}` },
+    });
+
+    assert(whoami.status === 200, `expected 200 for an authenticated request, got ${whoami.status}`);
+
+    const body = await whoami.json();
+    assert(body.role === 'Administrator', `expected Administrator, got ${body.role}`);
+    assert(
+      body.mustChangePassword === true,
+      'the bootstrapped administrator must be required to replace its password',
+    );
+
+    // The forced change is enforced in the pipeline, so anything else is refused until the
+    // credential is replaced (design A6).
+    const held = await fetch(`${base}/api/staff-accounts`, {
+      headers: { Cookie: `clinic.session=${session}` },
+    });
+
+    assert(held.status === 403, `expected 403 while the bootstrap password stands, got ${held.status}`);
+
+    const heldBody = await held.json();
+    assert(
+      heldBody.code === 'auth.password_change_required',
+      `expected auth.password_change_required, got ${heldBody.code}`,
+    );
+  });
+
+  await check('a state-changing request without the CSRF header is refused', async () => {
+    const response = await fetch(`${base}/api/auth/sign-in`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'nobody@clinic.test', password: 'whatever' }),
+    });
+
+    assert(response.status === 403, `expected 403, got ${response.status}`);
+
+    const body = await response.json();
+    assert(body.code === 'auth.forbidden', `expected auth.forbidden, got ${body.code}`);
+  });
+
+  await check('the Google sign-in entry point reports its configuration state', async () => {
+    // No Google client is configured in .env.example, so this must degrade rather than
+    // break: a redirect carrying the code, which the frontend translates (design A14).
+    const response = await fetch(`${base}/api/auth/google/start`, { redirect: 'manual' });
+
+    assert(
+      response.status === 302 || response.status === 0,
+      `expected a redirect, got ${response.status}`,
+    );
+
+    const location = response.headers.get('location');
+
+    if (location) {
+      const configured = await readEnvValue('Auth__Google__ClientId', null);
+
+      if (configured) {
+        assert(
+          location.includes('scope=openid') && !location.includes('calendar'),
+          `expected identity scopes only, got ${location}`,
+        );
+      } else {
+        assert(
+          location.includes('authError=auth.google_unavailable'),
+          `expected auth.google_unavailable, got ${location}`,
+        );
+      }
+    }
   });
 
   // --- only Caddy is public (Decision U) -------------------------------------------

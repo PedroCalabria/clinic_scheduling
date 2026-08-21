@@ -1,5 +1,16 @@
+/* Must be the first rule in the assembled stylesheet: CSS requires @import to precede
+   everything except @charset and @layer statements, and `@import 'tailwindcss'` below
+   expands into rules. The faces match the design system's own substitution note; swapping
+   these for self-hosted .woff2 files is the documented follow-up. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;600&display=swap');
+
 @import 'tailwindcss';
 
+/* The Consult Rio design tokens, as Tailwind theme variables. One definition, both apps. */
+@import '../../../packages/shared/src/ui/theme.css';
+
 /* Tailwind v4 auto-detects sources from this file's directory. The shared package lives
-   outside it, so its classes must be registered explicitly or they get stripped. */
+   outside it, so its classes must be registered explicitly or they get stripped. The
+   compose-smoke tier asserts a shared primitive's classes survive the production build,
+   because the failure mode is "styled in dev, unstyled once built" (design A12). */
 @source '../../../packages/shared/src';
