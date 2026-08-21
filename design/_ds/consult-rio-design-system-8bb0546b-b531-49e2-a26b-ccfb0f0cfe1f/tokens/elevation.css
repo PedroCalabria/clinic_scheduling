@@ -1,0 +1,9 @@
+:root{
+/* one level only, for genuinely floating layers */
+--shadow-none:none;
+--shadow-float:0 4px 12px rgba(27,35,36,0.12);
+--motion-fast:120ms; /* @kind other */
+--motion-base:180ms; /* @kind other */
+--motion-ease:cubic-bezier(0.2,0,0.2,1); /* @kind other */
+--tooltip-delay-in:150ms; /* @kind other */
+}

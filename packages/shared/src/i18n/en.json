@@ -1,0 +1,20 @@
+{
+  "common": {
+    "language": "Language",
+    "systemStatus": "System status",
+    "database": "Database",
+    "loading": "Checking…",
+    "statusHealthy": "healthy",
+    "statusDegraded": "degraded",
+    "statusUnhealthy": "unhealthy",
+    "unreachable": "Could not reach the API."
+  },
+  "portal": {
+    "title": "Patient portal",
+    "notFound": "This page does not exist."
+  },
+  "staff": {
+    "title": "Staff console",
+    "notFound": "This page does not exist."
+  }
+}

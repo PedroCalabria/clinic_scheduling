@@ -1,0 +1,20 @@
+{
+  "common": {
+    "language": "Idioma",
+    "systemStatus": "Status do sistema",
+    "database": "Banco de dados",
+    "loading": "Verificando…",
+    "statusHealthy": "saudável",
+    "statusDegraded": "degradado",
+    "statusUnhealthy": "indisponível",
+    "unreachable": "Não foi possível acessar a API."
+  },
+  "portal": {
+    "title": "Portal do paciente",
+    "notFound": "Esta página não existe."
+  },
+  "staff": {
+    "title": "Console da equipe",
+    "notFound": "Esta página não existe."
+  }
+}

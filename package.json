@@ -1,0 +1,21 @@
+{
+  "name": "clinic-scheduling",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@9.15.2",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "dev:portal": "pnpm --filter @clinic/patient-portal dev",
+    "dev:staff": "pnpm --filter @clinic/staff dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "check:i18n": "node scripts/check-i18n-keys.mjs",
+    "smoke": "node scripts/compose-smoke.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.2"
+  }
+}

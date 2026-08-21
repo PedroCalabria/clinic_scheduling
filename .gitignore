@@ -1,0 +1,28 @@
+# Node / pnpm
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# .NET
+bin/
+obj/
+*.user
+
+# Env — .env.example is committed, real env files never are
+.env
+.env.*
+!.env.example
+
+# Editors / OS
+.vs/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Local test/tooling output
+TestResults/
+coverage/
+
+# Claude Code: shared project tooling is committed, personal permissions are not.
+.claude/settings.local.json

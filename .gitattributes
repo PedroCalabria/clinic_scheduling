@@ -1,0 +1,14 @@
+# Normalize line endings: LF in the repository and in working copies, matching
+# .editorconfig. Without this, a Windows checkout writes CRLF while CI runs on Linux,
+# which produces phantom whole-file diffs and can break shell scripts in containers.
+* text=auto eol=lf
+
+# Binary assets — never touch.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary

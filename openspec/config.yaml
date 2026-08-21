@@ -1,0 +1,64 @@
+schema: spec-driven
+
+context: |
+  # Clinic Scheduling System — inherited context
+
+  Source of truth is the `docs/` set. Read the relevant doc before drafting any
+  artifact; do NOT restate its contents into change artifacts — build on them.
+
+  | Doc | Contains |
+  |---|---|
+  | `docs/00-context.md` | **Concrete substrate: version pins, monorepo layout, Api+Domain split, conventions, test/CI substrate, Definition of Done. Read this first.** |
+  | `docs/01-requirements.md` | Problem, scope, actors, roles, use cases, MVP cut, anti-scope |
+  | `docs/02-domain-model.md` | Entities, appointment state machine, invariants I1–I10, ERD, enforcement mapping |
+  | `docs/03-nfr.md` | i18n, security, resilience, observability, runtime/tooling constraints |
+  | `docs/04-architecture.md` | Backend/frontend architecture, persistence, jobs, sync, deployment topology |
+  | `docs/05-openspec-workflow.md` | Capabilities, the 8-change build order, per-change workflow, DoD |
+  | `docs/06-ui-surfaces.md` | Screen inventory (P1–P7 patient portal, S0–S11 staff), screen→change mapping |
+  | `docs/07-error-codes.md` | Error-code catalogue — the `{ code, params? }` contract |
+
+  ## Non-negotiables
+
+  - **Stack pins** (change 1): .NET 10 LTS, PostgreSQL 17 (`postgres:17-alpine`, same
+    tag in Compose and Testcontainers), React 19 + TypeScript + Vite, Node 22, pnpm 9.
+  - **Layout**: `apps/api` (.NET solution: `Api` + `Domain`), `apps/patient-portal`,
+    `apps/staff`, `packages/shared`, `infra/`. Only the JS side is a pnpm workspace.
+  - **Domain boundary**: `Domain` references no infrastructure (no EF, no Dapper, no
+    ASP.NET). The compiler enforces it. `Api` depends on `Domain`, never the reverse.
+  - **Vertical slices** inside `Api`; endpoints call handlers directly — **no MediatR**.
+  - **Persistence**: EF Core for writes through the aggregate; Dapper for the
+    availability read path (CQRS-lite).
+  - **Error contract**: the API returns `{ code, params? }` and never translated prose.
+    Reuse codes from `docs/07-error-codes.md`; add new ones **there** first, never
+    invent per-slice shapes. Matching pt-BR + en i18n keys are part of the DoD.
+  - **Time**: store UTC (`tstzrange`); one configured clinic timezone for display.
+  - **Soft-delete only** (I10); never hard-delete.
+  - **Correlation id**: `X-Correlation-ID`, read-or-generate, echoed in the response,
+    present on every log entry for the request.
+  - **Frontends call the API by relative path** (`/api/...`) — same origin, no CORS,
+    no build-time API base URL.
+  - **Base paths**: patient-portal at `/` (Vite base `/`), staff at `/staff` (Vite base
+    `/staff/`, router basename `/staff`). `base` and `basename` derive from one per-app
+    constant so they cannot drift.
+  - **Secrets** outside the repo; `.env.example` committed and kept complete.
+  - **Anti-over-engineering**: every technology must answer "what problem does it solve
+    here?". Knowing when *not* to add a tool is a first-class decision. Redis, MediatR,
+    and Kubernetes are explicitly out of scope with documented revisit triggers.
+
+  ## Definition of Done (every change)
+
+  Unit + integration tests green in CI (integration against a real PostgreSQL via
+  Testcontainers, Respawn between tests); pt-BR + en i18n keys present for new
+  user-facing strings; the demonstrable behavior works end to end;
+  `openspec validate <change> --strict` passes; change archived into the living spec.
+
+rules:
+  proposal:
+    - Do not restate the docs/ substrate; reference it and build on it.
+    - Always state explicitly what the change does NOT touch.
+  design:
+    - Give the rationale and the alternatives considered for each decision, not just the choice.
+    - Record conscious trade-offs and their revisit triggers rather than hiding them.
+  tasks:
+    - Order tasks by dependency; each task must be independently verifiable.
+    - End with a Definition of Done group that mirrors the DoD above.

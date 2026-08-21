@@ -1,0 +1,31 @@
+{
+  "name": "@clinic/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "API client, shared types, i18n resources, and UI primitives consumed by both frontends.",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./i18n/en": "./src/i18n/en.json",
+    "./i18n/pt-BR": "./src/i18n/pt-BR.json"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "i18next": "^24.0.0",
+    "react": "^19.0.0",
+    "react-i18next": "^15.0.0"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5.62.0",
+    "@types/react": "^19.0.0",
+    "i18next": "^24.2.0",
+    "react": "^19.0.0",
+    "react-i18next": "^15.4.0",
+    "typescript": "^5.7.2"
+  }
+}

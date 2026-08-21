@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/consult-rio-design-system-8bb0546b-b531-49e2-a26b-ccfb0f0cfe1f/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/consult-rio-design-system-8bb0546b-b531-49e2-a26b-ccfb0f0cfe1f/tokens/colors.css">
+<link rel="stylesheet" href="_ds/consult-rio-design-system-8bb0546b-b531-49e2-a26b-ccfb0f0cfe1f/tokens/typography.css">
+<link rel="stylesheet" href="_ds/consult-rio-design-system-8bb0546b-b531-49e2-a26b-ccfb0f0cfe1f/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/consult-rio-design-system-8bb0546b-b531-49e2-a26b-ccfb0f0cfe1f/tokens/shape.css">
+<link rel="stylesheet" href="_ds/consult-rio-design-system-8bb0546b-b531-49e2-a26b-ccfb0f0cfe1f/tokens/elevation.css">
+<link rel="stylesheet" href="_ds/consult-rio-design-system-8bb0546b-b531-49e2-a26b-ccfb0f0cfe1f/tokens/base.css">
+<link rel="stylesheet" href="_ds/consult-rio-design-system-8bb0546b-b531-49e2-a26b-ccfb0f0cfe1f/styles.css">
+<script src="https://unpkg.com/lucide@0.544.0/dist/umd/lucide.js"></script>
+<script src="_ds/consult-rio-design-system-8bb0546b-b531-49e2-a26b-ccfb0f0cfe1f/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--surface);color:var(--text-body);font-family:var(--font-sans)}
+a{color:var(--text-link);text-decoration:none}
+a:hover{color:var(--color-primary-strong);text-decoration:underline}
+input[type="date"],input[type="time"]{min-width:0;width:100%;box-sizing:border-box}
+.sc-host-x{min-width:0}
+select{font-family:var(--font-sans);font-size:var(--text-body-md-size);color:var(--text-body);background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);min-height:44px;padding:8px 12px;width:100%}
+</style>
+</helmet>
+
+<div style="display:flex;min-height:100vh;align-items:stretch">
+
+  <nav style="width:248px;flex:0 0 248px;background:var(--surface-inverse);color:var(--text-on-inverse);padding:20px 12px;display:flex;flex-direction:column;gap:20px;position:sticky;top:0;height:100vh;overflow:auto">
+    <div style="padding:0 8px;display:flex;flex-direction:column;gap:2px">
+      <span class="type-headline-md" style="color:var(--paper-100)">Consultório</span>
+      <span class="type-data-sm" style="color:rgba(250,252,252,0.6)">SCREEN INVENTORY · 19 SURFACES</span>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span class="type-label-caps" style="padding:0 8px;color:rgba(250,252,252,0.5)">Patient portal</span>
+      <button onClick="{{ goP1 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbP1 }};color:{{ nfP1 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">P1</span>Landing / sign in</button>
+      <button onClick="{{ goP2 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbP2 }};color:{{ nfP2 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">P2</span>Booking search ★</button>
+      <button onClick="{{ goP3 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbP3 }};color:{{ nfP3 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">P3</span>Slot select &amp; confirm</button>
+      <button onClick="{{ goP4 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbP4 }};color:{{ nfP4 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">P4</span>Confirmation</button>
+      <button onClick="{{ goP5 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbP5 }};color:{{ nfP5 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">P5</span>My appointments</button>
+      <button onClick="{{ goP6 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbP6 }};color:{{ nfP6 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">P6</span>Reschedule / cancel</button>
+      <button onClick="{{ goP7 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbP7 }};color:{{ nfP7 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">P7</span>Profile &amp; consents</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span class="type-label-caps" style="padding:0 8px;color:rgba(250,252,252,0.5)">Staff · professional</span>
+      <button onClick="{{ goS0 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS0 }};color:{{ nfS0 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S0</span>Staff sign in</button>
+      <button onClick="{{ goS1 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS1 }};color:{{ nfS1 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S1</span>My schedule</button>
+      <button onClick="{{ goS2 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS2 }};color:{{ nfS2 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S2</span>Calendar connection</button>
+      <button onClick="{{ goS3 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS3 }};color:{{ nfS3 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S3</span>Block time</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span class="type-label-caps" style="padding:0 8px;color:rgba(250,252,252,0.5)">Staff · reception</span>
+      <button onClick="{{ goS4 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS4 }};color:{{ nfS4 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S4</span>Day view</button>
+      <button onClick="{{ goS5 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS5 }};color:{{ nfS5 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S5</span>Book on behalf</button>
+      <button onClick="{{ goS6 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS6 }};color:{{ nfS6 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S6</span>Reconciliation queue</button>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:4px">
+      <span class="type-label-caps" style="padding:0 8px;color:rgba(250,252,252,0.5)">Staff · administrator</span>
+      <button onClick="{{ goS7 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS7 }};color:{{ nfS7 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S7</span>Professionals</button>
+      <button onClick="{{ goS8 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS8 }};color:{{ nfS8 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S8</span>Specialties</button>
+      <button onClick="{{ goS9 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS9 }};color:{{ nfS9 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S9</span>Resources &amp; types</button>
+      <button onClick="{{ goS10 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS10 }};color:{{ nfS10 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S10</span>Appointment types</button>
+      <button onClick="{{ goS11 }}" style="display:flex;gap:8px;align-items:baseline;text-align:left;padding:7px 8px;border:0;border-radius:var(--radius-sm);cursor:pointer;background:{{ nbS11 }};color:{{ nfS11 }};font-family:var(--font-sans);font-size:13px"><span class="type-data-sm">S11</span>Users</button>
+    </div>
+  </nav>
+
+  <main style="flex:1;min-width:0;display:flex;flex-direction:column">
+
+    <header style="display:flex;align-items:center;gap:20px;padding:12px 32px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:5">
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:260px">
+        <span class="type-label-md">{{ title }}</span>
+        <span class="type-data-sm" style="color:var(--text-meta)">{{ route }}</span>
+      </div>
+      <span class="type-data-sm" style="color:var(--text-meta)">{{ capability }}</span>
+      <div style="flex:1"></div>
+
+      <sc-if value="{{ hasVariants }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="type-label-caps" style="color:var(--text-meta)">State</span>
+          <sc-for list="{{ variants }}" as="v" hint-placeholder-count="2">
+            <button onClick="{{ v.onSelect }}" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-sans);font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;background:{{ v.bg }};color:{{ v.fg }}">{{ v.label }}</button>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ isPortal }}" hint-placeholder-val="{{ true }}">
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="type-label-caps" style="color:var(--text-meta)">View</span>
+          <button onClick="{{ dDesktop }}" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-sans);font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;background:{{ dbDesktop }};color:{{ dfDesktop }}">Desktop</button>
+          <button onClick="{{ dMobile }}" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font-sans);font-size:11px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase;background:{{ dbMobile }};color:{{ dfMobile }}">Mobile</button>
+        </div>
+      </sc-if>
+    </header>
+
+    <div style="flex:1;padding:32px;background:var(--surface-raised);display:flex;justify-content:center;align-items:flex-start">
+      <div style="width:{{ frameW }};max-width:100%;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden">
+
+        <!-- ============ P1 ============ -->
+        <sc-if value="{{ isP1 }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px {{ padX }};border-bottom:1px solid var(--border)">
+              <span class="type-label-md">Consultório</span>
+              <div style="flex:1"></div>
+              <span class="type-data-sm" style="color:var(--text-meta)">PT-BR · EN</span>
+              <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" hint-size="120px,32px">Sign in</x-import>
+            </div>
+            <div style="padding:48px {{ padX }};display:flex;flex-direction:column;gap:32px;align-items:flex-start;max-width:68ch;margin:0 auto">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <h1 class="type-display" style="margin:0">Book a time that is really free.</h1>
+                <p class="type-body-lg" style="margin:0;color:var(--text-body);text-wrap:pretty">Clínica Consultório checks the professional's hours, their external calendar and the room before showing you a time. What you see is bookable.</p>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px;align-items:flex-start">
+                <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" icon="user" hint-size="240px,44px">Sign in with Google</x-import>
+                <span class="type-body-sm" style="color:var(--text-meta)">We use your Google account only to identify you.</span>
+              </div>
+              <div style="width:100%;display:flex;flex-direction:column">
+                <div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--border)"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="calendar-check" size="16" hint-size="16px,16px"></x-import><span class="type-body-md">Only genuinely free times, computed in real time.</span></div>
+                <div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--border)"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="calendar-clock" size="16" hint-size="16px,16px"></x-import><span class="type-body-md">Reschedule or cancel yourself up to 24 h before.</span></div>
+                <div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="phone" size="16" hint-size="16px,16px"></x-import><span class="type-body-md">Reception: +55 81 3040-1200, weekdays 08:00–18:00.</span></div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ P2 ============ -->
+        <sc-if value="{{ isP2 }}" hint-placeholder-val="{{ true }}">
+          <div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px {{ padX }};border-bottom:1px solid var(--border)">
+              <span class="type-label-md">Consultório</span>
+              <div style="flex:1"></div>
+              <span class="type-body-sm" style="color:var(--text-meta)">My appointments</span>
+              <span class="type-body-sm" style="color:var(--text-meta)">Beatriz Salles</span>
+            </div>
+            <div style="padding:{{ padX }};display:flex;flex-direction:column;gap:20px;min-width:0">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <h1 class="type-headline-lg" style="margin:0">Find a time</h1>
+                <span class="type-body-md" style="color:var(--text-meta)">Choose a specialty and a date window. We show only times that are free on all three constraints.</span>
+              </div>
+              <div style="display:grid;grid-template-columns:{{ portalCols }};gap:24px;align-items:start;min-width:0">
+
+                <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:20px;min-width:0">
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <label class="type-label-md" for="p2-spec">Specialty</label>
+                    <select id="p2-spec"><option>Dermatology</option><option>Cardiology</option><option>Orthopedics</option><option>Nutrition</option></select>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:8px">
+                    <span class="type-label-md">Professional</span>
+                    <div style="display:flex;flex-direction:column;gap:0">
+                      <label style="display:flex;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--border);cursor:pointer"><input type="radio" name="p2-who" checked><span class="type-body-md">A specific professional</span></label>
+                      <label style="display:flex;gap:8px;align-items:center;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer"><input type="radio" name="p2-who"><span class="type-body-md">Any professional of the specialty</span></label>
+                    </div>
+                    <select id="p2-prof"><option>Dra. Helena Rocha</option><option>Dr. Tiago Lemes</option></select>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <label class="type-label-md" for="p2-type">Appointment type</label>
+                    <select id="p2-type"><option>First visit · 40 min</option><option>Follow-up · 30 min</option><option>Procedure · 60 min</option></select>
+                  </div>
+                  <div style="display:grid;grid-template-columns:{{ dateCols }};gap:12px">
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="From" type="date" value="2026-08-24" hint-size="100%,72px"></x-import>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="To" type="date" value="2026-08-28" hint-size="100%,72px"></x-import>
+                  </div>
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" icon="search" full-width="{{ true }}" hint-size="100%,44px">Search times</x-import>
+                  <div style="display:flex;flex-direction:column;gap:8px;padding-top:16px;border-top:1px solid var(--border)">
+                    <span class="type-label-caps" style="color:var(--text-meta)">Checked for every time</span>
+                    <div style="display:flex;gap:8px;align-items:center"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="user" size="14" hint-size="14px,14px"></x-import><span class="type-body-sm">Professional's working hours</span></div>
+                    <div style="display:flex;gap:8px;align-items:center"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="refresh-cw" size="14" hint-size="14px,14px"></x-import><span class="type-body-sm">Blocks from their external calendar</span></div>
+                    <div style="display:flex;gap:8px;align-items:center"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="calendar-check" size="14" hint-size="14px,14px"></x-import><span class="type-body-sm">A free room of the required type</span></div>
+                  </div>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:20px;min-width:0">
+                  <sc-if value="{{ p2Results }}" hint-placeholder-val="{{ true }}">
+                    <div style="display:flex;flex-direction:column;gap:20px">
+                      <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+                        <span class="type-data-lg">18 free times</span>
+                        <span class="type-data-md" style="color:var(--text-meta)">24 AUG – 28 AUG · DERMATOLOGY · DRA. HELENA ROCHA</span>
+                        <div style="flex:1"></div>
+                        <span class="type-data-sm" style="color:var(--text-meta)">COMPUTED 12:04:51</span>
+                      </div>
+
+                      <div style="display:flex;flex-direction:column;gap:12px">
+                        <div style="display:flex;align-items:baseline;gap:12px"><span class="type-label-caps">Mon 24 Aug</span><span class="type-data-sm" style="color:var(--text-meta)">5 FREE · ROOM 2</span></div>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px">
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="08:30" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="09:10" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="10:30" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="14:00" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="16:20" label="Book" hint-size="92px,44px"></x-import>
+                        </div>
+                        <span class="type-data-sm" style="color:var(--text-meta)">3 TIMES HIDDEN · 2 EXTERNAL BLOCK · 1 NO ROOM</span>
+                      </div>
+
+                      <div style="display:flex;flex-direction:column;gap:12px;padding-top:16px;border-top:1px solid var(--border)">
+                        <div style="display:flex;align-items:baseline;gap:12px"><span class="type-label-caps">Tue 25 Aug</span><span class="type-data-sm" style="color:var(--text-meta)">7 FREE · ROOM 2</span></div>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px">
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="08:30" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="09:50" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="11:00" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="13:20" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="15:30" label="Book" selected="{{ true }}" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="16:10" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="17:30" label="Book" hint-size="92px,44px"></x-import>
+                        </div>
+                      </div>
+
+                      <div style="display:flex;flex-direction:column;gap:12px;padding-top:16px;border-top:1px solid var(--border)">
+                        <div style="display:flex;align-items:baseline;gap:12px"><span class="type-label-caps">Wed 26 Aug</span><span class="type-data-sm" style="color:var(--text-meta)">6 FREE · ROOM 1</span></div>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px">
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="09:00" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="10:20" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="11:40" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="14:40" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="15:20" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="17:00" label="Book" hint-size="92px,44px"></x-import>
+                        </div>
+                      </div>
+
+                      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--border)">
+                        <span class="type-body-sm" style="color:var(--text-meta)">Selected: Tue 25 Aug, 15:30 · Follow-up · 30 min · Room 2</span>
+                        <div style="flex:1"></div>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" icon-end="arrow-right" hint-size="160px,44px">Continue</x-import>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ p2Loading }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:20px">
+                      <div style="display:flex;align-items:baseline;gap:12px">
+                        <span class="type-data-lg">Checking availability…</span>
+                        <div style="flex:1"></div>
+                        <span class="type-data-sm" style="color:var(--text-meta)">ELAPSED 0.6 S</span>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:8px">
+                        <div style="display:flex;gap:8px;align-items:center"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="check" size="14" hint-size="14px,14px"></x-import><span class="type-body-sm">Working hours read · 5 days</span></div>
+                        <div style="display:flex;gap:8px;align-items:center"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="check" size="14" hint-size="14px,14px"></x-import><span class="type-body-sm">External calendar synced · 08:12</span></div>
+                        <div style="display:flex;gap:8px;align-items:center"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="clock" size="14" hint-size="14px,14px"></x-import><span class="type-body-sm" style="color:var(--text-meta)">Matching rooms…</span></div>
+                      </div>
+                      <div style="display:flex;flex-wrap:wrap;gap:8px;opacity:0.45">
+                        <div style="width:92px;height:44px;border:1px dashed var(--border);border-radius:var(--radius-sm)"></div>
+                        <div style="width:92px;height:44px;border:1px dashed var(--border);border-radius:var(--radius-sm)"></div>
+                        <div style="width:92px;height:44px;border:1px dashed var(--border);border-radius:var(--radius-sm)"></div>
+                        <div style="width:92px;height:44px;border:1px dashed var(--border);border-radius:var(--radius-sm)"></div>
+                        <div style="width:92px;height:44px;border:1px dashed var(--border);border-radius:var(--radius-sm)"></div>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ p2Empty }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:32px;background:var(--surface-card);border-radius:var(--radius-md)">
+                      <span class="type-headline-md">No free times in this window.</span>
+                      <span class="type-body-md" style="max-width:68ch">Dra. Helena Rocha has no time free for a follow-up between 24 and 28 August. Widen the window or search any professional of the specialty.</span>
+                      <span class="type-data-sm" style="color:var(--text-meta)">42 TIMES CHECKED · 40 EXTERNAL BLOCK · 2 NO ROOM</span>
+                      <div style="display:flex;gap:8px">
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" hint-size="200px,32px">Search next two weeks</x-import>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" hint-size="200px,32px">Any professional</x-import>
+                      </div>
+                    </div>
+                  </sc-if>
+
+                  <sc-if value="{{ p2Error }}" hint-placeholder-val="{{ false }}">
+                    <div style="display:flex;flex-direction:column;gap:16px;align-items:flex-start;padding:32px;background:var(--surface-card);border-radius:var(--radius-md);border:1px solid var(--color-error)">
+                      <div style="display:flex;gap:8px;align-items:center;color:var(--text-error)">
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="alert-circle" size="18" hint-size="18px,18px"></x-import>
+                        <span class="type-headline-md">We could not read availability.</span>
+                      </div>
+                      <span class="type-body-md" style="max-width:68ch">The clinic's schedule service did not answer. Your search was not lost — try again in a moment, or call reception at +55 81 3040-1200.</span>
+                      <span class="type-data-sm" style="color:var(--text-meta)">REQUEST #AV-7741 · 12:04:58 · HTTP 503</span>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" icon="refresh-cw" hint-size="160px,32px">Try again</x-import>
+                    </div>
+                  </sc-if>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ P3 ============ -->
+        <sc-if value="{{ isP3 }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px {{ padX }};border-bottom:1px solid var(--border)">
+              <span class="type-label-md">Consultório</span>
+              <div style="flex:1"></div>
+              <span class="type-data-sm" style="color:var(--text-meta)">STEP 2 OF 3</span>
+            </div>
+            <div style="padding:{{ padX }};display:flex;flex-direction:column;gap:20px;min-width:0">
+              <h1 class="type-headline-lg" style="margin:0">Confirm your appointment</h1>
+
+              <sc-if value="{{ p3Taken }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:12px;padding:20px;border:1px solid var(--color-error);border-radius:var(--radius-md);background:var(--surface-card)">
+                  <div style="display:flex;gap:8px;align-items:center;color:var(--text-error)">
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="alert-circle" size="18" hint-size="18px,18px"></x-import>
+                    <span class="type-label-md">This time was taken while you were filling the form.</span>
+                  </div>
+                  <span class="type-body-md">Tue 25 Aug at 15:30 is no longer free. Nothing was booked in your name. The next free times with Dra. Helena Rocha are 16:10 and 17:30 on the same day.</span>
+                  <div style="display:flex;gap:8px">
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="16:10" label="Book" hint-size="92px,44px"></x-import>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="17:30" label="Book" hint-size="92px,44px"></x-import>
+                  </div>
+                </div>
+              </sc-if>
+
+              <div style="display:grid;grid-template-columns:{{ portalCols }};gap:24px;align-items:start;min-width:0">
+                <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:12px;min-width:0">
+                  <span class="type-label-caps" style="color:var(--text-meta)">Your time</span>
+                  <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Professional</span><span class="type-body-sm">Dra. Helena Rocha</span></div>
+                  <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Specialty</span><span class="type-body-sm">Dermatology</span></div>
+                  <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Date</span><span class="type-data-md">25 AUG 2026 · TUE</span></div>
+                  <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Time</span><span class="type-data-md">15:30 – 16:00 · 30 MIN</span></div>
+                  <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Room</span><span class="type-body-sm">Room 2 · ground floor</span></div>
+                  <span class="type-body-sm" style="color:var(--text-meta)">The time is held while you confirm. Holding it does not book it.</span>
+                </div>
+
+                <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:20px;min-width:0">
+                  <div style="display:flex;flex-direction:column;gap:4px">
+                    <span class="type-label-md">Your details</span>
+                    <span class="type-body-sm" style="color:var(--text-meta)">First appointment here. We ask only what is needed to book the time in your name.</span>
+                  </div>
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="Full name" value="Beatriz Salles" required="{{ true }}" hint-size="100%,72px"></x-import>
+                  <div style="display:grid;grid-template-columns:{{ dateCols }};gap:12px">
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="CPF" value="000.000.000-0" error="Enter a valid CPF, with 11 digits." required="{{ true }}" hint-size="100%,92px"></x-import>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="Mobile" value="+55 81 99640-2210" hint="For the reminder and any change." hint-size="100%,92px"></x-import>
+                  </div>
+                  <label style="display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer">
+                    <input type="checkbox" style="margin-top:4px">
+                    <span class="type-body-sm">I agree to the clinic processing my data to book and manage this appointment (LGPD, consent v2).</span>
+                  </label>
+                  <div style="display:flex;gap:8px;align-items:center">
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" icon="calendar-check" hint-size="200px,44px">Book this time</x-import>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" variant="secondary" hint-size="160px,44px">Back to times</x-import>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ P4 ============ -->
+        <sc-if value="{{ isP4 }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px {{ padX }};border-bottom:1px solid var(--border)">
+              <span class="type-label-md">Consultório</span>
+              <div style="flex:1"></div>
+              <span class="type-data-sm" style="color:var(--text-meta)">STEP 3 OF 3</span>
+            </div>
+            <div style="padding:48px {{ padX }};max-width:68ch;margin:0 auto;display:flex;flex-direction:column;gap:32px">
+              <div style="display:flex;flex-direction:column;gap:12px">
+                <div style="display:flex;gap:12px;align-items:center;color:var(--color-primary)">
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="calendar-check" size="20" hint-size="20px,20px"></x-import>
+                  <span class="type-data-md">#AP-20418</span>
+                </div>
+                <h1 class="type-headline-lg" style="margin:0">Time booked.</h1>
+                <p class="type-body-lg" style="margin:0">We sent the confirmation to beatriz.salles@email.com. You get a reminder 24 h before.</p>
+              </div>
+              <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:12px;min-width:0">
+                <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">When</span><span class="type-data-md">25 AUG 2026 · 15:30 · 30 MIN</span></div>
+                <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Who</span><span class="type-body-sm">Dra. Helena Rocha · Dermatology</span></div>
+                <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0"><span class="type-body-sm" style="color:var(--text-meta)">Where</span><span class="type-body-sm">Room 2 · Rua da Aurora 320, Recife</span></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span class="type-label-caps" style="color:var(--text-meta)">What to expect</span>
+                <span class="type-body-md">Arrive 10 minutes early with a photo ID. Changes are open until 24 h before the appointment.</span>
+              </div>
+              <div style="display:flex;gap:8px">
+                <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" hint-size="200px,44px">My appointments</x-import>
+                <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" variant="secondary" hint-size="160px,44px">Book another</x-import>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ P5 ============ -->
+        <sc-if value="{{ isP5 }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px {{ padX }};border-bottom:1px solid var(--border)">
+              <span class="type-label-md">Consultório</span>
+              <div style="flex:1"></div>
+              <span class="type-body-sm" style="color:var(--text-meta)">Beatriz Salles</span>
+            </div>
+            <div style="padding:{{ padX }};display:flex;flex-direction:column;gap:20px;min-width:0;max-width:900px">
+              <h1 class="type-headline-lg" style="margin:0">My appointments</h1>
+              <div style="display:flex;gap:20px;border-bottom:1px solid var(--border)">
+                <span class="type-label-md" style="padding:8px 0;border-bottom:2px solid var(--color-primary);color:var(--color-primary)">Upcoming · 2</span>
+                <span class="type-label-md" style="padding:8px 0;color:var(--text-meta)">Past · 6</span>
+              </div>
+
+              <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;min-width:0">
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:180px">
+                  <span class="type-data-lg">25 AUG · 15:30</span>
+                  <span class="type-data-sm" style="color:var(--text-meta)">30 MIN · #AP-20418</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px">
+                  <span class="type-body-md">Dra. Helena Rocha · Dermatology</span>
+                  <span class="type-body-sm" style="color:var(--text-meta)">Follow-up · Room 2</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;align-items:flex-end">
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="scheduled" label="SCHEDULED" hint-size="110px,20px"></x-import>
+                  <div style="display:flex;gap:8px">
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" icon="calendar-clock" hint-size="140px,32px">Reschedule</x-import>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="danger" icon="x" hint-size="110px,32px">Cancel</x-import>
+                  </div>
+                </div>
+              </div>
+
+              <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;min-width:0">
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:180px">
+                  <span class="type-data-lg">20 AUG · 09:00</span>
+                  <span class="type-data-sm" style="color:var(--text-meta)">40 MIN · #AP-20390</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px">
+                  <span class="type-body-md">Dr. Marcos Vieira · Cardiology</span>
+                  <span class="type-body-sm" style="color:var(--text-meta)">First visit · Room 1</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:12px;align-items:flex-end">
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="scheduled" label="SCHEDULED" hint-size="110px,20px"></x-import>
+                  <div style="display:flex;gap:8px">
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" icon="calendar-clock" disabled="{{ true }}" hint-size="140px,32px">Reschedule</x-import>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="danger" icon="x" disabled="{{ true }}" hint-size="110px,32px">Cancel</x-import>
+                  </div>
+                  <span class="type-body-sm" style="color:var(--text-meta);text-align:right;max-width:44ch">Less than 24 h away. Call reception at +55 81 3040-1200 to change it.</span>
+                </div>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px;padding-top:16px;border-top:1px solid var(--border)">
+                <span class="type-label-caps" style="color:var(--text-meta)">Past</span>
+                <div style="display:flex;gap:20px;align-items:center;padding:8px 0"><span class="type-data-md" style="min-width:140px">12 MAR · 11:00</span><span class="type-body-sm" style="flex:1">Dra. Helena Rocha · Dermatology</span><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="completed" label="COMPLETED" hint-size="110px,20px"></x-import></div>
+                <div style="display:flex;gap:20px;align-items:center;padding:8px 0;border-top:1px solid var(--border)"><span class="type-data-md" style="min-width:140px">04 FEB · 16:20</span><span class="type-body-sm" style="flex:1">Dra. Ana Prado · Nutrition</span><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="cancelled" label="CANCELLED" hint-size="110px,20px"></x-import></div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ P6 ============ -->
+        <sc-if value="{{ isP6 }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px {{ padX }};border-bottom:1px solid var(--border)">
+              <span class="type-label-md">Consultório</span>
+              <div style="flex:1"></div>
+              <span class="type-body-sm" style="color:var(--text-meta)">Beatriz Salles</span>
+            </div>
+            <div style="padding:{{ padX }};display:flex;flex-direction:column;gap:20px;min-width:0">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <h1 class="type-headline-lg" style="margin:0">Reschedule appointment</h1>
+                <span class="type-body-md" style="color:var(--text-meta)">Same professional and appointment type. Pick a new time — the old one is released only when you confirm.</span>
+              </div>
+              <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:20px;display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+                <span class="type-label-caps" style="color:var(--text-meta)">Current</span>
+                <span class="type-data-lg">25 AUG · 15:30 · 30 MIN</span>
+                <span class="type-body-sm">Dra. Helena Rocha · Follow-up · Room 2</span>
+                <div style="flex:1"></div>
+                <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="scheduled" label="SCHEDULED" hint-size="110px,20px"></x-import>
+              </div>
+              <div style="display:grid;grid-template-columns:{{ portalCols }};gap:24px;align-items:start;min-width:0">
+                <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:16px;min-width:0">
+                  <span class="type-label-caps" style="color:var(--text-meta)">Locked to this appointment</span>
+                  <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Specialty</span><span class="type-body-sm">Dermatology</span></div>
+                  <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Professional</span><span class="type-body-sm">Dra. Helena Rocha</span></div>
+                  <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Type</span><span class="type-body-sm">Follow-up · 30 min</span></div>
+                  <div style="display:grid;grid-template-columns:{{ dateCols }};gap:12px">
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="From" type="date" value="2026-08-25" hint-size="100%,72px"></x-import>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="To" type="date" value="2026-09-04" hint-size="100%,72px"></x-import>
+                  </div>
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" icon="search" full-width="{{ true }}" hint-size="100%,44px">Search times</x-import>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:20px">
+                  <div style="display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;align-items:baseline;gap:12px"><span class="type-label-caps">Wed 26 Aug</span><span class="type-data-sm" style="color:var(--text-meta)">4 FREE</span></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px">
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="09:00" label="Choose" hint-size="92px,44px"></x-import>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="11:40" label="Choose" hint-size="92px,44px"></x-import>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="14:40" label="Choose" selected="{{ true }}" hint-size="92px,44px"></x-import>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="17:00" label="Choose" hint-size="92px,44px"></x-import>
+                    </div>
+                  </div>
+                  <div style="display:flex;flex-direction:column;gap:12px;padding-top:16px;border-top:1px solid var(--border)">
+                    <div style="display:flex;align-items:baseline;gap:12px"><span class="type-label-caps">Thu 27 Aug</span><span class="type-data-sm" style="color:var(--text-meta)">3 FREE</span></div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px">
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="08:30" label="Choose" hint-size="92px,44px"></x-import>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="13:20" label="Choose" hint-size="92px,44px"></x-import>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="16:10" label="Choose" hint-size="92px,44px"></x-import>
+                    </div>
+                  </div>
+                  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding-top:16px;border-top:1px solid var(--border)">
+                    <span class="type-body-sm">New time: <span class="type-data-md">26 AUG · 14:40</span></span>
+                    <div style="flex:1"></div>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" icon="calendar-clock" hint-size="220px,44px">Confirm reschedule</x-import>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" variant="danger" icon="ban" hint-size="220px,44px">Cancel appointment</x-import>
+                  </div>
+                  <span class="type-body-sm" style="color:var(--text-meta)">Cancelling releases the time and the room, and removes the event from the professional's external calendar.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ P7 ============ -->
+        <sc-if value="{{ isP7 }}" hint-placeholder-val="{{ false }}">
+          <div>
+            <div style="display:flex;align-items:center;gap:16px;padding:16px {{ padX }};border-bottom:1px solid var(--border)">
+              <span class="type-label-md">Consultório</span>
+              <div style="flex:1"></div>
+              <span class="type-body-sm" style="color:var(--text-meta)">Beatriz Salles</span>
+            </div>
+            <div style="padding:{{ padX }};display:grid;grid-template-columns:{{ portalCols }};gap:24px;align-items:start;min-width:0">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <h1 class="type-headline-lg" style="margin:0">Profile</h1>
+                <span class="type-body-sm" style="color:var(--text-meta)">We keep the minimum needed to book and manage your appointments.</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:20px">
+                <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:20px;min-width:0">
+                  <span class="type-label-md">Personal data</span>
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="Full name" value="Beatriz Salles" hint-size="100%,72px"></x-import>
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="Email" value="beatriz.salles@email.com" disabled="{{ true }}" hint="From your Google account. Sign in again to change it." hint-size="100%,92px"></x-import>
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="Mobile" value="+55 81 99640-2210" hint-size="100%,72px"></x-import>
+                  <div style="display:flex;gap:8px"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" hint-size="160px,44px">Save changes</x-import></div>
+                </div>
+                <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:12px;min-width:0">
+                  <span class="type-label-md">Consents</span>
+                  <div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--border)">
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1"><span class="type-body-sm">Processing of data to book appointments</span><span class="type-data-sm" style="color:var(--text-meta)">V2 · ACCEPTED 12 MAR 2026 09:41</span></div>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="scheduled" label="ACTIVE" hint-size="90px,20px"></x-import>
+                  </div>
+                  <div style="display:flex;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+                    <div style="display:flex;flex-direction:column;gap:2px;flex:1"><span class="type-body-sm">Appointment reminders by email</span><span class="type-data-sm" style="color:var(--text-meta)">V1 · ACCEPTED 12 MAR 2026 09:41</span></div>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" hint-size="120px,32px">Withdraw</x-import>
+                  </div>
+                  <span class="type-body-sm" style="color:var(--text-meta)">Your data is used only for scheduling. To request a copy or deletion, write to privacidade@consultorio.com.br.</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ S0 ============ -->
+        <sc-if value="{{ isS0 }}" hint-placeholder-val="{{ false }}">
+          <div style="padding:48px {{ padX }};display:flex;justify-content:center">
+            <div style="width:420px;max-width:100%;display:flex;flex-direction:column;gap:20px">
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <span class="type-headline-md">Consultório</span>
+                <span class="type-data-sm" style="color:var(--text-meta)">STAFF CONSOLE · /STAFF</span>
+              </div>
+              <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:20px;min-width:0">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <span class="type-label-md">Professional</span>
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" icon="user" full-width="{{ true }}" hint-size="100%,44px">Sign in with Google</x-import>
+                  <span class="type-body-sm" style="color:var(--text-meta)">The same consent covers sign-in and calendar access.</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:12px"><div style="flex:1;height:1px;background:var(--border)"></div><span class="type-label-caps" style="color:var(--text-meta)">or</span><div style="flex:1;height:1px;background:var(--border)"></div></div>
+                <div style="display:flex;flex-direction:column;gap:16px">
+                  <span class="type-label-md">Reception or administrator</span>
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="Email" value="recepcao@consultorio.com.br" hint-size="100%,72px"></x-import>
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="Password" type="password" value="········" hint-size="100%,72px"></x-import>
+                  <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" full-width="{{ true }}" hint-size="100%,44px">Sign in</x-import>
+                </div>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ============ STAFF SHELL ============ -->
+        <sc-if value="{{ isStaffShell }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;align-items:stretch;min-height:720px">
+            <div style="width:232px;flex:0 0 232px;background:var(--surface-card);display:flex;flex-direction:column;gap:20px;padding:20px 12px;border-right:1px solid var(--border)">
+              <div style="display:flex;flex-direction:column;gap:2px;padding:0 8px">
+                <span class="type-label-md">Consultório</span>
+                <span class="type-data-sm" style="color:var(--text-meta)">STAFF</span>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span class="type-label-caps" style="padding:4px 8px;color:var(--text-meta)">My work</span>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS1 }};color:{{ sfS1 }}"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="calendar-check" size="16" hint-size="16px,16px"></x-import><span class="type-body-sm">My schedule</span></div>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS2 }};color:{{ sfS2 }}"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="refresh-cw" size="16" hint-size="16px,16px"></x-import><span class="type-body-sm">Calendar connection</span></div>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS3 }};color:{{ sfS3 }}"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="ban" size="16" hint-size="16px,16px"></x-import><span class="type-body-sm">Block time</span></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span class="type-label-caps" style="padding:4px 8px;color:var(--text-meta)">Reception</span>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS4 }};color:{{ sfS4 }}"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="clock" size="16" hint-size="16px,16px"></x-import><span class="type-body-sm">Day view</span></div>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS5 }};color:{{ sfS5 }}"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="plus" size="16" hint-size="16px,16px"></x-import><span class="type-body-sm">Book on behalf</span></div>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS6 }};color:{{ sfS6 }}"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="alert-triangle" size="16" hint-size="16px,16px"></x-import><span class="type-body-sm" style="flex:1">Reconciliation</span><span class="type-data-sm" style="color:var(--color-tertiary)">1</span></div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:2px">
+                <span class="type-label-caps" style="padding:4px 8px;color:var(--text-meta)">Configuration</span>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS7 }};color:{{ sfS7 }}"><span class="type-body-sm">Professionals</span></div>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS8 }};color:{{ sfS8 }}"><span class="type-body-sm">Specialties</span></div>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS9 }};color:{{ sfS9 }}"><span class="type-body-sm">Resources &amp; types</span></div>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS10 }};color:{{ sfS10 }}"><span class="type-body-sm">Appointment types</span></div>
+                <div style="display:flex;gap:8px;align-items:center;padding:8px;border-radius:var(--radius-sm);background:{{ sbS11 }};color:{{ sfS11 }}"><span class="type-body-sm">Users</span></div>
+              </div>
+              <div style="flex:1"></div>
+              <div style="padding:8px;display:flex;flex-direction:column;gap:2px">
+                <span class="type-body-sm">Luiza Marques</span>
+                <span class="type-data-sm" style="color:var(--text-meta)">{{ roleLabel }}</span>
+              </div>
+            </div>
+
+            <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+              <div style="display:flex;align-items:center;gap:16px;padding:12px 20px;border-bottom:1px solid var(--border)">
+                <span class="type-label-md">{{ staffHeading }}</span>
+                <div style="flex:1"></div>
+                <span class="type-data-sm" style="color:var(--text-meta)">PT-BR · EN</span>
+                <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" hint-size="110px,32px">Sign out</x-import>
+              </div>
+
+              <div style="flex:1;padding:20px;display:flex;flex-direction:column;gap:20px;min-width:0">
+
+                <!-- S1 -->
+                <sc-if value="{{ isS1 }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:20px">
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" icon="chevron-left" hint-size="44px,32px"> </x-import>
+                      <span class="type-data-lg">TUE 25 AUG 2026</span>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" icon="chevron-right" hint-size="44px,32px"> </x-import>
+                      <span class="type-data-sm" style="color:var(--text-meta)">9 APPOINTMENTS · 2 BLOCKS · OCCUPANCY 78%</span>
+                      <div style="flex:1"></div>
+                      <span class="type-label-caps" style="padding:6px 10px;border-radius:var(--radius-sm);background:var(--color-primary);color:var(--text-on-primary)">Day</span>
+                      <span class="type-label-caps" style="padding:6px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);color:var(--text-meta)">Week</span>
+                    </div>
+                    <div style="display:flex;flex-direction:column">
+                      <div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-data-md" style="width:110px;color:var(--text-meta)">08:30–09:00</span><span class="type-body-sm" style="flex:1">Beatriz Salles · Follow-up · Room 2</span><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="completed" label="COMPLETED" hint-size="110px,20px"></x-import></div>
+                      <div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-data-md" style="width:110px;color:var(--text-meta)">09:10–09:50</span><span class="type-body-sm" style="flex:1">Rafael Nunes · First visit · Room 2</span><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="scheduled" label="SCHEDULED" hint-size="110px,20px"></x-import></div>
+                      <div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border);background:var(--surface-card)"><span class="type-data-md" style="width:110px;color:var(--text-meta)">12:00–13:00</span><span class="type-body-sm" style="flex:1;color:var(--text-meta)">Lunch · internal block</span><span class="type-data-sm" style="color:var(--text-meta)">INTERNAL</span></div>
+                      <div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border);border-left:2px dashed var(--border)"><span class="type-data-md" style="width:110px;color:var(--text-meta);padding-left:8px">14:00–15:00</span><span class="type-body-sm" style="flex:1;color:var(--text-meta)">Busy · from external calendar</span><span class="type-data-sm" style="color:var(--text-meta)">EXTERNAL · SYNCED 08:12</span></div>
+                      <div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border);background:var(--color-tertiary-subtle)"><span class="type-data-md" style="width:110px">15:30–16:00</span><span class="type-body-sm" style="flex:1">Camila Duarte · Follow-up · Room 2</span><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="conflict" label="CONFLICT" hint-size="100px,20px"></x-import></div>
+                      <div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-data-md" style="width:110px;color:var(--text-meta)">16:10–16:40</span><span class="type-body-sm" style="flex:1">Paulo Ferraz · Follow-up · Room 2</span><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="scheduled" label="SCHEDULED" hint-size="110px,20px"></x-import></div>
+                      <div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)"><span class="type-data-md" style="width:110px;color:var(--text-meta)">17:30–18:00</span><span class="type-body-sm" style="flex:1">Vera Lins · Follow-up · Room 1</span><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="noshow" label="NO-SHOW" hint-size="100px,20px"></x-import></div>
+                    </div>
+                    <span class="type-body-sm" style="color:var(--text-meta)">The 15:30 appointment overlaps a block that arrived from your external calendar. Reception resolves it in the reconciliation queue.</span>
+                  </div>
+                </sc-if>
+
+                <!-- S2 -->
+                <sc-if value="{{ isS2 }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:20px;max-width:760px">
+                    <sc-if value="{{ s2Revoked }}" hint-placeholder-val="{{ false }}">
+                      <div style="display:flex;flex-direction:column;gap:12px;padding:20px;border:1px solid var(--color-error);border-radius:var(--radius-md);background:var(--surface-card)">
+                        <div style="display:flex;gap:8px;align-items:center;color:var(--text-error)">
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="alert-circle" size="18" hint-size="18px,18px"></x-import>
+                          <span class="type-label-md">Access to your Google Calendar was revoked.</span>
+                        </div>
+                        <span class="type-body-sm">Your schedule is no longer receiving external blocks, and new appointments are not being written to your calendar. Reconnect to resume the sync.</span>
+                        <span class="type-data-md" style="color:var(--text-meta)">LAST SUCCESSFUL SYNC 23 AUG 19:40 · TOKEN INVALID_GRANT · CHANNEL EXPIRED</span>
+                        <div style="display:flex;gap:8px"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" icon="refresh-cw" hint-size="150px,32px">Reconnect</x-import></div>
+                      </div>
+                    </sc-if>
+                    <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:12px;min-width:0">
+                      <div style="display:flex;align-items:center;gap:12px">
+                        <span class="type-label-md">Google Calendar</span>
+                        <div style="flex:1"></div>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="{{ s2TagStatus }}" label="{{ s2TagLabel }}" hint-size="120px,20px"></x-import>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Account</span><span class="type-data-md">helena.rocha@gmail.com</span></div>
+                      <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Scope</span><span class="type-body-sm">Read and write events on the primary calendar</span></div>
+                      <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Last sync</span><span class="type-data-md">{{ s2LastSync }}</span></div>
+                      <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Webhook channel</span><span class="type-data-md">{{ s2Channel }}</span></div>
+                      <div style="display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)"><span class="type-body-sm" style="color:var(--text-meta)">Incremental sync</span><span class="type-data-md">SYNC TOKEN HELD · 3 CALLS TODAY</span></div>
+                      <div style="display:flex;gap:8px;padding-top:8px">
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" icon="refresh-cw" hint-size="140px,32px">Sync now</x-import>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="danger" icon="x" hint-size="140px,32px">Disconnect</x-import>
+                      </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <span class="type-label-caps" style="color:var(--text-meta)">Recent sync events</span>
+                      <div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-data-md" style="width:120px;color:var(--text-meta)">08:12:04</span><span class="type-body-sm" style="flex:1">Inbound · 2 external blocks received</span><span class="type-data-sm" style="color:var(--text-meta)">WEBHOOK</span></div>
+                      <div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border)"><span class="type-data-md" style="width:120px;color:var(--text-meta)">08:12:05</span><span class="type-body-sm" style="flex:1">1 conflict flagged for reception</span><span class="type-data-sm" style="color:var(--color-tertiary)">CONFLICT</span></div>
+                      <div style="display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)"><span class="type-data-md" style="width:120px;color:var(--text-meta)">07:40:18</span><span class="type-body-sm" style="flex:1">Outbound · event #AP-20418 created</span><span class="type-data-sm" style="color:var(--text-meta)">IDEMPOTENT</span></div>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <!-- S3 -->
+                <sc-if value="{{ isS3 }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start">
+                    <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:16px;min-width:0">
+                      <span class="type-label-md">New block</span>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="Date" type="date" value="2026-08-27" hint-size="100%,72px"></x-import>
+                      <div style="display:grid;grid-template-columns:{{ dateCols }};gap:12px">
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="Start" type="time" value="12:00" hint-size="100%,72px"></x-import>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="End" type="time" value="13:00" hint-size="100%,72px"></x-import>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:4px">
+                        <label class="type-label-md" for="s3-reason">Reason</label>
+                        <select id="s3-reason"><option>Lunch</option><option>Training</option><option>Personal</option><option>Other</option></select>
+                      </div>
+                      <label style="display:flex;gap:8px;align-items:center;padding:12px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer"><input type="checkbox" checked><span class="type-body-sm">Repeat every weekday</span></label>
+                      <span class="type-body-sm" style="color:var(--text-meta)">Internal blocks are not written to your external calendar.</span>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" icon="plus" full-width="{{ true }}" hint-size="100%,44px">Create block</x-import>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:12px;min-width:0">
+                      <div style="display:flex;align-items:baseline;gap:12px"><span class="type-label-md">Blocks · next 30 days</span><span class="type-data-sm" style="color:var(--text-meta)">7 INTERNAL · 4 EXTERNAL</span></div>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.DataTable" columns="{{ blockCols }}" rows="{{ blockRows }}" hint-size="100%,240px"></x-import>
+                      <span class="type-body-sm" style="color:var(--text-meta)">External blocks are read-only. They arrive from the professional's Google Calendar and cannot be edited here.</span>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <!-- S4 -->
+                <sc-if value="{{ isS4 }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:grid;grid-template-columns:1fr 300px;gap:24px;align-items:start;min-width:0">
+                    <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+                      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" icon="chevron-left" hint-size="44px,32px"> </x-import>
+                        <span class="type-data-lg">TUE 25 AUG 2026</span>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" icon="chevron-right" hint-size="44px,32px"> </x-import>
+                        <span class="type-data-sm" style="color:var(--text-meta)">14 APPOINTMENTS · OCCUPANCY 87%</span>
+                        <div style="flex:1"></div>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" icon="filter" hint-size="110px,32px">Filter</x-import>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" icon="plus" hint-size="140px,32px">New booking</x-import>
+                      </div>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.DataTable" columns="{{ dayCols }}" rows="{{ dayRows }}" hint-size="100%,420px"></x-import>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:20px">
+                      <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:12px;min-width:0">
+                        <span class="type-label-md">Reception queue</span>
+                        <div style="display:flex;gap:8px;align-items:baseline;padding:8px 0;border-top:1px solid var(--border)"><span class="type-data-md" style="width:56px">09:10</span><span class="type-body-sm" style="flex:1">Rafael Nunes</span><span class="type-data-sm" style="color:var(--text-meta)">ARRIVED</span></div>
+                        <div style="display:flex;gap:8px;align-items:baseline;padding:8px 0;border-top:1px solid var(--border)"><span class="type-data-md" style="width:56px">09:40</span><span class="type-body-sm" style="flex:1">Camila Duarte</span><span class="type-data-sm" style="color:var(--text-meta)">WAITING</span></div>
+                        <div style="display:flex;gap:8px;align-items:baseline;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)"><span class="type-data-md" style="width:56px">10:20</span><span class="type-body-sm" style="flex:1">Paulo Ferraz</span><span class="type-data-sm" style="color:var(--text-meta)">CONFIRMED</span></div>
+                      </div>
+                      <div style="background:var(--color-tertiary-subtle);border-radius:var(--radius-md);padding:20px;display:flex;flex-direction:column;gap:8px">
+                        <div style="display:flex;gap:8px;align-items:center"><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="alert-triangle" size="18" color="var(--color-tertiary)" hint-size="18px,18px"></x-import><span class="type-label-md">Reconciliation · 1 open</span></div>
+                        <span class="type-body-sm">An external block on Dra. Helena Rocha's calendar covers a booked appointment at 15:30.</span>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" hint-size="150px,32px">Open queue</x-import>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:4px">
+                        <span class="type-label-caps" style="color:var(--text-meta)">Sync status</span>
+                        <span class="type-data-md" style="color:var(--text-meta)">SYNCHRONIZED 08:12 · 2 EXTERNAL CALENDARS</span>
+                      </div>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <!-- S5 -->
+                <sc-if value="{{ isS5 }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:grid;grid-template-columns:340px 1fr;gap:24px;align-items:start">
+                    <div style="display:flex;flex-direction:column;gap:20px">
+                      <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:12px;min-width:0">
+                        <span class="type-label-md">Patient</span>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="Search by name, CPF or phone" value="camila" hint-size="100%,72px"></x-import>
+                        <div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--border);background:var(--color-primary-subtle);border-radius:var(--radius-sm);padding:8px"><div style="display:flex;flex-direction:column;gap:2px;flex:1"><span class="type-body-sm">Camila Duarte</span><span class="type-data-sm" style="color:var(--text-meta)">CPF 048.221.930-11 · +55 81 99120-4478</span></div><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Icon" name="check" size="16" hint-size="16px,16px"></x-import></div>
+                        <div style="display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--border)"><div style="display:flex;flex-direction:column;gap:2px;flex:1"><span class="type-body-sm">Camila Duarte Souza</span><span class="type-data-sm" style="color:var(--text-meta)">CPF 733.019.220-04</span></div></div>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" icon="plus" hint-size="180px,32px">New patient</x-import>
+                      </div>
+                      <div style="background:var(--surface-card);border-radius:var(--radius-md);padding:{{ cardPad }};display:flex;flex-direction:column;gap:12px;min-width:0">
+                        <span class="type-label-md">Appointment</span>
+                        <div style="display:flex;flex-direction:column;gap:4px"><label class="type-label-md" for="s5-spec">Specialty</label><select id="s5-spec"><option>Dermatology</option><option>Cardiology</option></select></div>
+                        <div style="display:flex;flex-direction:column;gap:4px"><label class="type-label-md" for="s5-prof">Professional</label><select id="s5-prof"><option>Any professional</option><option>Dra. Helena Rocha</option></select></div>
+                        <div style="display:flex;flex-direction:column;gap:4px"><label class="type-label-md" for="s5-type">Type</label><select id="s5-type"><option>Follow-up · 30 min</option><option>First visit · 40 min</option></select></div>
+                        <label style="display:flex;gap:8px;align-items:flex-start;padding:12px 0;border-top:1px solid var(--border);cursor:pointer"><input type="checkbox" style="margin-top:4px"><span class="type-body-sm">Book inside the 24 h cutoff (reception only, recorded in the audit log)</span></label>
+                      </div>
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:16px">
+                      <div style="display:flex;align-items:baseline;gap:12px"><span class="type-data-lg">11 free times</span><span class="type-data-sm" style="color:var(--text-meta)">25 AUG – 27 AUG · ANY PROFESSIONAL</span></div>
+                      <div style="display:flex;flex-direction:column;gap:12px">
+                        <div style="display:flex;align-items:baseline;gap:12px"><span class="type-label-caps">Tue 25 Aug</span><span class="type-data-sm" style="color:var(--text-meta)">HELENA ROCHA · ROOM 2</span></div>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px">
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="09:40" label="Book" selected="{{ true }}" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="11:00" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="16:10" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="14:00" state="taken" label="Taken" hint-size="92px,44px"></x-import>
+                        </div>
+                      </div>
+                      <div style="display:flex;flex-direction:column;gap:12px;padding-top:16px;border-top:1px solid var(--border)">
+                        <div style="display:flex;align-items:baseline;gap:12px"><span class="type-label-caps">Wed 26 Aug</span><span class="type-data-sm" style="color:var(--text-meta)">TIAGO LEMES · ROOM 1</span></div>
+                        <div style="display:flex;flex-wrap:wrap;gap:8px">
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="08:30" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="10:20" label="Book" hint-size="92px,44px"></x-import>
+                          <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.SlotChip" time="15:20" label="Book" hint-size="92px,44px"></x-import>
+                        </div>
+                      </div>
+                      <div style="display:flex;gap:12px;align-items:center;padding-top:16px;border-top:1px solid var(--border)">
+                        <span class="type-body-sm">Camila Duarte · 25 Aug 09:40 · Follow-up · Dra. Helena Rocha · Room 2</span>
+                        <div style="flex:1"></div>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" icon="calendar-check" hint-size="200px,44px">Book for patient</x-import>
+                      </div>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <!-- S6 -->
+                <sc-if value="{{ isS6 }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:20px;max-width:900px">
+                    <div style="display:flex;align-items:baseline;gap:12px">
+                      <span class="type-label-md">Open conflicts</span>
+                      <span class="type-data-sm" style="color:var(--text-meta)">2 OPEN · 5 RESOLVED THIS WEEK · DETECTED BY SYNC</span>
+                    </div>
+                    <span class="type-body-sm" style="color:var(--text-meta);max-width:68ch">The system detected divergence between an external calendar and a booked appointment. It does not decide — cancelling a patient's appointment is a human call.</span>
+
+                    <div style="display:flex;flex-direction:column;gap:12px">
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.ConflictBanner" title="Dra. Helena Rocha · 25 Aug 15:30" detail="An external block on her Google Calendar covers an appointment already booked for Camila Duarte." hint-size="100%,140px"></x-import>
+                      <div style="display:flex;flex-direction:column;gap:2px;padding-left:12px">
+                        <span class="type-data-md">appointment · #AP-20418 · 15:30–16:00 · ROOM 2</span>
+                        <span class="type-data-md" style="color:var(--text-meta)">external block · 15:00–17:00 · "CONGRESSO" · SYNCED 08:12</span>
+                      </div>
+                      <div style="display:flex;gap:8px;padding-left:12px">
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" icon="calendar-clock" hint-size="200px,32px">Reschedule patient</x-import>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="danger" icon="x" hint-size="200px,32px">Cancel appointment</x-import>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" icon="phone" hint-size="180px,32px">Log a call</x-import>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:12px">
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.ConflictBanner" title="Dr. Marcos Vieira · 26 Aug 10:00" detail="An external block covers an appointment booked for Paulo Ferraz. The room stays reserved until this is resolved." hint-size="100%,140px"></x-import>
+                      <div style="display:flex;flex-direction:column;gap:2px;padding-left:12px">
+                        <span class="type-data-md">appointment · #AP-20431 · 10:00–10:40 · ROOM 1</span>
+                        <span class="type-data-md" style="color:var(--text-meta)">external block · 09:30–11:00 · "CIRURGIA" · SYNCED 08:12</span>
+                      </div>
+                      <div style="display:flex;gap:8px;padding-left:12px">
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" icon="calendar-clock" hint-size="200px,32px">Reschedule patient</x-import>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="danger" icon="x" hint-size="200px,32px">Cancel appointment</x-import>
+                        <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" variant="secondary" icon="phone" hint-size="180px,32px">Log a call</x-import>
+                      </div>
+                    </div>
+
+                    <div style="display:flex;flex-direction:column;gap:8px;padding-top:16px;border-top:1px solid var(--border)">
+                      <span class="type-label-caps" style="color:var(--text-meta)">Resolved</span>
+                      <div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--border)"><span class="type-data-md" style="width:150px;color:var(--text-meta)">24 AUG 17:04</span><span class="type-body-sm" style="flex:1">Vera Lins moved to 27 Aug 09:00 by Luiza Marques</span><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="rescheduled" label="RESCHEDULED" hint-size="130px,20px"></x-import></div>
+                      <div style="display:flex;gap:12px;align-items:center;padding:8px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)"><span class="type-data-md" style="width:150px;color:var(--text-meta)">23 AUG 11:22</span><span class="type-body-sm" style="flex:1">Appointment #AP-20377 cancelled, patient called</span><x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.StatusTag" status="cancelled" label="CANCELLED" hint-size="120px,20px"></x-import></div>
+                    </div>
+                  </div>
+                </sc-if>
+
+                <!-- S7–S11 · admin CRUD -->
+                <sc-if value="{{ isAdmin }}" hint-placeholder-val="{{ false }}">
+                  <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+                    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+                      <span class="type-label-md">{{ adminTitle }}</span>
+                      <span class="type-data-sm" style="color:var(--text-meta)">{{ adminCount }}</span>
+                      <div style="flex:1"></div>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Input" label="" value="" placeholder="Search" full-width="{{ false }}" hint-size="220px,44px"></x-import>
+                      <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.Button" size="sm" icon="plus" hint-size="180px,32px">{{ adminAction }}</x-import>
+                    </div>
+                    <span class="type-body-sm" style="color:var(--text-meta);max-width:68ch">{{ adminDesc }}</span>
+                    <x-import component-from-global-scope="ConsultRioDesignSystem_8bb054.DataTable" columns="{{ adminCols }}" rows="{{ adminRows }}" hint-size="100%,320px"></x-import>
+                    <span class="type-data-sm" style="color:var(--text-meta)">{{ adminFooter }}</span>
+                  </div>
+                </sc-if>
+
+              </div>
+
+              <div style="display:flex;align-items:center;gap:20px;padding:8px 20px;border-top:1px solid var(--border)">
+                <span class="type-data-sm" style="color:var(--text-meta)">SYNCHRONIZED 08:12</span>
+                <span class="type-data-sm" style="color:var(--text-meta)">2 EXTERNAL CALENDARS</span>
+                <span class="type-data-sm" style="color:var(--color-tertiary)">1 CONFLICT</span>
+                <div style="flex:1"></div>
+                <span class="type-data-sm" style="color:var(--text-meta)">{{ route }}</span>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </main>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1600,&quot;height&quot;:1000}}">
+const IDS = ['P1','P2','P3','P4','P5','P6','P7','S0','S1','S2','S3','S4','S5','S6','S7','S8','S9','S10','S11'];
+
+const META = {
+  P1: ['Landing / sign in', '/', 'identity-session'],
+  P2: ['Booking search ★', '/book', 'availability · booking · UC-1'],
+  P3: ['Slot select & confirm', '/book/confirm', 'booking · UC-1'],
+  P4: ['Confirmation', '/book/success', 'booking'],
+  P5: ['My appointments', '/appointments', 'booking · UC-3'],
+  P6: ['Reschedule / cancel', '/appointments/:id/reschedule', 'booking · UC-3'],
+  P7: ['Profile & consents', '/profile', 'identity-session'],
+  S0: ['Staff sign in', '/staff/login', 'identity-session'],
+  S1: ['My schedule', '/staff/schedule', 'booking · UC-2'],
+  S2: ['Calendar connection', '/staff/calendar', 'calendar-integration · UC-2'],
+  S3: ['Block time', '/staff/blocks', 'calendar-integration · UC-2'],
+  S4: ['Day view', '/staff/day', 'booking · UC-3'],
+  S5: ['Book on behalf', '/staff/book', 'availability · booking · UC-1'],
+  S6: ['Reconciliation queue', '/staff/reconciliation', 'calendar-integration · UC-2'],
+  S7: ['Professionals', '/staff/admin/professionals', 'clinic-configuration · UC-4'],
+  S8: ['Specialties', '/staff/admin/specialties', 'clinic-configuration · UC-4'],
+  S9: ['Resources & types', '/staff/admin/resources', 'clinic-configuration · UC-4'],
+  S10: ['Appointment types', '/staff/admin/appointment-types', 'clinic-configuration · UC-4'],
+  S11: ['Users', '/staff/admin/users', 'identity-session'],
+};
+
+const ROLE = { S1: 'PROFESSIONAL', S2: 'PROFESSIONAL', S3: 'PROFESSIONAL', S4: 'RECEPTION', S5: 'RECEPTION', S6: 'RECEPTION' };
+
+const VARIANTS = {
+  P2: [['results', 'Results'], ['loading', 'Loading'], ['empty', 'Empty'], ['error', 'Error']],
+  P3: [['default', 'Default'], ['taken', 'Slot just taken']],
+  S2: [['default', 'Connected'], ['revoked', 'Revoked']],
+};
+
+const ADMIN = {
+  S7: {
+    count: '6 ACTIVE · 1 INACTIVE', action: 'New professional',
+    desc: 'Specialties, working-hour templates and per-type durations are set here. Changing working hours recomputes availability from tomorrow on.',
+    cols: [
+      { key: 'name', header: 'Name' },
+      { key: 'spec', header: 'Specialties' },
+      { key: 'hours', header: 'Working hours', mono: true },
+      { key: 'dur', header: 'Durations', mono: true },
+      { key: 'cal', header: 'Calendar', mono: true, meta: true },
+      { key: 'st', header: 'Status', mono: true, meta: true },
+    ],
+    rows: [
+      { id: 1, name: 'Dra. Helena Rocha', spec: 'Dermatology', hours: 'MON–FRI 08:00–18:00', dur: '30 / 40 / 60', cal: 'CONNECTED', st: 'ACTIVE' },
+      { id: 2, name: 'Dr. Marcos Vieira', spec: 'Cardiology', hours: 'MON, WED 09:00–17:00', dur: '40 / 60', cal: 'CONNECTED', st: 'ACTIVE' },
+      { id: 3, name: 'Dra. Ana Prado', spec: 'Nutrition', hours: 'TUE–THU 13:00–19:00', dur: '30 / 50', cal: 'NOT CONNECTED', st: 'ACTIVE' },
+      { id: 4, name: 'Dr. Tiago Lemes', spec: 'Orthopedics, Sports', hours: 'MON–FRI 07:00–13:00', dur: '30 / 45', cal: 'CONNECTED', st: 'ACTIVE' },
+      { id: 5, name: 'Dra. Sofia Antunes', spec: 'Psychology', hours: 'WED, FRI 14:00–20:00', dur: '50', cal: 'NOT CONNECTED', st: 'INACTIVE' },
+    ],
+    footer: 'A professional cannot be removed while future appointments exist. Deactivate instead.',
+  },
+  S8: {
+    count: '5 SPECIALTIES', action: 'New specialty',
+    desc: 'Specialties gate which professionals can serve an appointment type.',
+    cols: [
+      { key: 'name', header: 'Specialty' },
+      { key: 'profs', header: 'Professionals', mono: true },
+      { key: 'types', header: 'Appointment types', mono: true },
+      { key: 'st', header: 'Status', mono: true, meta: true },
+    ],
+    rows: [
+      { id: 1, name: 'Dermatology', profs: '2', types: '3', st: 'ACTIVE' },
+      { id: 2, name: 'Cardiology', profs: '1', types: '2', st: 'ACTIVE' },
+      { id: 3, name: 'Orthopedics', profs: '1', types: '2', st: 'ACTIVE' },
+      { id: 4, name: 'Nutrition', profs: '1', types: '2', st: 'ACTIVE' },
+      { id: 5, name: 'Psychology', profs: '1', types: '1', st: 'INACTIVE' },
+    ],
+    footer: 'Deactivating a specialty hides its appointment types from new searches.',
+  },
+  S9: {
+    count: '3 TYPES · 7 RESOURCES', action: 'New resource',
+    desc: 'A resource type carries the buffer applied between two appointments that use the same resource.',
+    cols: [
+      { key: 'name', header: 'Resource' },
+      { key: 'type', header: 'Type' },
+      { key: 'buffer', header: 'Buffer', mono: true },
+      { key: 'loc', header: 'Location', meta: true },
+      { key: 'st', header: 'Status', mono: true, meta: true },
+    ],
+    rows: [
+      { id: 1, name: 'Room 1', type: 'Consulting room', buffer: '10 MIN', loc: 'Ground floor', st: 'ACTIVE' },
+      { id: 2, name: 'Room 2', type: 'Consulting room', buffer: '10 MIN', loc: 'Ground floor', st: 'ACTIVE' },
+      { id: 3, name: 'Room 3', type: 'Consulting room', buffer: '10 MIN', loc: 'First floor', st: 'MAINTENANCE' },
+      { id: 4, name: 'Procedure room A', type: 'Procedure room', buffer: '20 MIN', loc: 'First floor', st: 'ACTIVE' },
+      { id: 5, name: 'Ultrasound A', type: 'Equipment', buffer: '15 MIN', loc: 'Procedure room A', st: 'ACTIVE' },
+    ],
+    footer: 'A resource in maintenance is excluded from availability without deleting its history.',
+  },
+  S10: {
+    count: '9 TYPES', action: 'New appointment type',
+    desc: 'Each type binds a specialty to a duration and a required resource type. This triple is what availability solves against.',
+    cols: [
+      { key: 'name', header: 'Appointment type' },
+      { key: 'spec', header: 'Specialty' },
+      { key: 'dur', header: 'Duration', mono: true },
+      { key: 'res', header: 'Required resource' },
+      { key: 'st', header: 'Status', mono: true, meta: true },
+    ],
+    rows: [
+      { id: 1, name: 'First visit', spec: 'Dermatology', dur: '40 MIN', res: 'Consulting room', st: 'ACTIVE' },
+      { id: 2, name: 'Follow-up', spec: 'Dermatology', dur: '30 MIN', res: 'Consulting room', st: 'ACTIVE' },
+      { id: 3, name: 'Minor procedure', spec: 'Dermatology', dur: '60 MIN', res: 'Procedure room', st: 'ACTIVE' },
+      { id: 4, name: 'First visit', spec: 'Cardiology', dur: '40 MIN', res: 'Consulting room', st: 'ACTIVE' },
+      { id: 5, name: 'Echocardiogram', spec: 'Cardiology', dur: '60 MIN', res: 'Equipment', st: 'ACTIVE' },
+      { id: 6, name: 'Nutrition follow-up', spec: 'Nutrition', dur: '30 MIN', res: 'Consulting room', st: 'ACTIVE' },
+    ],
+    footer: 'Changing a duration affects future searches only. Booked appointments keep the duration they were booked with.',
+  },
+  S11: {
+    count: '8 ACCOUNTS', action: 'New user',
+    desc: 'Professionals sign in with Google. Reception and administrators use internal accounts.',
+    cols: [
+      { key: 'name', header: 'User' },
+      { key: 'role', header: 'Role' },
+      { key: 'identity', header: 'Identity', mono: true },
+      { key: 'last', header: 'Last sign-in', mono: true, meta: true },
+      { key: 'st', header: 'Status', mono: true, meta: true },
+    ],
+    rows: [
+      { id: 1, name: 'Luiza Marques', role: 'Reception', identity: 'INTERNAL', last: '25 AUG 07:52', st: 'ACTIVE' },
+      { id: 2, name: 'Dra. Helena Rocha', role: 'Professional', identity: 'GOOGLE OIDC', last: '25 AUG 07:40', st: 'ACTIVE' },
+      { id: 3, name: 'Dr. Marcos Vieira', role: 'Professional', identity: 'GOOGLE OIDC', last: '24 AUG 18:10', st: 'ACTIVE' },
+      { id: 4, name: 'Ricardo Alencar', role: 'Administrator', identity: 'INTERNAL', last: '22 AUG 14:03', st: 'ACTIVE' },
+      { id: 5, name: 'Tatiane Melo', role: 'Reception', identity: 'INTERNAL', last: '02 JUL 09:15', st: 'SUSPENDED' },
+    ],
+    footer: 'Role changes take effect at the user\u2019s next sign-in.',
+  },
+};
+
+class Component extends DCLogic {
+  state = { screen: 'P2', device: 'desktop', variant: 'results' };
+
+  go(id) {
+    const v = VARIANTS[id] ? VARIANTS[id][0][0] : 'default';
+    this.setState({ screen: id, variant: v });
+  }
+
+  renderVals() {
+    const DS = window.ConsultRioDesignSystem_8bb054 || {};
+    const h = React.createElement;
+    const s = this.state;
+    const out = {};
+
+    IDS.forEach(id => {
+      const active = s.screen === id;
+      out['go' + id] = () => this.go(id);
+      out['nb' + id] = active ? 'rgba(222,244,240,0.16)' : 'transparent';
+      out['nf' + id] = active ? 'var(--paper-100)' : 'rgba(250,252,252,0.66)';
+      out['sb' + id] = active ? 'var(--color-primary-subtle)' : 'transparent';
+      out['sf' + id] = active ? 'var(--color-primary-strong)' : 'var(--text-meta)';
+      out['is' + id] = active;
+    });
+
+    const meta = META[s.screen] || ['', '', ''];
+    out.title = meta[0];
+    out.route = meta[1];
+    out.capability = meta[2];
+
+    out.isPortal = s.screen.charAt(0) === 'P';
+    out.isStaffShell = s.screen.charAt(0) === 'S' && s.screen !== 'S0';
+    out.isAdmin = ['S7', 'S8', 'S9', 'S10', 'S11'].indexOf(s.screen) >= 0;
+    out.roleLabel = ROLE[s.screen] || 'ADMINISTRATOR';
+    out.staffHeading = meta[0];
+
+    out.frameW = out.isPortal ? (s.device === 'mobile' ? '390px' : '1120px') : '1360px';
+    const mob = out.isPortal && s.device === 'mobile';
+    out.portalCols = mob ? 'minmax(0,1fr)' : '340px minmax(0,1fr)';
+    out.padX = mob ? '16px' : '32px';
+    out.cardPad = mob ? '16px' : '20px';
+    out.dateCols = mob ? 'minmax(0,1fr)' : 'repeat(2,minmax(0,1fr))';
+
+    out.dDesktop = () => this.setState({ device: 'desktop' });
+    out.dMobile = () => this.setState({ device: 'mobile' });
+    out.dbDesktop = s.device === 'desktop' ? 'var(--color-primary)' : 'var(--surface)';
+    out.dfDesktop = s.device === 'desktop' ? 'var(--text-on-primary)' : 'var(--text-meta)';
+    out.dbMobile = s.device === 'mobile' ? 'var(--color-primary)' : 'var(--surface)';
+    out.dfMobile = s.device === 'mobile' ? 'var(--text-on-primary)' : 'var(--text-meta)';
+
+    const vs = VARIANTS[s.screen];
+    out.hasVariants = Boolean(vs);
+    out.variants = (vs || []).map(([key, label]) => ({
+      key, label,
+      onSelect: () => this.setState({ variant: key }),
+      bg: s.variant === key ? 'var(--color-primary)' : 'var(--surface)',
+      fg: s.variant === key ? 'var(--text-on-primary)' : 'var(--text-meta)',
+    }));
+
+    out.p2Results = s.screen === 'P2' && s.variant === 'results';
+    out.p2Loading = s.screen === 'P2' && s.variant === 'loading';
+    out.p2Empty = s.screen === 'P2' && s.variant === 'empty';
+    out.p2Error = s.screen === 'P2' && s.variant === 'error';
+    out.p3Taken = s.screen === 'P3' && s.variant === 'taken';
+    out.s2Revoked = s.screen === 'S2' && s.variant === 'revoked';
+    out.s2TagStatus = out.s2Revoked ? 'noshow' : 'scheduled';
+    out.s2TagLabel = out.s2Revoked ? 'REVOKED' : 'CONNECTED';
+    out.s2LastSync = out.s2Revoked ? '23 AUG 19:40 · FAILED SINCE' : '25 AUG 08:12:04';
+    out.s2Channel = out.s2Revoked ? 'EXPIRED' : 'ACTIVE · RENEWS 02 SEP';
+
+    const tag = (status, label) => (DS.StatusTag ? h(DS.StatusTag, { status, label }) : label);
+    const linkRow = labels => h('span', { className: 'type-data-sm', style: { color: 'var(--text-meta)' } }, labels);
+
+    out.dayCols = [
+      { key: 'time', header: 'Time', mono: true, width: '120px' },
+      { key: 'patient', header: 'Patient' },
+      { key: 'prof', header: 'Professional' },
+      { key: 'type', header: 'Type', meta: true },
+      { key: 'room', header: 'Room', meta: true },
+      { key: 'status', header: 'Status', render: r => tag(r.st, r.stLabel) },
+      { key: 'act', header: 'Actions', render: () => linkRow('CHECK IN · MOVE · CANCEL') },
+    ];
+    out.dayRows = [
+      { id: 1, time: '08:30–09:00', patient: 'Beatriz Salles', prof: 'Helena Rocha', type: 'Follow-up', room: 'Room 2', st: 'completed', stLabel: 'COMPLETED' },
+      { id: 2, time: '09:10–09:50', patient: 'Rafael Nunes', prof: 'Helena Rocha', type: 'First visit', room: 'Room 2', st: 'scheduled', stLabel: 'SCHEDULED' },
+      { id: 3, time: '09:40–10:10', patient: 'Camila Duarte', prof: 'Tiago Lemes', type: 'Follow-up', room: 'Room 1', st: 'scheduled', stLabel: 'SCHEDULED' },
+      { id: 4, time: '10:20–11:00', patient: 'Paulo Ferraz', prof: 'Marcos Vieira', type: 'First visit', room: 'Room 1', st: 'scheduled', stLabel: 'SCHEDULED' },
+      { id: 5, time: '11:00–12:00', patient: 'Inês Barreto', prof: 'Marcos Vieira', type: 'Echocardiogram', room: 'Ultrasound A', st: 'scheduled', stLabel: 'SCHEDULED' },
+      { id: 6, time: '13:20–13:50', patient: 'Vera Lins', prof: 'Ana Prado', type: 'Nutrition follow-up', room: 'Room 3', st: 'rescheduled', stLabel: 'RESCHEDULED' },
+      { id: 7, time: '15:30–16:00', patient: 'Camila Duarte', prof: 'Helena Rocha', type: 'Follow-up', room: 'Room 2', st: 'conflict', stLabel: 'CONFLICT' },
+      { id: 8, time: '16:10–16:40', patient: 'Paulo Ferraz', prof: 'Helena Rocha', type: 'Follow-up', room: 'Room 2', st: 'scheduled', stLabel: 'SCHEDULED' },
+      { id: 9, time: '17:00–17:40', patient: 'Otávio Serra', prof: 'Tiago Lemes', type: 'First visit', room: 'Room 1', st: 'cancelled', stLabel: 'CANCELLED' },
+      { id: 10, time: '17:30–18:00', patient: 'Vera Lins', prof: 'Helena Rocha', type: 'Follow-up', room: 'Room 1', st: 'noshow', stLabel: 'NO-SHOW' },
+    ];
+
+    out.blockCols = [
+      { key: 'date', header: 'Date', mono: true, width: '130px' },
+      { key: 'time', header: 'Time', mono: true, width: '130px' },
+      { key: 'reason', header: 'Reason' },
+      { key: 'source', header: 'Source', mono: true, meta: true },
+      { key: 'act', header: 'Actions', render: r => linkRow(r.source === 'INTERNAL' ? 'EDIT · DELETE' : 'READ-ONLY') },
+    ];
+    out.blockRows = [
+      { id: 1, date: '25 AUG 2026', time: '12:00–13:00', reason: 'Lunch', source: 'INTERNAL' },
+      { id: 2, date: '25 AUG 2026', time: '14:00–15:00', reason: 'Busy · from external calendar', source: 'EXTERNAL' },
+      { id: 3, date: '26 AUG 2026', time: '12:00–13:00', reason: 'Lunch', source: 'INTERNAL' },
+      { id: 4, date: '27 AUG 2026', time: '08:00–12:00', reason: 'Congresso · from external calendar', source: 'EXTERNAL' },
+      { id: 5, date: '28 AUG 2026', time: '16:00–18:00', reason: 'Training', source: 'INTERNAL' },
+    ];
+
+    const adm = ADMIN[s.screen] || ADMIN.S7;
+    out.adminTitle = meta[0];
+    out.adminCount = adm.count;
+    out.adminAction = adm.action;
+    out.adminDesc = adm.desc;
+    out.adminCols = adm.cols;
+    out.adminRows = adm.rows;
+    out.adminFooter = adm.footer;
+
+    return out;
+  }
+}
+
+</script>
+</body>
+</html>

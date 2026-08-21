@@ -1,0 +1,23 @@
+# Keep build contexts small and reproducible — never ship host toolchain state.
+**/node_modules
+**/dist
+**/bin
+**/obj
+**/.vite
+**/*.tsbuildinfo
+
+.git
+.github
+.vs
+.idea
+
+docs
+design
+openspec
+
+.env
+.env.*
+!.env.example
+
+**/TestResults
+**/coverage

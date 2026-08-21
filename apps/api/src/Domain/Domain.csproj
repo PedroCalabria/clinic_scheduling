@@ -1,0 +1,45 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The protected domain core (Decision K / P-3, 00-context.md §3).
+
+    Domain must reference NO infrastructure: no EF Core, no Dapper, no ASP.NET,
+    no Npgsql, no Serilog. It holds the Appointment aggregate, invariants I1-I10,
+    the state machine, and the availability-solver contracts.
+
+    Two things enforce that, so it cannot decay into a convention:
+      1. Using the plain Microsoft.NET.Sdk (not .Web) — ASP.NET types are simply
+         not in scope here.
+      2. The ForbidInfrastructureReferences target below, which fails the build
+         if a forbidden package is ever added. CI runs the build, so CI enforces
+         the boundary.
+  -->
+
+  <PropertyGroup>
+    <RootNamespace>Clinic.Domain</RootNamespace>
+    <AssemblyName>Clinic.Domain</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Package name prefixes that must never appear in this project. -->
+    <ForbiddenDomainDependency Include="Microsoft.EntityFrameworkCore" />
+    <ForbiddenDomainDependency Include="Microsoft.AspNetCore" />
+    <ForbiddenDomainDependency Include="Dapper" />
+    <ForbiddenDomainDependency Include="Npgsql" />
+    <ForbiddenDomainDependency Include="Serilog" />
+    <ForbiddenDomainDependency Include="Hangfire" />
+    <ForbiddenDomainDependency Include="Testcontainers" />
+  </ItemGroup>
+
+  <Target Name="ForbidInfrastructureReferences" BeforeTargets="Build">
+    <ItemGroup>
+      <_DomainViolation
+        Include="@(PackageReference)"
+        Condition="'@(PackageReference)' != '' and $([System.String]::Copy('%(Identity)').StartsWith('%(ForbiddenDomainDependency.Identity)'))" />
+    </ItemGroup>
+    <Error
+      Condition="'@(_DomainViolation)' != ''"
+      Text="Domain must not reference infrastructure. Offending package(s): @(_DomainViolation). The protected core stays infrastructure-free (00-context.md §3); put the adapter in Api instead." />
+  </Target>
+
+</Project>
