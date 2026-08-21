@@ -28,6 +28,7 @@ Every error response carries a machine-readable body:
 | 404 | not found | `booking.appointment_not_found` |
 | 409 | conflict (state/race) | `booking.slot_taken`, `booking.block_overlaps_appointment` |
 | 422 | valid shape, violates a business rule | `booking.cutoff_passed`, `booking.outside_working_hours` |
+| 429 | rate-limited | `auth.rate_limited` |
 | 503 | dependency unavailable | `availability.unavailable`, `calendar.sync_failed` |
 
 ## 3. Initial catalogue (seed — extend as slices land)
@@ -38,6 +39,20 @@ Every error response carries a machine-readable body:
 | `auth.session_expired` | 401 | session missing/expired |
 | `auth.forbidden` | 403 | role lacks permission |
 | `auth.ownership_denied` | 403 | patient accessing data that is not theirs |
+| `auth.invalid_credentials` | 401 | internal account: wrong email/password |
+| `auth.account_disabled` | 403 | account locked or disabled |
+| `auth.rate_limited` | 429 | too many login attempts (brute-force guard) |
+| `auth.google_failed` | 401 | Google OIDC flow failed (bad state/nonce, token invalid, email unverified, or the address belongs to an internal account) |
+| `auth.google_unavailable` | 503 | this deployment has no Google client configured, so the federated path is off (added in `identity-session`) |
+| `auth.consent_required` | 422 | a required consent has not been granted |
+| `auth.email_already_in_use` | 409 | staff account creation with a taken email |
+| `auth.account_not_found` | 404 | an administrator acted on a staff account that does not exist (added in `identity-session`) |
+| `auth.password_change_required` | 403 | the bootstrapped administrator must replace the supplied credential before doing anything else (added in `identity-session`) |
+
+### patient — capability `identity-session`
+| Code | Status | When |
+|---|---|---|
+| `patient.not_found` | 404 | staff requested a patient record that does not exist (added in `identity-session`). A **patient** asking for a record that is not theirs never sees this — they get `auth.ownership_denied`, so the response cannot be used to discover which records exist |
 
 ### validation — cross-cutting
 | Code | Status | Params |

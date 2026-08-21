@@ -4,9 +4,10 @@ namespace Clinic.Domain;
 /// Anchor type for referencing the Domain assembly (tests, future DI scanning).
 /// </summary>
 /// <remarks>
-/// The protected core is deliberately empty in change 1 (walking-skeleton): this change
-/// builds structure only. The Appointment aggregate, invariants I1-I10, the state machine,
-/// and the availability-solver contracts land in changes 4-5.
-/// What exists now is the boundary — see Domain.csproj.
+/// Change 1 (walking-skeleton) established the boundary with nothing behind it — see
+/// Domain.csproj. Change 2 (identity-session) put the first rules in it: the identity
+/// entities, the two attributes that cannot change after creation (design A5), and the
+/// patient-data ownership rule. The Appointment aggregate, invariants I1-I10, the state
+/// machine, and the availability-solver contracts land in changes 4-5.
 /// </remarks>
 public static class DomainAssemblyMarker;

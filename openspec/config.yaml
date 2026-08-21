@@ -16,6 +16,7 @@ context: |
   | `docs/05-openspec-workflow.md` | Capabilities, the 8-change build order, per-change workflow, DoD |
   | `docs/06-ui-surfaces.md` | Screen inventory (P1–P7 patient portal, S0–S11 staff), screen→change mapping |
   | `docs/07-error-codes.md` | Error-code catalogue — the `{ code, params? }` contract |
+  | `docs/08-google-setup.md` | Manual prerequisite: the Google OAuth client for federated sign-in (optional; its absence only disables that one login path) |
 
   ## Non-negotiables
 
@@ -35,8 +36,14 @@ context: |
   - **Soft-delete only** (I10); never hard-delete.
   - **Correlation id**: `X-Correlation-ID`, read-or-generate, echoed in the response,
     present on every log entry for the request.
+  - **Session** (change 2): an opaque session id in an `HttpOnly`, `Secure`,
+    `SameSite=Lax` cookie; the `sessions` row is the only authority, so revoking it takes
+    effect on the next request. `[Authorize]` is the default — anonymous access is an
+    explicit `.AllowAnonymous()`. State-changing requests carry a double-submit CSRF token
+    (`X-CSRF-Token`); the OIDC flow has its own `state`/`nonce`. Never add a session cache.
   - **Frontends call the API by relative path** (`/api/...`) — same origin, no CORS,
-    no build-time API base URL.
+    no build-time API base URL. The frontend keeps **no copy of the session**: it reads
+    `GET /api/auth/session` and treats a 401 as "signed out".
   - **Base paths**: patient-portal at `/` (Vite base `/`), staff at `/staff` (Vite base
     `/staff/`, router basename `/staff`). `base` and `basename` derive from one per-app
     constant so they cannot drift.
@@ -50,7 +57,9 @@ context: |
   Unit + integration tests green in CI (integration against a real PostgreSQL via
   Testcontainers, Respawn between tests); pt-BR + en i18n keys present for new
   user-facing strings; the demonstrable behavior works end to end;
-  `openspec validate <change> --strict` passes; change archived into the living spec.
+  `openspec validate <change> --strict` passes; `README.md`'s status table reflects
+  what now works (a 1-3 line edit — see `docs/00-context.md` §8); change archived
+  into the living spec.
 
 rules:
   proposal:
@@ -62,3 +71,8 @@ rules:
   tasks:
     - Order tasks by dependency; each task must be independently verifiable.
     - End with a Definition of Done group that mirrors the DoD above.
+    - >-
+      Include a documentation task to update README.md's status table, plus its local-run
+      section ONLY if this change adds a prerequisite or an environment variable. The README
+      is written for recruiters and potential clients who may not be technical; per-change
+      updates are 1-3 lines, never a rewrite, and never a new section per change.

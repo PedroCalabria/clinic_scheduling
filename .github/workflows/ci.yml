@@ -3,7 +3,8 @@
 # Step order is deliberate: the cheap, hermetic gates run first and fail fast; the two
 # Docker-dependent tiers run last because they are the slowest.
 #
-#   openspec validate -> i18n keys -> build (both ecosystems) -> unit -> integration -> compose smoke
+#   openspec validate -> i18n keys -> README links -> build (both ecosystems) -> unit
+#   -> integration -> compose smoke
 
 name: CI
 
@@ -76,7 +77,13 @@ jobs:
       - name: Check i18n keys (pt-BR / en)
         run: pnpm check:i18n
 
-      # --- gate 3: build both ecosystems -------------------------------------------
+      # --- gate 3: the README still points at things that exist ---------------------
+      # A renamed doc or a moved test project leaves a broken relative link, which is
+      # still valid Markdown — nothing else in this pipeline would notice.
+      - name: Check README links
+        run: pnpm check:readme
+
+      # --- gate 4: build both ecosystems -------------------------------------------
       - name: Typecheck and build frontends
         run: pnpm -r build
 
@@ -86,19 +93,19 @@ jobs:
         # takes an infrastructure dependency.
         run: dotnet build apps/api/ClinicScheduling.slnx --configuration Release
 
-      # --- gate 4: unit tests -------------------------------------------------------
+      # --- gate 5: unit tests -------------------------------------------------------
       - name: Unit tests (domain core)
         run: >
           dotnet test apps/api/tests/Domain.UnitTests/Domain.UnitTests.csproj
           --configuration Release --no-build --verbosity normal
 
-      # --- gate 5: integration tests against a real PostgreSQL ----------------------
+      # --- gate 6: integration tests against a real PostgreSQL ----------------------
       - name: Integration tests (Testcontainers + Respawn)
         run: >
           dotnet test apps/api/tests/Api.IntegrationTests/Api.IntegrationTests.csproj
           --configuration Release --no-build --verbosity normal
 
-      # --- gate 6: the real stack, through Caddy ------------------------------------
+      # --- gate 7: the real stack, through Caddy ------------------------------------
       - name: Compose smoke (Caddy routing and both base paths)
         # Covers what WebApplicationFactory structurally cannot: the proxy, the static
         # builds, the base paths, and per-prefix SPA fallback (design D6).

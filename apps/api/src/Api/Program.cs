@@ -1,4 +1,8 @@
+using Clinic.Api.Features.Auth;
 using Clinic.Api.Features.Health;
+using Clinic.Api.Features.Patients;
+using Clinic.Api.Features.StaffAccounts;
+using Clinic.Api.Infrastructure.Auth;
 using Clinic.Api.Infrastructure.Errors;
 using Clinic.Api.Infrastructure.Observability;
 using Clinic.Api.Infrastructure.Persistence;
@@ -31,6 +35,17 @@ builder.Services.AddDbContext<ClinicDbContext>(options => options.UseNpgsql(conn
 // so it precedes every other hosted service.
 builder.Services.AddHostedService<DatabaseMigrationStartupService>();
 
+// --- Identity & session (Decision J, design A1) -------------------------------------
+// Registers the session store, the password hasher, the custom authentication scheme, and
+// the role policies — including the authenticated-by-default fallback, so an endpoint
+// reaches the public internet only by saying AllowAnonymous out loud.
+builder.Services.AddClinicAuth(builder.Configuration);
+builder.Services.AddLoginRateLimiting();
+
+// Registered AFTER the migration service so the schema exists when it runs (design A6).
+// Idempotent, so it is safe on every boot rather than only the first.
+builder.Services.AddHostedService<AdministratorBootstrap>();
+
 // --- Health checks ------------------------------------------------------------------
 // AddDbContextCheck issues a real CanConnect against PostgreSQL, so the check covers
 // actual database reachability rather than merely that configuration was parsed.
@@ -46,6 +61,26 @@ app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseMiddleware<ErrorEnvelopeMiddleware>();
 app.UseSerilogRequestLogging();
 
+// Who the caller is, then what they may do. Both before the endpoints, and after the error
+// envelope so an authentication failure is still reported as { code } (design A1).
+app.UseAuthentication();
+
+// After authentication, because it reads the principal: an account still holding its
+// bootstrap credential is held to replacing it (design A6).
+app.UseMiddleware<PasswordChangeGate>();
+
+// Before authorization so a forged state-changing request is refused whether or not its
+// session would have been permitted (design A3).
+app.UseMiddleware<CsrfMiddleware>();
+
+app.UseAuthorization();
+
+// Applies only where an endpoint asks for it by policy name (design A10).
+app.UseRateLimiter();
+
 app.MapGetHealth();
+app.MapAuthEndpoints();
+app.MapPatientEndpoints();
+app.MapStaffAccountEndpoints();
 
 app.Run();

@@ -11,8 +11,8 @@
     "dev:portal": "pnpm --filter @clinic/patient-portal dev",
     "dev:staff": "pnpm --filter @clinic/staff dev",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
     "check:i18n": "node scripts/check-i18n-keys.mjs",
+    "check:readme": "node scripts/check-readme-links.mjs",
     "smoke": "node scripts/compose-smoke.mjs"
   },
   "devDependencies": {

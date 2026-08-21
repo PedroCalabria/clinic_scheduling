@@ -45,8 +45,8 @@ Documents 01–04 are the **spec substrate**: they are the source of truth that 
 
 Each change delivers a demonstrable increment. The large `calendar-integration` capability is split along its natural seam (outbound, then inbound) per the right-sized granularity rule.
 
-1. **walking-skeleton** — Compose (Caddy/api/db), solution structure (slices + protected core), one end-to-end vertical slice, health check. De-risks the infrastructure first.
-2. **identity-session** — hybrid auth, unified session, roles, ownership primitive.
+1. **walking-skeleton** *(done)* — Compose (Caddy/api/db), solution structure (slices + protected core), one end-to-end vertical slice, health check. De-risks the infrastructure first.
+2. **identity-session** *(done)* — hybrid auth, unified session, roles, ownership primitive. Also delivered the two seams every later change's tests depend on: acting as a role, and validating a Google token offline. Google's calendar scope was deferred to change 6 via incremental authorization; see `08-google-setup.md`.
 3. **clinic-configuration** — admin reference data the scheduler needs.
 4. **availability-read** — tri-constraint solver, both variations.
 5. **booking** — atomic booking + reschedule/cancel, state machine, resource auto-assignment, cutoff.
@@ -105,9 +105,13 @@ A community skill can enforce this git discipline automatically (clean tree befo
 
 ## 7. Next action
 
-1. `openspec init` in the repo (installs `/opsx:*` into Claude Code).
-2. Branch and start with change **1 — walking-skeleton**: `/opsx:explore`, then `/opsx:propose walking-skeleton`.
-3. Proceed down the build order, one change at a time, reviewing each proposal and diff.
+Changes 1 and 2 are done. Next is change **3 — clinic-configuration**: the admin
+reference data the scheduler needs (S7-S10). It inherits an authenticated, authorized API,
+so its screens mount into the staff app-shell and its endpoints carry the administrator
+policy from change 2.
+
+Per change: branch, `/opsx:explore` (optional), `/opsx:propose <change-id>`, review the
+proposal, `/opsx:apply`, review the diff, `/opsx:archive`.
 
 ---
 

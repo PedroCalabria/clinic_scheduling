@@ -70,7 +70,7 @@ This project combines **two distinct types** of authorization, and being able to
 | Role | Identity | Responsibilities | Data scope |
 |---|---|---|---|
 | **Patient** | Google (OIDC) | Search availability; book/reschedule/cancel own appointments; manage own data and consents. | Restricted to self. |
-| **Professional** | Google (OIDC) — login + calendar scope in the **same consent** | Manage own schedule, working hours, specialty; connect Google Calendar (grants the bidirectional-sync consent); view own schedule; block time. | Own schedule. |
+| **Professional** | Google (OIDC) — login now, calendar scope later via **incremental authorization** | Manage own schedule, working hours, specialty; connect Google Calendar (grants the bidirectional-sync consent when connecting); view own schedule; block time. | Own schedule. |
 | **Front desk** | Internal account (email/password) | Book/reschedule/cancel on behalf of patients (phone and walk-in); run day-to-day; resolve flagged reconciliation conflicts. | Operational. Does **not** manage structural configuration. |
 | **Administrator** | Internal account (email/password) | Register professionals, rooms/resources, specialties, working-hour templates; user management; reports. | Structural. |
 
@@ -78,14 +78,14 @@ This project combines **two distinct types** of authorization, and being able to
 
 ### Hybrid identity model
 
-Patients and professionals sign in via **Google (OIDC)**; the professional combines, in a single consent, login + calendar scope. Front desk and admin use **internal accounts** (email/password), since they are clinic staff — it makes no sense to depend on their personal Google account. Demonstrates conscious coexistence of federated identity and internal identity in the same system.
+Patients and professionals sign in via **Google (OIDC)**. The professional signs in with login only; the Google Calendar scope is requested **later, via incremental authorization** (`include_granted_scopes=true`) at the moment they choose to connect their calendar — so consent is requested when its purpose is clear, not up front. The UC-level promise ("one seamless Google consent experience for the professional") is preserved; the implementation splits the grant across two moments (login in `identity-session`; calendar scope in `calendar-integration`). Front desk and admin use **internal accounts** (email/password), since they are clinic staff — it makes no sense to depend on their personal Google account. Demonstrates conscious coexistence of federated identity and internal identity in the same system.
 
 ### Auth vs. calendar distinction (do not conflate)
 
 - **"Sign in with Google" = authentication** (OpenID Connect): federated identity, ID-token validation, mapping external account → internal user.
 - **"Sync my Google Calendar" = authorization** (OAuth 2.0 with Calendar API scopes): refresh token, renewal, and revocation. This is where resilience lives: rate limiting, expired tokens, backoff, idempotency when creating events.
 
-For the professional, the two are combined into a single consent — but **modeled as separate responsibilities**.
+For the professional, the two are requested at different moments via incremental authorization — **modeled as separate responsibilities** and delivered by separate changes (login in `identity-session`, calendar scope in `calendar-integration`).
 
 ### Cost rationale (free tools only)
 
