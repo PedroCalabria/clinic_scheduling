@@ -112,7 +112,8 @@ So each frontend change knows exactly which screens it delivers:
 | Build-order change | Screens delivered |
 |---|---|
 | 2 · identity-session | P1, S0, P7, S11 |
-| 3 · clinic-configuration | S7, S8, S9, S10 |
+| 3a · clinic-catalog | S8, S9, S10 |
+| 3b · professional-configuration | S7 |
 | 4 · availability-read | (feeds P2/S5; no standalone screen) |
 | 5 · booking | P2, P3, P4, P5, P6, S1, S4, S5 |
 | 6 · calendar-outbound | S2 |

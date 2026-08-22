@@ -86,6 +86,13 @@ Every error response carries a machine-readable body:
 | `calendar.consent_revoked` | 422 | OAuth consent revoked (S2 revoked state) |
 | `calendar.sync_failed` | 503 | Google API unreachable / sync error |
 
+### clinic configuration — capability `clinic-configuration`
+| Code | Status | When |
+|---|---|---|
+| `config.in_use` | 409 | cannot deactivate an entity still referenced by active records (e.g. a `Specialty` with active `AppointmentType`s; a `ResourceType` with active `Resource`s or referenced by active `AppointmentType`s) — added in `clinic-catalog` |
+| `config.duplicate_name` | 409 | a catalog entity with that name already exists (active) — added in `clinic-catalog` |
+| `config.not_found` | 404 | referenced catalog/professional-config entity does not exist — added in `clinic-catalog` |
+
 ### generic
 | Code | Status | When |
 |---|---|---|

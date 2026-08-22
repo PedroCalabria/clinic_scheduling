@@ -8,17 +8,17 @@
 
 ## Guiding principle
 
-Documents 01–04 are the **spec substrate**: they are the source of truth that `/opsx:explore` and `/opsx:propose` consume. The phases were not preparation for OpenSpec — they *are* the durable context OpenSpec references. This is what preserves code ownership: you delegate the *translation* of decisions that are already yours, not the decisions themselves. You review every proposal before any code, and every change's diff before it is archived.
+Documents 01–04 are the **spec substrate**: they are the source of truth that `/opsx:explore` and `/opsx:propose` consume. The phases were not preparation for OpenSpec — they _are_ the durable context OpenSpec references. This is what preserves code ownership: you delegate the _translation_ of decisions that are already yours, not the decisions themselves. You review every proposal before any code, and every change's diff before it is archived.
 
 ---
 
 ## Locked decisions (this phase)
 
-| ID | Decision | Choice |
-|---|---|---|
-| W | Change granularity | Right-sized — one change per demonstrable vertical increment (reviewable in one sitting) |
-| X | Capabilities | Six: Identity & session, Clinic configuration, Availability, Booking, Calendar integration, Reminders |
-| Y | Build order | 8 dependency-ordered changes, from walking skeleton to reminders |
+| ID  | Decision           | Choice                                                                                                |
+| --- | ------------------ | ----------------------------------------------------------------------------------------------------- |
+| W   | Change granularity | Right-sized — one change per demonstrable vertical increment (reviewable in one sitting)              |
+| X   | Capabilities       | Six: Identity & session, Clinic configuration, Availability, Booking, Calendar integration, Reminders |
+| Y   | Build order        | 8 dependency-ordered changes, from walking skeleton to reminders                                      |
 
 ---
 
@@ -32,39 +32,43 @@ Documents 01–04 are the **spec substrate**: they are the source of truth that 
 
 ## 2. Capabilities (living spec areas)
 
-| Capability | Covers | Use cases |
-|---|---|---|
-| **identity-session** | Google OIDC + internal accounts, unified session, RBAC roles, ownership-authorization primitive | Hybrid auth |
-| **clinic-configuration** | Admin CRUD: specialties, resource types, resources, appointment types, professional×type durations, working-hour templates, buffer | UC-4 |
-| **availability** | Tri-constraint solver (Dapper read), specific + any-professional variations | UC-1 (read) |
-| **booking** | Atomic booking, `EXCLUDE` constraint, invariants, state machine, automatic resource assignment, cancellation cutoff; reschedule/cancel | UC-1 (write), UC-3 |
-| **calendar-integration** | Professional OAuth connection, outbound sync (outbox), inbound sync (webhook + `syncToken`), reconciliation conflicts + resolution, watch-channel renewal | UC-2 |
-| **reminders** | Scheduled reminder job + email via SMTP | UC-5 |
+| Capability               | Covers                                                                                                                                                    | Use cases          |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------ |
+| **identity-session**     | Google OIDC + internal accounts, unified session, RBAC roles, ownership-authorization primitive                                                           | Hybrid auth        |
+| **clinic-configuration** | Admin CRUD: specialties, resource types, resources, appointment types, professional×type durations, working-hour templates, buffer                        | UC-4               |
+| **availability**         | Tri-constraint solver (Dapper read), specific + any-professional variations                                                                               | UC-1 (read)        |
+| **booking**              | Atomic booking, `EXCLUDE` constraint, invariants, state machine, automatic resource assignment, cancellation cutoff; reschedule/cancel                    | UC-1 (write), UC-3 |
+| **calendar-integration** | Professional OAuth connection, outbound sync (outbox), inbound sync (webhook + `syncToken`), reconciliation conflicts + resolution, watch-channel renewal | UC-2               |
+| **reminders**            | Scheduled reminder job + email via SMTP                                                                                                                   | UC-5               |
 
-## 3. Build order (8 changes, dependency-ordered)
+## 3. Build order (9 changes, dependency-ordered)
 
-Each change delivers a demonstrable increment. The large `calendar-integration` capability is split along its natural seam (outbound, then inbound) per the right-sized granularity rule.
+Each change delivers a demonstrable increment. Two capabilities are split along their natural seam per the right-sized granularity rule: `clinic-configuration` (catalog, then professional config) and `calendar-integration` (outbound, then inbound).
 
-1. **walking-skeleton** *(done)* — Compose (Caddy/api/db), solution structure (slices + protected core), one end-to-end vertical slice, health check. De-risks the infrastructure first.
-2. **identity-session** *(done)* — hybrid auth, unified session, roles, ownership primitive. Also delivered the two seams every later change's tests depend on: acting as a role, and validating a Google token offline. Google's calendar scope was deferred to change 6 via incremental authorization; see `08-google-setup.md`.
-3. **clinic-configuration** — admin reference data the scheduler needs.
-4. **availability-read** — tri-constraint solver, both variations.
-5. **booking** — atomic booking + reschedule/cancel, state machine, resource auto-assignment, cutoff.
-6. **calendar-outbound** — OAuth connection, outbox, dispatcher, idempotent event create, cancel/reschedule propagation.
-7. **calendar-inbound** — webhook, incremental sync, reconcile job, external `TimeBlock`s feeding availability, `ReconciliationConflict` + front-desk resolution, watch-channel renewal.
-8. **reminders** — scheduled job, email via SMTP (Mailpit in dev).
+1. **walking-skeleton** _(done)_ — Compose (Caddy/api/db), solution structure (slices + protected core), one end-to-end vertical slice, health check. De-risks the infrastructure first.
+2. **identity-session** _(done)_ — hybrid auth, unified session, roles, ownership primitive. Also delivered the two seams every later change's tests depend on: acting as a role, and validating a Google token offline. Google's calendar scope was deferred to change 6 via incremental authorization; see `08-google-setup.md`.
+   3a. **clinic-catalog** — what the clinic offers: specialties, resource types (+ buffer), resources, appointment types. Flat CRUD (S8, S9, S10) with deactivation (soft-delete) refusal rules. Zero dependency on 3b.
+   3b. **professional-configuration** — what a professional does and when: `Professional` row, specialties, per-type durations, working-hour templates + exceptions (S7). Introduces the clinic timezone (Decision H) and the dev seed. Depends on 3a.
+3. **availability-read** — tri-constraint solver, both variations.
+4. **booking** — atomic booking + reschedule/cancel, state machine, resource auto-assignment, cutoff.
+5. **calendar-outbound** — OAuth connection, outbox, dispatcher, idempotent event create, cancel/reschedule propagation.
+6. **calendar-inbound** — webhook, incremental sync, reconcile job, external `TimeBlock`s feeding availability, `ReconciliationConflict` + front-desk resolution, watch-channel renewal.
+7. **reminders** — scheduled job, email via SMTP (Mailpit in dev).
+
+Both `clinic-catalog` and `professional-configuration` contribute deltas to the single `clinic-configuration` capability.
 
 ```mermaid
 flowchart TB
   c1["1. walking-skeleton"]
   c2["2. identity-session"]
-  c3["3. clinic-configuration"]
+  c3a["3a. clinic-catalog"]
+  c3b["3b. professional-configuration"]
   c4["4. availability-read"]
   c5["5. booking"]
   c6["6. calendar-outbound"]
   c7["7. calendar-inbound"]
   c8["8. reminders"]
-  c1 --> c2 --> c3 --> c4 --> c5
+  c1 --> c2 --> c3a --> c3b --> c4 --> c5
   c5 --> c6 --> c7
   c5 --> c8
   c7 -.->|external blocks feed availability| c4
@@ -77,7 +81,7 @@ The dashed edge is the feedback relationship: once `calendar-inbound` lands, ext
 For each change, in Claude Code:
 
 1. **Branch** — one branch per change (git discipline: clean tree before propose).
-2. **`/opsx:explore`** *(optional)* — reason about the increment against docs 01–04.
+2. **`/opsx:explore`** _(optional)_ — reason about the increment against docs 01–04.
 3. **`/opsx:propose <change-id>`** — Claude Code drafts proposal + spec deltas + design + tasks.
 4. **Review the proposal** — the ownership checkpoint. Approve or adjust before any code.
 5. **`/opsx:apply`** — Claude Code implements, checking off tasks; commit after apply/verify.
@@ -95,28 +99,29 @@ A community skill can enforce this git discipline automatically (clean tree befo
 
 ## 6. The five-document set
 
-| Doc | Content |
-|---|---|
-| `01-requirements.md` | Problem, scope, actors, use cases, MVP cut |
-| `02-domain-model.md` | Entities, state machine, invariants, ERD, business rules |
-| `03-nfr.md` | i18n, security, resilience, observability, runtime/tooling |
-| `04-architecture.md` | Backend/frontend architecture, persistence, jobs, sync, deployment |
-| `05-openspec-workflow.md` | This document — capabilities, build order, dev workflow |
+| Doc                       | Content                                                            |
+| ------------------------- | ------------------------------------------------------------------ |
+| `01-requirements.md`      | Problem, scope, actors, use cases, MVP cut                         |
+| `02-domain-model.md`      | Entities, state machine, invariants, ERD, business rules           |
+| `03-nfr.md`               | i18n, security, resilience, observability, runtime/tooling         |
+| `04-architecture.md`      | Backend/frontend architecture, persistence, jobs, sync, deployment |
+| `05-openspec-workflow.md` | This document — capabilities, build order, dev workflow            |
 
 ## 7. Next action
 
-Changes 1 and 2 are done. Next is change **3 — clinic-configuration**: the admin
-reference data the scheduler needs (S7-S10). It inherits an authenticated, authorized API,
-so its screens mount into the staff app-shell and its endpoints carry the administrator
-policy from change 2.
+Changes 1 and 2 are done. Change 3 is split (see §3): next is **3a — clinic-catalog**
+(specialties, resource types + buffer, resources, appointment types; S8–S10; deactivation
+refusal rules). Then **3b — professional-configuration** (S7; timezone; dev seed). Both
+inherit an authenticated, authorized API, so their screens mount into the staff app-shell
+and their endpoints carry the administrator policy from change 2.
 
 Per change: branch, `/opsx:explore` (optional), `/opsx:propose <change-id>`, review the
-proposal, `/opsx:apply`, review the diff, `/opsx:archive`.
+proposal, `/opsx:apply`, review the diff, `/opsx:archive`, merge to `main`.
 
 ---
 
 ## Carried-over open item
 
-| # | Item | Status |
-|---|---|---|
+| #   | Item                                  | Status                                                                                                       |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | P-4 | Strict buffer enforcement at DB level | Deferred (documented in `04-architecture.md` §10); revisit only if strict turnaround enforcement is required |
