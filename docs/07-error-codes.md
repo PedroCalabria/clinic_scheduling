@@ -93,6 +93,9 @@ Every error response carries a machine-readable body:
 | `config.in_use` | 409 | cannot deactivate an entity still referenced by active records (e.g. a `Specialty` with active `AppointmentType`s; a `ResourceType` with active `Resource`s or referenced by active `AppointmentType`s) — added in `clinic-catalog` |
 | `config.duplicate_name` | 409 | a catalog entity with that name already exists (active) — added in `clinic-catalog` |
 | `config.not_found` | 404 | referenced catalog/professional-config entity does not exist — added in `clinic-catalog` |
+| `config.specialty_not_held` | 422 | assigning a per-type duration for an appointment type whose specialty the professional does not hold (I2 qualification gate) — added in `professional-configuration` |
+| `config.working_hours_overlap` | 409 | two working-hour templates for the same `dayOfWeek` with overlapping effective ranges — added in `professional-configuration` |
+| `config.working_hours_invalid` | 422 | working-hour segment with `startTime >= endTime` or crossing midnight — added in `professional-configuration` |
 
 ### generic
 | Code | Status | When |
