@@ -31,12 +31,32 @@
     <ForbiddenDomainDependency Include="Testcontainers" />
   </ItemGroup>
 
-  <Target Name="ForbidInfrastructureReferences" BeforeTargets="Build">
+  <!--
+    Runs once per forbidden prefix (target batching via Outputs), so the prefix is a scalar
+    inside the target and the comparison is unambiguous.
+
+    The previous version put %(ForbiddenDomainDependency.Identity) directly in the condition
+    of an ItemGroup batching over @(PackageReference). Two item lists in one condition do not
+    cross-batch: the prefix resolved to empty, and StartsWith('') is true for every string, so
+    the target flagged ANY package rather than a forbidden one. It never showed, because this
+    project had no PackageReference at all until NodaTime became the first (design E3) — the
+    guard had never actually been exercised. Fixed in `professional-configuration`; the
+    ForbiddenGuard tests below are what stop it regressing silently again.
+  -->
+  <Target Name="ForbidInfrastructureReferences"
+          BeforeTargets="Build"
+          Outputs="%(ForbiddenDomainDependency.Identity)">
+
+    <PropertyGroup>
+      <_ForbiddenPrefix>%(ForbiddenDomainDependency.Identity)</_ForbiddenPrefix>
+    </PropertyGroup>
+
     <ItemGroup>
       <_DomainViolation
         Include="@(PackageReference)"
-        Condition="'@(PackageReference)' != '' and $([System.String]::Copy('%(Identity)').StartsWith('%(ForbiddenDomainDependency.Identity)'))" />
+        Condition="'$(_ForbiddenPrefix)' != '' and $([System.String]::Copy('%(Identity)').StartsWith('$(_ForbiddenPrefix)'))" />
     </ItemGroup>
+
     <Error
       Condition="'@(_DomainViolation)' != ''"
       Text="Domain must not reference infrastructure. Offending package(s): @(_DomainViolation). The protected core stays infrastructure-free (00-context.md §3); put the adapter in Api instead." />

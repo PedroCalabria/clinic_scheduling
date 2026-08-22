@@ -192,6 +192,14 @@ async function main() {
   const base = `http://localhost:${port}`;
 
   if (manageStack) {
+    // Volumes first, and this is not tidiness. Several checks assert first-boot behaviour —
+    // the bootstrapped administrator still holding its configured password, chiefly — and one
+    // of them REPLACES that password. Reusing a volume therefore makes the second run of this
+    // script fail at sign-in and cascade into every check that needs a session, which reads as
+    // a broken app and is nothing of the kind. CI is always fresh; local runs should be too.
+    console.log('Removing any previous stack and its volumes…');
+    await run('docker', [...COMPOSE_ARGS, 'down', '-v']);
+
     console.log('Building and starting the stack…');
     await run('docker', [...COMPOSE_ARGS, 'up', '-d', '--build']);
   }
