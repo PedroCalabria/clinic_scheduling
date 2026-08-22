@@ -48,6 +48,7 @@ Every error response carries a machine-readable body:
 | `auth.email_already_in_use` | 409 | staff account creation with a taken email |
 | `auth.account_not_found` | 404 | an administrator acted on a staff account that does not exist (added in `identity-session`) |
 | `auth.password_change_required` | 403 | the bootstrapped administrator must replace the supplied credential before doing anything else (added in `identity-session`) |
+| `auth.current_password_invalid` | 401 | the current password offered on the change-password screen does not match — distinct from `auth.invalid_credentials` because that screen has no email field, so the remedy is one field rather than two (added in `clinic-catalog`) |
 
 ### patient — capability `identity-session`
 | Code | Status | When |
@@ -85,6 +86,13 @@ Every error response carries a machine-readable body:
 | `calendar.not_connected` | 422 | professional has no calendar connection |
 | `calendar.consent_revoked` | 422 | OAuth consent revoked (S2 revoked state) |
 | `calendar.sync_failed` | 503 | Google API unreachable / sync error |
+
+### clinic configuration — capability `clinic-configuration`
+| Code | Status | When |
+|---|---|---|
+| `config.in_use` | 409 | cannot deactivate an entity still referenced by active records (e.g. a `Specialty` with active `AppointmentType`s; a `ResourceType` with active `Resource`s or referenced by active `AppointmentType`s) — added in `clinic-catalog` |
+| `config.duplicate_name` | 409 | a catalog entity with that name already exists (active) — added in `clinic-catalog` |
+| `config.not_found` | 404 | referenced catalog/professional-config entity does not exist — added in `clinic-catalog` |
 
 ### generic
 | Code | Status | When |

@@ -40,6 +40,18 @@ internal static class ErrorCodes
     /// </summary>
     internal const string InvalidCredentials = "auth.invalid_credentials";
 
+    /// <summary>
+    /// The current password offered while changing a password does not match — 401.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="InvalidCredentials"/> on purpose. That code's message names the
+    /// email as well as the password, which is right on a sign-in form and wrong on the
+    /// change-password screen, where there is no email field and the remedy is one field rather
+    /// than two. A shared code forced a message that told the user to check something that was
+    /// not on screen.
+    /// </remarks>
+    internal const string CurrentPasswordInvalid = "auth.current_password_invalid";
+
     /// <summary>Account disabled by an administrator, or locked by the failed-attempt guard — 403.</summary>
     internal const string AccountDisabled = "auth.account_disabled";
 
@@ -82,6 +94,21 @@ internal static class ErrorCodes
 
     /// <summary>Field present but unusable — 400.</summary>
     internal const string ValidationInvalidFormat = "validation.invalid_format";
+
+    /// <summary>
+    /// A catalog entity cannot be retired while active records still reference it — 409
+    /// (added in <c>clinic-catalog</c>).
+    /// </summary>
+    internal const string ConfigInUse = "config.in_use";
+
+    /// <summary>An active catalog entity of that kind already holds the name — 409.</summary>
+    internal const string ConfigDuplicateName = "config.duplicate_name";
+
+    /// <summary>
+    /// A catalog entity does not exist — 404. Also covers "exists but is inactive", because
+    /// from the perspective of active data those are the same answer (design D5).
+    /// </summary>
+    internal const string ConfigNotFound = "config.not_found";
 
     /// <summary>Unhandled error — 500. Never leaks internals.</summary>
     internal const string ServerUnexpected = "server.unexpected";

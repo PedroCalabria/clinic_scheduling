@@ -1,4 +1,5 @@
 using Clinic.Api.Infrastructure.Auth;
+using Clinic.Domain.Configuration;
 using Clinic.Domain.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,6 +29,14 @@ internal sealed class ClinicDbContext(DbContextOptions<ClinicDbContext> options)
     public DbSet<AccessLog> AccessLog => Set<AccessLog>();
 
     public DbSet<Session> Sessions => Set<Session>();
+
+    public DbSet<Specialty> Specialties => Set<Specialty>();
+
+    public DbSet<ResourceType> ResourceTypes => Set<ResourceType>();
+
+    public DbSet<Resource> Resources => Set<Resource>();
+
+    public DbSet<AppointmentType> AppointmentTypes => Set<AppointmentType>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

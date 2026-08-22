@@ -39,6 +39,36 @@ public sealed class BootstrapAndHardeningTests(ApiFixture fixture)
     }
 
     [Fact]
+    public async Task A_wrong_current_password_is_reported_as_the_current_password_not_as_a_sign_in_failure()
+    {
+        // The change-password screen has no email field, so answering with
+        // auth.invalid_credentials ("email and password do not match") sent the user looking
+        // for a field that is not on screen. The code has to name the one thing they can fix.
+        var (host, email, password) = await BootstrapHostAsync();
+        using var _host = host;
+        using var client = fixture.CreateClientFor(host);
+
+        await client.PostAsync("/api/auth/sign-in", new { email, password });
+
+        var refused = await client.PostAsync("/api/auth/password", new
+        {
+            currentPassword = "not-the-current-password",
+            newPassword = "a-genuinely-new-password",
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, refused.StatusCode);
+        Assert.Equal(
+            "auth.current_password_invalid",
+            await InternalSignInTests.ReadCodeAsync(refused));
+
+        // And the hold is still in place, because nothing was changed.
+        var held = await client.GetAsync("/api/staff-accounts");
+
+        Assert.Equal(HttpStatusCode.Forbidden, held.StatusCode);
+        Assert.Equal("auth.password_change_required", await InternalSignInTests.ReadCodeAsync(held));
+    }
+
+    [Fact]
     public async Task Changing_the_bootstrap_password_lifts_the_hold()
     {
         var (host, email, password) = await BootstrapHostAsync();

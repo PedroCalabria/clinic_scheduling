@@ -2,14 +2,18 @@ import { HealthPanel, RequireAuth } from '@clinic/shared';
 import { useTranslation } from 'react-i18next';
 import { Route, Routes } from 'react-router';
 import { AppShell } from './components/AppShell';
+import { AppointmentTypesPage } from './features/catalog/AppointmentTypesPage';
+import { ResourcesPage } from './features/catalog/ResourcesPage';
+import { SpecialtiesPage } from './features/catalog/SpecialtiesPage';
 import { ChangePasswordPage } from './features/password/ChangePasswordPage';
 import { SignInPage } from './features/signin/SignInPage';
 import { UsersPage } from './features/users/UsersPage';
 
 /**
- * The staff console after change 2: sign-in (S0), the app-shell, and users (S11).
+ * The staff console: sign-in (S0), the app-shell, users (S11), and the clinic catalog
+ * (S8-S10, added by `clinic-catalog`).
  *
- * S1-S10 arrive from change 3 onward and mount into the same shell. The catch-all route
+ * S1-S7 arrive from change 3b onward and mount into the same shell. The catch-all route
  * stays for the reason it existed in change 1: a full reload of `/staff/anything` must render
  * this app, which is the client half of Caddy's per-prefix SPA fallback (design D2).
  */
@@ -46,6 +50,37 @@ export function App() {
         element={
           <Guarded allow={['Administrator']}>
             <UsersPage />
+          </Guarded>
+        }
+      />
+
+      {/*
+        The catalog (S8-S10). Administrator-only in the guard AND at the API — the guard is
+        the courtesy, the API's policy is the boundary.
+      */}
+      <Route
+        path="/admin/specialties"
+        element={
+          <Guarded allow={['Administrator']}>
+            <SpecialtiesPage />
+          </Guarded>
+        }
+      />
+
+      <Route
+        path="/admin/resources"
+        element={
+          <Guarded allow={['Administrator']}>
+            <ResourcesPage />
+          </Guarded>
+        }
+      />
+
+      <Route
+        path="/admin/appointment-types"
+        element={
+          <Guarded allow={['Administrator']}>
+            <AppointmentTypesPage />
           </Guarded>
         }
       />
