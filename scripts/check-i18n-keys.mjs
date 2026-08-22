@@ -1,17 +1,23 @@
 #!/usr/bin/env node
 /**
- * Fails when the two product languages do not carry an identical key set.
+ * Fails when the two product languages do not carry an identical key set, or when a
+ * component asks for a key that does not exist.
  *
  * This is the mechanism behind the i18n clause of the Definition of Done: "pt-BR and en
  * keys present for any new user-facing string" is a promise until something checks it.
  * Written in change 1, while there is one small resource pair to check, so it is trivially
  * verifiable now and simply keeps working as every later change adds strings.
  *
+ * The usage scan was added by `clinic-catalog`. Parity alone cannot catch the other half of
+ * the promise: a screen calling `t('catalog.titel')` renders the raw key to the user, and
+ * both languages are equally, identically wrong. Checking statically is what lets "no
+ * missing-key fallback is displayed" be asserted rather than eyeballed in a browser.
+ *
  * Usage: pnpm check:i18n
  */
 
 import { readFile, readdir } from 'node:fs/promises';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -45,6 +51,9 @@ function difference(left, right) {
 }
 
 const problems = [];
+
+/** Key sets per resource directory, reused by the usage scan below. */
+const allKeys = new Map();
 
 for (const directory of RESOURCE_DIRECTORIES) {
   const absolute = join(repoRoot, directory);
@@ -104,8 +113,84 @@ for (const directory of RESOURCE_DIRECTORIES) {
     }
   }
 
+  allKeys.set(directory, referenceKeys);
+
   if (problems.length === 0) {
     console.log(`${directory}: ${referenceKeys.size} keys, consistent across ${REQUIRED_LOCALES.join(' / ')}.`);
+  }
+}
+
+// --- Usage scan: every literal key a component asks for must exist -------------------
+
+/** Source trees whose `t('...')` calls are checked against the shared resources. */
+const SOURCE_DIRECTORIES = ['apps/staff/src', 'apps/patient-portal/src', 'packages/shared/src'];
+
+/**
+ * Matches `t('some.key')` and `t("some.key")` with a literal key.
+ *
+ * Deliberately only literals. A computed key — `t(entry.labelKey)` in the app-shell, or
+ * `t(`roles.${role}`)` — cannot be resolved without running the app, so it is skipped rather
+ * than guessed at. Those are the minority, and the alternative is a scanner that reports
+ * confident nonsense.
+ */
+const LITERAL_KEY = /\bt\(\s*(['"])([A-Za-z0-9_.]+)\1/g;
+
+async function* sourceFiles(directory) {
+  let entries;
+
+  try {
+    entries = await readdir(directory, { withFileTypes: true });
+  } catch {
+    return;
+  }
+
+  for (const entry of entries) {
+    const path = join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      yield* sourceFiles(path);
+    } else if (/\.tsx?$/.test(entry.name)) {
+      yield path;
+    }
+  }
+}
+
+const referenceKeys = allKeys.get('packages/shared/src/i18n');
+
+if (referenceKeys) {
+  const missing = new Map();
+  let scanned = 0;
+  let checked = 0;
+
+  for (const directory of SOURCE_DIRECTORIES) {
+    for await (const file of sourceFiles(join(repoRoot, directory))) {
+      const source = await readFile(file, 'utf8');
+      scanned += 1;
+
+      for (const match of source.matchAll(LITERAL_KEY)) {
+        const key = match[2];
+
+        // Namespaced calls and single-segment identifiers are not resource lookups.
+        if (!key.includes('.')) {
+          continue;
+        }
+
+        checked += 1;
+
+        if (!referenceKeys.has(key)) {
+          const where = file.slice(repoRoot.length + 1).split(sep).join('/');
+          missing.set(key, where);
+        }
+      }
+    }
+  }
+
+  if (missing.size > 0) {
+    for (const [key, where] of missing) {
+      problems.push(`${where}: t('${key}') has no translation in either language.`);
+    }
+  } else {
+    console.log(`i18n usage: ${checked} literal key reference(s) across ${scanned} files all resolve.`);
   }
 }
 

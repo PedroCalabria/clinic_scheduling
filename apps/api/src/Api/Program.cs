@@ -1,3 +1,4 @@
+using Clinic.Api.Features.AdminConfig;
 using Clinic.Api.Features.Auth;
 using Clinic.Api.Features.Health;
 using Clinic.Api.Features.Patients;
@@ -82,5 +83,12 @@ app.MapGetHealth();
 app.MapAuthEndpoints();
 app.MapPatientEndpoints();
 app.MapStaffAccountEndpoints();
+
+// The clinic catalog (S8-S10). Four groups rather than one, because their rules differ where
+// it matters — see the change's design, decision D4.
+app.MapSpecialtyEndpoints();
+app.MapResourceTypeEndpoints();
+app.MapResourceEndpoints();
+app.MapAppointmentTypeEndpoints();
 
 app.Run();

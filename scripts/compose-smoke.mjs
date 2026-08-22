@@ -450,6 +450,151 @@ async function main() {
   });
 
   // --- only Caddy is public (Decision U) -------------------------------------------
+  await check('the clinic catalog works through Caddy and enforces its reference rules', async () => {
+    // Runs after the checks that assert the bootstrap password is still in place, because
+    // this one has to replace it: the password gate refuses everything else until it does
+    // (design A6), and the catalog is "everything else".
+    const email = await readEnvValue('Auth__BootstrapAdministrator__Email', null);
+    const bootstrapPassword = await readEnvValue('Auth__BootstrapAdministrator__Password', null);
+
+    assert(email && bootstrapPassword, 'no bootstrap administrator configured in .env');
+
+    const primed = await fetch(`${base}/api/health`);
+    const csrf = cookieValue(readSetCookie(primed, 'clinic.csrf'));
+
+    const signIn = await fetch(`${base}/api/auth/sign-in`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrf,
+        Cookie: `clinic.csrf=${csrf}`,
+      },
+      body: JSON.stringify({ email, password: bootstrapPassword }),
+    });
+
+    assert(signIn.status === 200, `sign-in failed: ${signIn.status}`);
+
+    const session = cookieValue(readSetCookie(signIn, 'clinic.session'));
+
+    const replaced = await fetch(`${base}/api/auth/password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrf,
+        Cookie: `clinic.session=${session}; clinic.csrf=${csrf}`,
+      },
+      body: JSON.stringify({
+        currentPassword: bootstrapPassword,
+        newPassword: 'smoke-replacement-password-1',
+      }),
+    });
+
+    assert(replaced.status === 200, `password replacement failed: ${replaced.status}`);
+
+    // Replacing the password revokes every session the user held and issues a fresh one
+    // (ChangePassword.cs) — so the cookie obtained above is deliberately dead from here on,
+    // and everything that follows must carry the rotated one. Reusing the old cookie is how
+    // this check first failed, with a 401 that looked like a catalog problem and was not.
+    const rotated = cookieValue(readSetCookie(replaced, 'clinic.session'));
+
+    assert(rotated, 'the password change did not issue a replacement session cookie');
+
+    const cookie = `clinic.session=${rotated}; clinic.csrf=${csrf}`;
+
+    /** POSTs JSON as the signed-in administrator and returns [status, body]. */
+    async function post(path, body) {
+      const response = await fetch(`${base}${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, Cookie: cookie },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+
+      const text = await response.text();
+
+      return [response.status, text ? JSON.parse(text) : null];
+    }
+
+    const suffix = Date.now();
+
+    const [specialtyStatus, specialty] = await post('/api/config/specialties', {
+      name: `Cardiologia ${suffix}`,
+    });
+    assert(specialtyStatus === 201, `creating a specialty failed: ${specialtyStatus}`);
+
+    const [typeStatus, resourceType] = await post('/api/config/resource-types', {
+      name: `Consultorio ${suffix}`,
+      bufferMinutes: 15,
+    });
+    assert(typeStatus === 201, `creating a resource type failed: ${typeStatus}`);
+
+    const [resourceStatus] = await post('/api/config/resources', {
+      name: `Sala ${suffix}`,
+      resourceTypeId: resourceType.id,
+    });
+    assert(resourceStatus === 201, `creating a resource failed: ${resourceStatus}`);
+
+    const [appointmentStatus] = await post('/api/config/appointment-types', {
+      name: `Consulta ${suffix}`,
+      specialtyId: specialty.id,
+      requiredResourceTypeId: resourceType.id,
+    });
+    assert(appointmentStatus === 201, `creating an appointment type failed: ${appointmentStatus}`);
+
+    // The rule this change exists for, asserted against the real stack: the specialty is now
+    // referenced by an active appointment type, so retiring it must be refused — and the
+    // refusal must say how much is in the way.
+    const [refusedStatus, refusal] = await post(
+      `/api/config/specialties/${specialty.id}/deactivate`,
+    );
+
+    assert(refusedStatus === 409, `expected 409 for an in-use specialty, got ${refusedStatus}`);
+    assert(refusal.code === 'config.in_use', `expected config.in_use, got ${refusal.code}`);
+    assert(
+      refusal.params?.records === 1,
+      `expected the refusal to name 1 blocking record, got ${JSON.stringify(refusal.params)}`,
+    );
+
+    // And the list resolves both references — the query whose ordering broke in development
+    // and which no in-process test would have caught differently, but which a 500 here would.
+    const listed = await fetch(`${base}/api/config/appointment-types`, { headers: { Cookie: cookie } });
+
+    assert(listed.status === 200, `listing appointment types failed: ${listed.status}`);
+
+    const entries = await listed.json();
+    const mine = entries.find((entry) => entry.name === `Consulta ${suffix}`);
+
+    assert(mine, 'the created appointment type was not listed');
+    assert(
+      mine.specialtyName === `Cardiologia ${suffix}`,
+      `the specialty name did not resolve: ${mine.specialtyName}`,
+    );
+    assert(
+      mine.requiredResourceTypeName === `Consultorio ${suffix}`,
+      `the resource type name did not resolve: ${mine.requiredResourceTypeName}`,
+    );
+  });
+
+  await check('the catalog screens resolve as staff deep links', async () => {
+    // The client half of the SPA fallback, for the three routes this change adds: a full page
+    // load of each must return the STAFF index, not a 404 and not the portal.
+    for (const path of [
+      '/staff/admin/specialties',
+      '/staff/admin/resources',
+      '/staff/admin/appointment-types',
+    ]) {
+      const response = await fetch(`${base}${path}`);
+
+      assert(response.status === 200, `${path} returned ${response.status}`);
+
+      const html = await response.text();
+
+      assert(
+        html.includes('/staff/assets/'),
+        `${path} did not serve the staff build (asset prefix missing)`,
+      );
+    }
+  });
+
   await check('api and db publish no host ports', async () => {
     for (const name of ['api', 'db']) {
       const publishers = services.get(name)?.Publishers ?? [];

@@ -310,3 +310,160 @@ export async function createStaffAccount(input: {
 export function disableStaffAccount(id: string): Promise<undefined> {
   return apiFetch<undefined>(`/staff-accounts/${id}/disable`, { method: 'POST' }) as Promise<undefined>;
 }
+
+// --- Clinic catalog (S8-S10) --------------------------------------------------------
+
+/**
+ * A catalog entity's lifecycle is one reversible flag (design D1), so `isActive` is all the
+ * screens need — the API deliberately does not ship the retirement timestamp.
+ */
+export interface SpecialtyResponse {
+  id: string;
+  name: string;
+  isActive: boolean;
+}
+
+export interface ResourceTypeResponse {
+  id: string;
+  name: string;
+  /** Turnaround minutes kept out of the bookable window (F1). */
+  bufferMinutes: number;
+  isActive: boolean;
+}
+
+export interface ResourceResponse {
+  id: string;
+  name: string;
+  resourceTypeId: string;
+  resourceTypeName: string;
+  isActive: boolean;
+}
+
+/** No duration: that is per professional × type, and lives on change 3b's junction. */
+export interface AppointmentTypeResponse {
+  id: string;
+  name: string;
+  specialtyId: string;
+  specialtyName: string;
+  requiredResourceTypeId: string;
+  requiredResourceTypeName: string;
+  isActive: boolean;
+}
+
+/** The four catalog collections, as their route segments. */
+export type CatalogCollection =
+  | 'specialties'
+  | 'resource-types'
+  | 'resources'
+  | 'appointment-types';
+
+/**
+ * Retires or restores a catalog entity.
+ *
+ * One function for all four kinds because the call is genuinely identical — the rules that
+ * differ per entity are enforced server-side, which is where they belong. The refusal arrives
+ * as `config.in_use`, `config.duplicate_name`, or `config.not_found` and the screen
+ * translates it.
+ */
+export function setCatalogEntityActive(
+  collection: CatalogCollection,
+  id: string,
+  active: boolean,
+): Promise<undefined> {
+  const action = active ? 'reactivate' : 'deactivate';
+
+  return apiFetch<undefined>(`/config/${collection}/${id}/${action}`, {
+    method: 'POST',
+  }) as Promise<undefined>;
+}
+
+export async function listSpecialties(): Promise<SpecialtyResponse[]> {
+  return (await apiFetch<SpecialtyResponse[]>('/config/specialties'))!;
+}
+
+export async function createSpecialty(name: string): Promise<SpecialtyResponse> {
+  return (await apiFetch<SpecialtyResponse>('/config/specialties', {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  }))!;
+}
+
+export async function renameSpecialty(id: string, name: string): Promise<SpecialtyResponse> {
+  return (await apiFetch<SpecialtyResponse>(`/config/specialties/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ name }),
+  }))!;
+}
+
+export async function listResourceTypes(): Promise<ResourceTypeResponse[]> {
+  return (await apiFetch<ResourceTypeResponse[]>('/config/resource-types'))!;
+}
+
+export async function createResourceType(input: {
+  name: string;
+  bufferMinutes: number;
+}): Promise<ResourceTypeResponse> {
+  return (await apiFetch<ResourceTypeResponse>('/config/resource-types', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }))!;
+}
+
+export async function updateResourceType(
+  id: string,
+  input: { name: string; bufferMinutes: number },
+): Promise<ResourceTypeResponse> {
+  return (await apiFetch<ResourceTypeResponse>(`/config/resource-types/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  }))!;
+}
+
+export async function listResources(): Promise<ResourceResponse[]> {
+  return (await apiFetch<ResourceResponse[]>('/config/resources'))!;
+}
+
+export async function createResource(input: {
+  name: string;
+  resourceTypeId: string;
+}): Promise<ResourceResponse> {
+  return (await apiFetch<ResourceResponse>('/config/resources', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }))!;
+}
+
+export async function updateResource(
+  id: string,
+  input: { name: string; resourceTypeId: string },
+): Promise<ResourceResponse> {
+  return (await apiFetch<ResourceResponse>(`/config/resources/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  }))!;
+}
+
+export async function listAppointmentTypes(): Promise<AppointmentTypeResponse[]> {
+  return (await apiFetch<AppointmentTypeResponse[]>('/config/appointment-types'))!;
+}
+
+export async function createAppointmentType(input: {
+  name: string;
+  specialtyId: string;
+  requiredResourceTypeId: string;
+}): Promise<AppointmentTypeResponse> {
+  return (await apiFetch<AppointmentTypeResponse>('/config/appointment-types', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }))!;
+}
+
+export async function updateAppointmentType(
+  id: string,
+  input: { name: string; specialtyId: string; requiredResourceTypeId: string },
+): Promise<AppointmentTypeResponse> {
+  return (await apiFetch<AppointmentTypeResponse>(`/config/appointment-types/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  }))!;
+}
