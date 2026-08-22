@@ -5,6 +5,7 @@ import { AppShell } from './components/AppShell';
 import { AppointmentTypesPage } from './features/catalog/AppointmentTypesPage';
 import { ResourcesPage } from './features/catalog/ResourcesPage';
 import { SpecialtiesPage } from './features/catalog/SpecialtiesPage';
+import { ProfessionalsPage } from './features/professionals/ProfessionalsPage';
 import { ChangePasswordPage } from './features/password/ChangePasswordPage';
 import { SignInPage } from './features/signin/SignInPage';
 import { UsersPage } from './features/users/UsersPage';
@@ -13,7 +14,7 @@ import { UsersPage } from './features/users/UsersPage';
  * The staff console: sign-in (S0), the app-shell, users (S11), and the clinic catalog
  * (S8-S10, added by `clinic-catalog`).
  *
- * S1-S7 arrive from change 3b onward and mount into the same shell. The catch-all route
+ * S1-S6 arrive from change 4 onward and mount into the same shell. The catch-all route
  * stays for the reason it existed in change 1: a full reload of `/staff/anything` must render
  * this app, which is the client half of Caddy's per-prefix SPA fallback (design D2).
  */
@@ -81,6 +82,16 @@ export function App() {
         element={
           <Guarded allow={['Administrator']}>
             <AppointmentTypesPage />
+          </Guarded>
+        }
+      />
+
+      {/* S7 — a professional's clinical configuration (change 3b). */}
+      <Route
+        path="/admin/professionals"
+        element={
+          <Guarded allow={['Administrator']}>
+            <ProfessionalsPage />
           </Guarded>
         }
       />

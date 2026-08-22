@@ -59,6 +59,12 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
       - ConnectionStrings__Default=Host=db;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      # Required, unlike the Auth knobs below: there is no code default to fall back on, so
+      # this is set rather than passed through. The fallback here is a documented value, not
+      # an empty string — an unset zone id fails startup by design.
+      - Clinic__Timezone=${Clinic__Timezone:-America/Sao_Paulo}
+      # Opt-in, and inert outside Development regardless of the value.
+      - Clinic__SeedDevelopmentData=${Clinic__SeedDevelopmentData:-false}
       # Session, lockout, and consent tuning. Absent means "use the code default".
       - Auth__SessionLifetime
       - Auth__LockoutThreshold

@@ -110,6 +110,25 @@ internal static class ErrorCodes
     /// </summary>
     internal const string ConfigNotFound = "config.not_found";
 
+    /// <summary>
+    /// A per-type duration was set for an appointment type whose specialty the professional
+    /// does not hold — 422. The gate behind invariant I2 (added in
+    /// <c>professional-configuration</c>).
+    /// </summary>
+    internal const string ConfigSpecialtyNotHeld = "config.specialty_not_held";
+
+    /// <summary>
+    /// A working-hour segment collides with one already stored, or a date already carries an
+    /// exception — 409.
+    /// </summary>
+    internal const string ConfigWorkingHoursOverlap = "config.working_hours_overlap";
+
+    /// <summary>
+    /// A working-hour segment is impossible: its end is not after its start, which covers both
+    /// zero-length and midnight-crossing — 422.
+    /// </summary>
+    internal const string ConfigWorkingHoursInvalid = "config.working_hours_invalid";
+
     /// <summary>Unhandled error — 500. Never leaks internals.</summary>
     internal const string ServerUnexpected = "server.unexpected";
 }

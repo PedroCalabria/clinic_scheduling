@@ -55,7 +55,7 @@ Grouped by responsibility. All entities are soft-delete only (I10).
 - **AppointmentType** — belongs to a `Specialty`, requires a `ResourceType`. The "what kind of visit" concept that ties the three constraints together.
 - **ProfessionalAppointmentType** — junction (professional × appointment type) carrying `durationMinutes` (Decision C). This is what lets Dr. A run a cardiology visit in 40 min and Dr. B in 50 min.
 - **WorkingHoursTemplate** — recurring availability per professional (`dayOfWeek`, `startTime`, `endTime`, effective dates).
-- **WorkingHoursException** — one-off overrides (holiday, extra shift).
+- **WorkingHoursException** — one-off, **per-professional** overrides (an individual's extra shift or day off). Clinic-wide holidays are out of MVP scope — a shared clinic calendar would be a new concept; for now a clinic-wide closure is modeled as one exception per professional.
 
 ### Scheduling core
 - **Appointment** — aggregate root. References patient, professional, resource, appointmentType; `timeRange` (`start`/`end`); `status` (state machine); `source` (self-service | front-desk); `externalEventId` (outbound sync idempotency); `rescheduledFromId` (self-reference preserving history).
@@ -120,7 +120,7 @@ For **"any professional of specialty X"**, the solver runs this across every eli
 Must always hold, regardless of code path:
 
 - **I1** — `start < end`; duration equals the `ProfessionalAppointmentType.durationMinutes` **at booking time**, baked into `time_range`. Later changes to that duration affect only future searches, never existing appointments (surfaced by the S10 design; naturally holds because the appointment stores its own `time_range`).
-- **I2** — the professional holds the `Specialty` of the `AppointmentType`.
+- **I2** — the professional holds the `Specialty` of the `AppointmentType`. `ProfessionalSpecialty` is the **qualification gate** and the data source for this invariant: a `ProfessionalAppointmentType` (duration) may only be assigned for a type whose specialty the professional holds (enforced in `professional-configuration`; `config.specialty_not_held` otherwise). This keeps `ProfessionalSpecialty` a first-class concept (credentialing) distinct from `ProfessionalAppointmentType` (operational duration config), not derivable/duplicate data.
 - **I3** — the `Resource` is of the `ResourceType` required by the `AppointmentType`.
 - **I4 / I5 / I6** — no interval overlap for the same **professional**, the same **resource**, and the same **patient** (among active appointments).
 - **I7** — no active appointment overlaps a `TimeBlock` for the same professional. Enforced on **both** mutating paths — booking checks `TimeBlock`s; internal-block creation checks active appointments and is refused on collision ("you have an appointment at 14:30; cancel it first"). Both paths run under a professional-scoped lock so the cross-table check is race-safe (see enforcement mapping, G1/G2).

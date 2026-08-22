@@ -95,6 +95,7 @@ A community skill can enforce this git discipline automatically (clean tree befo
 - **Tests:** unit tests for domain-core invariants; integration tests against a real PostgreSQL for the `EXCLUDE` constraint and the Dapper availability queries.
 - **i18n:** pt-BR / en keys present for any new user-facing strings.
 - **Behavior:** the demonstrable increment works end to end.
+- **Validation guide:** `openspec/changes/<id>/validation.md` lists the manual, human-only checks (browser UX, both locales, Compose behaviors); they are run against the local app and confirmed before archive (see `00-context.md` §9).
 - **Spec:** the change is archived into the living spec; `openspec validate --strict` passes.
 
 ## 6. The five-document set

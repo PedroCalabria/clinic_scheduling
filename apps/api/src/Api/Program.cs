@@ -7,7 +7,9 @@ using Clinic.Api.Infrastructure.Auth;
 using Clinic.Api.Infrastructure.Errors;
 using Clinic.Api.Infrastructure.Observability;
 using Clinic.Api.Infrastructure.Persistence;
+using Clinic.Api.Infrastructure.Time;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 using Serilog.Formatting.Compact;
 
@@ -36,6 +38,18 @@ builder.Services.AddDbContext<ClinicDbContext>(options => options.UseNpgsql(conn
 // so it precedes every other hosted service.
 builder.Services.AddHostedService<DatabaseMigrationStartupService>();
 
+// --- Time (Decision H) --------------------------------------------------------------
+// Required configuration with no default, validated against the zone database before the
+// app serves traffic. A wrong-but-plausible zone id would otherwise surface in change 4 as
+// appointments an hour out, not as an error (design E3).
+builder.Services.AddOptions<ClinicTimeOptions>()
+    .Bind(builder.Configuration.GetSection(ClinicTimeOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<IValidateOptions<ClinicTimeOptions>, ClinicTimeOptionsValidator>();
+builder.Services.AddSingleton<ClinicTimezone>();
+
 // --- Identity & session (Decision J, design A1) -------------------------------------
 // Registers the session store, the password hasher, the custom authentication scheme, and
 // the role policies — including the authenticated-by-default fallback, so an endpoint
@@ -46,6 +60,10 @@ builder.Services.AddLoginRateLimiting();
 // Registered AFTER the migration service so the schema exists when it runs (design A6).
 // Idempotent, so it is safe on every boot rather than only the first.
 builder.Services.AddHostedService<AdministratorBootstrap>();
+
+// A runnable demo clinic, development only and opt-in (design E6). Registered last, so both
+// the schema and the administrator exist before it runs.
+builder.Services.AddHostedService<DevelopmentClinicSeed>();
 
 // --- Health checks ------------------------------------------------------------------
 // AddDbContextCheck issues a real CanConnect against PostgreSQL, so the check covers
@@ -90,5 +108,6 @@ app.MapSpecialtyEndpoints();
 app.MapResourceTypeEndpoints();
 app.MapResourceEndpoints();
 app.MapAppointmentTypeEndpoints();
+app.MapProfessionalEndpoints();
 
 app.Run();

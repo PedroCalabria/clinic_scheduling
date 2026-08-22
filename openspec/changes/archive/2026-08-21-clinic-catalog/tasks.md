@@ -69,7 +69,7 @@
 - [x] 9.3 Build S10 — appointment types, with specialty and required-resource-type choosers offering **only active** records
 - [x] 9.4 Add the three navigation entries to the staff app-shell under the administrator condition, and confirm a front-desk user sees none of them while the API still refuses the endpoints directly
 - [x] 9.5 Verify all three screens in pt-BR and en with no missing-key fallback
-- [ ] 9.6 Verify the keyboard and contrast baseline on the dialog — focus trapped, Escape closes, focus returns to the trigger
+- [x] 9.6 Verify the keyboard and contrast baseline on the dialog — focus trapped, Escape closes, focus returns to the trigger
 
 ## 10. Documentation
 
@@ -84,7 +84,7 @@
 - [x] 11.3 A duplicate active name is refused with `config.duplicate_name`, and a name freed by deactivation can be reused (tested)
 - [x] 11.4 Reactivation works, and is refused when the name was taken or an outbound reference has gone inactive (tested)
 - [x] 11.5 A front-desk user is refused `403 auth.forbidden` on catalog endpoints, distinct from the `401` an anonymous caller gets (tested)
-- [ ] 11.6 The three screens are functional through Caddy, each rendering in pt-BR and en with no missing-key fallback
+- [x] 11.6 The three screens are functional through Caddy, each rendering in pt-BR and en with no missing-key fallback
 - [x] 11.7 `GET /api/health` and both change-2 sign-in paths still work unchanged through the proxy
 - [x] 11.8 Unit and integration tests green in CI against real PostgreSQL
 - [x] 11.9 `openspec validate clinic-catalog --strict` passes

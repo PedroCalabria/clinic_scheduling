@@ -21,6 +21,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!--
+      NodaTime is a modelling library, not infrastructure, and the distinction is the point:
+      it adds value types (LocalTime, IsoDayOfWeek, DateTimeZone) and no I/O, no connection,
+      no framework. Working hours are wall-clock times rather than instants (design E3), and
+      with NodaTime that is a compile-time distinction instead of a comment on a TimeOnly.
+
+      This is a deliberate judgement rather than an omission from the forbidden list below:
+      the rule the list enforces is "the core does not know how anything is stored or served",
+      which a date library does not violate. The zone-id validation and the conversion that
+      change 4 needs live in Api, where the configuration is read.
+    -->
+    <PackageReference Include="NodaTime" Version="3.3.3" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Package name prefixes that must never appear in this project. -->
     <ForbiddenDomainDependency Include="Microsoft.EntityFrameworkCore" />
     <ForbiddenDomainDependency Include="Microsoft.AspNetCore" />
@@ -31,12 +46,32 @@
     <ForbiddenDomainDependency Include="Testcontainers" />
   </ItemGroup>
 
-  <Target Name="ForbidInfrastructureReferences" BeforeTargets="Build">
+  <!--
+    Runs once per forbidden prefix (target batching via Outputs), so the prefix is a scalar
+    inside the target and the comparison is unambiguous.
+
+    The previous version put %(ForbiddenDomainDependency.Identity) directly in the condition
+    of an ItemGroup batching over @(PackageReference). Two item lists in one condition do not
+    cross-batch: the prefix resolved to empty, and StartsWith('') is true for every string, so
+    the target flagged ANY package rather than a forbidden one. It never showed, because this
+    project had no PackageReference at all until NodaTime became the first (design E3) — the
+    guard had never actually been exercised. Fixed in `professional-configuration`; the
+    ForbiddenGuard tests below are what stop it regressing silently again.
+  -->
+  <Target Name="ForbidInfrastructureReferences"
+          BeforeTargets="Build"
+          Outputs="%(ForbiddenDomainDependency.Identity)">
+
+    <PropertyGroup>
+      <_ForbiddenPrefix>%(ForbiddenDomainDependency.Identity)</_ForbiddenPrefix>
+    </PropertyGroup>
+
     <ItemGroup>
       <_DomainViolation
         Include="@(PackageReference)"
-        Condition="'@(PackageReference)' != '' and $([System.String]::Copy('%(Identity)').StartsWith('%(ForbiddenDomainDependency.Identity)'))" />
+        Condition="'$(_ForbiddenPrefix)' != '' and $([System.String]::Copy('%(Identity)').StartsWith('$(_ForbiddenPrefix)'))" />
     </ItemGroup>
+
     <Error
       Condition="'@(_DomainViolation)' != ''"
       Text="Domain must not reference infrastructure. Offending package(s): @(_DomainViolation). The protected core stays infrastructure-free (00-context.md §3); put the adapter in Api instead." />

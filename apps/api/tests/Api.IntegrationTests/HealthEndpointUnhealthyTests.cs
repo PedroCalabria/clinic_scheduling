@@ -27,9 +27,16 @@ public sealed class HealthEndpointUnhealthyTests : IAsyncLifetime
     {
         await _database.StartAsync();
 
+        // This class owns its host rather than borrowing the fixture's, so it has to supply
+        // every required setting itself. Clinic:Timezone has no default by design
+        // (professional-configuration, E3), so a host without it does not start at all —
+        // which would look like a health-check failure here and be nothing of the kind.
         _factory = new WebApplicationFactory<Program>()
             .WithWebHostBuilder(builder =>
-                builder.UseSetting("ConnectionStrings:Default", _database.GetConnectionString()));
+            {
+                builder.UseSetting("ConnectionStrings:Default", _database.GetConnectionString());
+                builder.UseSetting("Clinic:Timezone", ApiFixture.ClinicTimezoneId);
+            });
 
         _ = _factory.Services;
     }

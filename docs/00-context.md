@@ -62,9 +62,14 @@ Two SPAs (patient-portal, staff) + `packages/shared`. Feature-folder structure m
 ## 5. Cross-cutting conventions (inherited by every change)
 
 - **Error contract (Decision I):** the API returns `{ code, params? }`; the frontend translates. Codes come from the catalogue in `07-error-codes.md` — **reuse existing codes; add new ones there, never invent per-slice shapes.**
-- **Time (Decision H):** store UTC (`tstzrange`); one configured **clinic timezone** for display and for converting wall-clock working hours to UTC instants. Config: `Clinic__Timezone` (IANA id, e.g. `America/Sao_Paulo`) in `.env.example`. Conversion uses **NodaTime** (explicit handling of DST-ambiguous/nonexistent local times) rather than fixed offsets — Brazil has no DST today, so an offset bug would be invisible in tests and only surface if the law changes or the clinic moves. The wall-clock↔UTC conversion first appears in `professional-configuration` (3b), where `WorkingHoursTemplate` meets appointments.
+- **Time (Decision H):** store UTC (`tstzrange`); one configured **clinic timezone** for display and for converting wall-clock working hours to UTC instants. Config: `Clinic__Timezone` (IANA id, e.g. `America/Sao_Paulo`) in `.env.example`. Conversion uses **NodaTime** (explicit handling of DST-ambiguous/nonexistent local times) rather than fixed offsets — Brazil has no DST today, so an offset bug would be invisible in tests and only surface if the law changes or the clinic moves. `professional-configuration` (3b) introduces `Clinic__Timezone` + NodaTime and **stores** wall-clock working hours; the actual wall-clock→UTC **conversion** first runs in `availability-read` (change 4), where the solver turns a professional's wall-clock hours into UTC instants for specific dates — 3b has no appointments to convert against yet.
 - **Dev seed:** an **idempotent** dev-only seed (same spirit as the env-seeded admin) provisions a full runnable clinic — specialties, resource types, resources, appointment types, and a professional with specialties, durations, and working hours — so every change from `availability-read` on has something to demonstrate against without ~30 minutes of form-filling. Completed in `professional-configuration` (3b); never runs in production.
 - **Soft-delete only** everywhere (I10); never hard-delete.
+- **Wall-clock vs instant:** a recurring rule ("every Monday 09:00") is not an instant and is
+  stored as `LocalTime`/`LocalDate` in `time`/`date` columns — never `timestamptz`, which Postgres
+  would shift by session timezone. Audit columns (`created_at_utc`) *are* instants and stay
+  `timestamptz`. Established in `professional-configuration`; the conversion against a concrete
+  date belongs to whoever supplies the date.
 - **Session (Decision J):** OIDC + internal accounts both resolve to the app's own session. Mechanism (**Option C**): the cookie holds an **opaque session id**; a `Session` table is the single source of truth. Revoke = flag the row, effective on the very next request (revocation *by construction*, not a stale claims copy). A custom `AuthenticationHandler` does only the credential lookup — `[Authorize]`, policies, and RBAC still come from the framework. Password hashing borrows `PasswordHasher<T>` without the Identity store. Session-row cleanup is **expiry-on-read** for now; a periodic sweep is a documented revisit trigger for when Hangfire lands (change 6). Cookies are **`Secure` always** (localhost is a secure context — no env-conditional flags).
 - **Authorization:** RBAC by role + ownership check on patient data. Roles are named
   policies applied at the endpoint; ownership goes through one guard over a single domain
@@ -74,7 +79,12 @@ Two SPAs (patient-portal, staff) + `packages/shared`. Feature-folder structure m
 - **Provisioning (change 2):** an unknown Google email becomes a **patient**; a professional
   is **pre-created by an administrator** (S11) and claimed by their first Google sign-in; a
   Google sign-in whose address belongs to an internal account is **refused**. Roles are never
-  inferred from the identity provider.
+  inferred from the identity provider. The `User` (identity) and the `Professional` row (clinical
+  configuration) are created in **separate steps** (Fork 1 · option iii): an administrator invites
+  the professional in S11 (change 2 — creates the `User`, `Role=Professional`, `Status=PendingClaim`);
+  the `Professional` row is created later in S7 (change 3b) on first configuration — S7 lists
+  `User where Role=Professional` and the row is born on first save. identity-session owns the
+  professional's identity; clinic-configuration owns their clinical setup.
 - **Secrets** outside the repo (env / Docker secrets); `.env.example` committed.
 - **Logging:** Serilog structured logs, correlation id per request and per job/webhook. The header is **`X-Correlation-ID`** — read from the inbound request when present, generated when absent, always echoed in the response. Chosen over `traceparent` because W3C trace context buys distributed-tracing interoperability this project has no consumer for (single deployable, no tracing backend — `03-nfr.md` §4 deliberately keeps observability proportional). Revisit only if a real tracing stack is introduced.
 
@@ -89,14 +99,23 @@ Two SPAs (patient-portal, staff) + `packages/shared`. Feature-folder structure m
 
 ## 7. Definition of Done (every change)
 
-Tests (unit + integration) green in CI; i18n keys present (pt-BR + en) for new user-facing strings; the demonstrable behavior works end to end; `openspec validate --strict` passes; **`README.md`'s status table reflects what now works** (a 1–3 line edit, made when the change reaches `main` — see §8); the change is archived into the living spec.
+Tests (unit + integration) green in CI; i18n keys present (pt-BR + en) for new user-facing strings; the demonstrable behavior works end to end; `openspec validate --strict` passes; a **validation guide is produced and its checks are actually run** (see §9); **`README.md`'s status table reflects what now works** (a 1–3 line edit, made when the change reaches `main` — see §8); the change is archived into the living spec.
 
 ## 8. The README is the outward-facing surface
 
 `README.md` explains the project to recruiters and potential clients who may not be technical. It is written once and kept current cheaply, because only three parts of it move:
 
 - the **status table** — one cell per change;
-- the **"N of 8 increments shipped"** line — only when N changes;
+- the **"N of 9 increments shipped"** line — only when N changes;
 - the **local-run section** — only when a change adds a prerequisite or an environment variable.
 
 Everything else derives from these docs, so it moves only when a documented decision moves. The status cell flips when the change reaches `main`, not when it is applied — otherwise `main`'s README claims a capability whose code is not on `main`. Rewriting the README per change is not the intent and is explicitly out of scope for a change's task list.
+
+## 9. The validation guide (human verification)
+
+Automated tests cover domain invariants, DB constraints, and API behavior — but **not** browser-level UX, both-locale rendering, visual/interaction correctness (e.g. a dialog's focus trap), or the Compose stack as a user experiences it. Every change therefore ends by producing a **validation guide** at `openspec/changes/<id>/validation.md`: a numbered list of the manual checks a human must run against a locally-running app.
+
+- **Each item names:** the role to act as, the screen/route, the action, the expected result — and, where user-facing, that it is checked in **both pt-BR and en**.
+- **When:** produced during `apply`/`verify`; the maintainer **runs the checks against the local app and confirms them before archive/merge**. The change is not done until the guide has been executed.
+- **Why:** this replaces the anti-pattern of archiving with human-verification task boxes left unchecked (as happened in `identity-session` and `clinic-catalog`). The guide collects exactly the human-only surface in one place, so it stops being buried, unchecked boxes.
+- **Scope:** only what tests cannot assert. If a check *can* be automated, it belongs in the test suite, not the guide.

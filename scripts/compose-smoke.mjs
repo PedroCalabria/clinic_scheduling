@@ -192,6 +192,14 @@ async function main() {
   const base = `http://localhost:${port}`;
 
   if (manageStack) {
+    // Volumes first, and this is not tidiness. Several checks assert first-boot behaviour —
+    // the bootstrapped administrator still holding its configured password, chiefly — and one
+    // of them REPLACES that password. Reusing a volume therefore makes the second run of this
+    // script fail at sign-in and cascade into every check that needs a session, which reads as
+    // a broken app and is nothing of the kind. CI is always fresh; local runs should be too.
+    console.log('Removing any previous stack and its volumes…');
+    await run('docker', [...COMPOSE_ARGS, 'down', '-v']);
+
     console.log('Building and starting the stack…');
     await run('docker', [...COMPOSE_ARGS, 'up', '-d', '--build']);
   }
@@ -450,6 +458,12 @@ async function main() {
   });
 
   // --- only Caddy is public (Decision U) -------------------------------------------
+  // Shared by the catalog and professional-configuration checks: one signed-in administrator
+  // whose bootstrap password has already been replaced. Replacing it twice would fail, so the
+  // second check reuses this session rather than establishing its own.
+  let cookie = '';
+  let csrf = '';
+
   await check('the clinic catalog works through Caddy and enforces its reference rules', async () => {
     // Runs after the checks that assert the bootstrap password is still in place, because
     // this one has to replace it: the password gate refuses everything else until it does
@@ -460,7 +474,7 @@ async function main() {
     assert(email && bootstrapPassword, 'no bootstrap administrator configured in .env');
 
     const primed = await fetch(`${base}/api/health`);
-    const csrf = cookieValue(readSetCookie(primed, 'clinic.csrf'));
+    csrf = cookieValue(readSetCookie(primed, 'clinic.csrf'));
 
     const signIn = await fetch(`${base}/api/auth/sign-in`, {
       method: 'POST',
@@ -499,7 +513,7 @@ async function main() {
 
     assert(rotated, 'the password change did not issue a replacement session cookie');
 
-    const cookie = `clinic.session=${rotated}; clinic.csrf=${csrf}`;
+    cookie = `clinic.session=${rotated}; clinic.csrf=${csrf}`;
 
     /** POSTs JSON as the signed-in administrator and returns [status, body]. */
     async function post(path, body) {
@@ -571,6 +585,132 @@ async function main() {
     assert(
       mine.requiredResourceTypeName === `Consultorio ${suffix}`,
       `the resource type name did not resolve: ${mine.requiredResourceTypeName}`,
+    );
+  });
+
+  await check('a professional can be configured through Caddy, gate and all', async () => {
+    // Reuses the administrator session the catalog check established, password already replaced.
+    const suffix = Date.now();
+
+    async function send(method, path, body) {
+      const response = await fetch(`${base}${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf, Cookie: cookie },
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+
+      const text = await response.text();
+
+      return [response.status, text ? JSON.parse(text) : null];
+    }
+
+    // A professional invited exactly as an administrator would, through S11.
+    const [invited, invitedBody] = await send('POST', '/api/staff-accounts', {
+      email: `dr-smoke-${suffix}@example.test`,
+      role: 'Professional',
+    });
+
+    assert(invited === 201, `inviting a professional failed: ${invited}`);
+
+    const userId = invitedBody.id;
+
+    // Two specialties: one this professional will hold, one they will not.
+    const [heldStatus, held] = await send('POST', '/api/config/specialties', { name: `Cardio ${suffix}` });
+    const [unheldStatus, unheld] = await send('POST', '/api/config/specialties', { name: `Derma ${suffix}` });
+
+    assert(heldStatus === 201 && unheldStatus === 201, 'creating specialties failed');
+
+    const [rtStatus, resourceType] = await send('POST', '/api/config/resource-types', {
+      name: `Sala ${suffix}`,
+      bufferMinutes: 15,
+    });
+
+    assert(rtStatus === 201, `creating a resource type failed: ${rtStatus}`);
+
+    const [allowedStatus, allowedVisit] = await send('POST', '/api/config/appointment-types', {
+      name: `Consulta ${suffix}`,
+      specialtyId: held.id,
+      requiredResourceTypeId: resourceType.id,
+    });
+
+    const [forbiddenStatus, forbiddenVisit] = await send('POST', '/api/config/appointment-types', {
+      name: `Consulta derma ${suffix}`,
+      specialtyId: unheld.id,
+      requiredResourceTypeId: resourceType.id,
+    });
+
+    assert(allowedStatus === 201 && forbiddenStatus === 201, 'creating appointment types failed');
+
+    // No configuration record exists yet — this write is what creates it (design E1).
+    const [granted] = await send('POST', `/api/config/professionals/${userId}/specialties`, {
+      specialtyId: held.id,
+    });
+
+    assert(granted === 204, `granting a specialty failed: ${granted}`);
+
+    const [durationOk] = await send('PUT', `/api/config/professionals/${userId}/durations`, {
+      appointmentTypeId: allowedVisit.id,
+      durationMinutes: 40,
+    });
+
+    assert(durationOk === 204, `setting a duration failed: ${durationOk}`);
+
+    // The gate — the rule this change exists for, asserted against the real stack.
+    const [gateStatus, gateBody] = await send('PUT', `/api/config/professionals/${userId}/durations`, {
+      appointmentTypeId: forbiddenVisit.id,
+      durationMinutes: 40,
+    });
+
+    assert(gateStatus === 422, `expected 422 for an unheld specialty, got ${gateStatus}`);
+    assert(
+      gateBody.code === 'config.specialty_not_held',
+      `expected config.specialty_not_held, got ${gateBody.code}`,
+    );
+
+    const hours = (day, from, to) =>
+      send('POST', `/api/config/professionals/${userId}/working-hours`, {
+        dayOfWeek: day,
+        startTime: from,
+        endTime: to,
+        effectiveFrom: '2026-01-01',
+        effectiveTo: null,
+      });
+
+    // A split day must be accepted — the case a one-dimensional overlap check would refuse.
+    const [morning] = await hours('Monday', '08:00', '12:00');
+    const [afternoon] = await hours('Monday', '13:00', '17:00');
+
+    assert(morning === 204 && afternoon === 204, 'a split working day should be accepted');
+
+    const [overlap, overlapBody] = await hours('Monday', '10:00', '14:00');
+
+    assert(overlap === 409, `expected 409 for an overlap, got ${overlap}`);
+    assert(
+      overlapBody.code === 'config.working_hours_overlap',
+      `expected config.working_hours_overlap, got ${overlapBody.code}`,
+    );
+
+    const [midnight, midnightBody] = await hours('Tuesday', '22:00', '02:00');
+
+    assert(midnight === 422, `expected 422 for a midnight-crossing span, got ${midnight}`);
+    assert(
+      midnightBody.code === 'config.working_hours_invalid',
+      `expected config.working_hours_invalid, got ${midnightBody.code}`,
+    );
+
+    // And the hours survive the round trip unshifted — the assertion design E3 exists for.
+    const detail = await fetch(`${base}/api/config/professionals/${userId}`, {
+      headers: { Cookie: cookie },
+    });
+
+    assert(detail.status === 200, `reading the professional failed: ${detail.status}`);
+
+    const configured = await detail.json();
+
+    assert(configured.isConfigured === true, 'the professional should read back as configured');
+    assert(
+      configured.workingHours.some((s) => s.startTime === '08:00' && s.endTime === '12:00'),
+      `hours came back shifted: ${JSON.stringify(configured.workingHours)}`,
     );
   });
 
