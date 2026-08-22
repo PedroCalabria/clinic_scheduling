@@ -105,6 +105,7 @@
     "auth_forbidden": "You do not have permission to do that.",
     "auth_ownership_denied": "You can only view your own data.",
     "auth_invalid_credentials": "That email and password do not match.",
+    "auth_current_password_invalid": "That current password is not correct.",
     "auth_account_disabled": "This account has been disabled. Please contact your administrator.",
     "auth_password_change_required": "Choose a new password before continuing.",
     "auth_rate_limited": "Too many attempts. Please try again in a moment.",

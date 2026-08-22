@@ -105,6 +105,7 @@
     "auth_forbidden": "Você não tem permissão para fazer isso.",
     "auth_ownership_denied": "Você só pode ver os seus próprios dados.",
     "auth_invalid_credentials": "E-mail e senha não conferem.",
+    "auth_current_password_invalid": "A senha atual não confere.",
     "auth_account_disabled": "Esta conta foi desativada. Fale com o administrador.",
     "auth_password_change_required": "Escolha uma nova senha antes de continuar.",
     "auth_rate_limited": "Muitas tentativas. Tente novamente em instantes.",

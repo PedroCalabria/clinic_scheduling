@@ -68,14 +68,17 @@ internal static class ChangePassword
 
         if (user?.PasswordHash is null)
         {
-            // A federated user has no password to change. Not an error worth a new code:
-            // from the caller's point of view the current password they offered is wrong.
-            return ApiError.Result(ErrorCodes.InvalidCredentials, StatusCodes.Status401Unauthorized);
+            // A federated user has no password to change. Deliberately the same answer as a
+            // wrong password, so the response never reveals which kind of account this is.
+            return ApiError.Result(ErrorCodes.CurrentPasswordInvalid, StatusCodes.Status401Unauthorized);
         }
 
         if (passwordHasher.Verify(user.PasswordHash, request.CurrentPassword) == PasswordVerificationOutcome.Failed)
         {
-            return ApiError.Result(ErrorCodes.InvalidCredentials, StatusCodes.Status401Unauthorized);
+            // Not auth.invalid_credentials: that code's message names the email too, which is
+            // correct on the sign-in form and actively misleading here — this screen has no
+            // email field, so it would send the user looking for something that is not there.
+            return ApiError.Result(ErrorCodes.CurrentPasswordInvalid, StatusCodes.Status401Unauthorized);
         }
 
         user.SetPassword(passwordHasher.Hash(request.NewPassword));

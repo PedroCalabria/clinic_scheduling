@@ -40,6 +40,18 @@ internal static class ErrorCodes
     /// </summary>
     internal const string InvalidCredentials = "auth.invalid_credentials";
 
+    /// <summary>
+    /// The current password offered while changing a password does not match — 401.
+    /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="InvalidCredentials"/> on purpose. That code's message names the
+    /// email as well as the password, which is right on a sign-in form and wrong on the
+    /// change-password screen, where there is no email field and the remedy is one field rather
+    /// than two. A shared code forced a message that told the user to check something that was
+    /// not on screen.
+    /// </remarks>
+    internal const string CurrentPasswordInvalid = "auth.current_password_invalid";
+
     /// <summary>Account disabled by an administrator, or locked by the failed-attempt guard — 403.</summary>
     internal const string AccountDisabled = "auth.account_disabled";
 

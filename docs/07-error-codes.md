@@ -48,6 +48,7 @@ Every error response carries a machine-readable body:
 | `auth.email_already_in_use` | 409 | staff account creation with a taken email |
 | `auth.account_not_found` | 404 | an administrator acted on a staff account that does not exist (added in `identity-session`) |
 | `auth.password_change_required` | 403 | the bootstrapped administrator must replace the supplied credential before doing anything else (added in `identity-session`) |
+| `auth.current_password_invalid` | 401 | the current password offered on the change-password screen does not match — distinct from `auth.invalid_credentials` because that screen has no email field, so the remedy is one field rather than two (added in `clinic-catalog`) |
 
 ### patient — capability `identity-session`
 | Code | Status | When |
