@@ -38,6 +38,17 @@ internal sealed class ClinicDbContext(DbContextOptions<ClinicDbContext> options)
 
     public DbSet<AppointmentType> AppointmentTypes => Set<AppointmentType>();
 
+    public DbSet<Professional> Professionals => Set<Professional>();
+
+    public DbSet<ProfessionalSpecialty> ProfessionalSpecialties => Set<ProfessionalSpecialty>();
+
+    public DbSet<ProfessionalAppointmentType> ProfessionalAppointmentTypes =>
+        Set<ProfessionalAppointmentType>();
+
+    public DbSet<WorkingHoursTemplate> WorkingHoursTemplates => Set<WorkingHoursTemplate>();
+
+    public DbSet<WorkingHoursException> WorkingHoursExceptions => Set<WorkingHoursException>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // The change-1 marker table keeps its original inline mapping so the existing

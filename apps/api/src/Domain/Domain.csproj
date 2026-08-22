@@ -21,6 +21,21 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!--
+      NodaTime is a modelling library, not infrastructure, and the distinction is the point:
+      it adds value types (LocalTime, IsoDayOfWeek, DateTimeZone) and no I/O, no connection,
+      no framework. Working hours are wall-clock times rather than instants (design E3), and
+      with NodaTime that is a compile-time distinction instead of a comment on a TimeOnly.
+
+      This is a deliberate judgement rather than an omission from the forbidden list below:
+      the rule the list enforces is "the core does not know how anything is stored or served",
+      which a date library does not violate. The zone-id validation and the conversion that
+      change 4 needs live in Api, where the configuration is read.
+    -->
+    <PackageReference Include="NodaTime" Version="3.3.3" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- Package name prefixes that must never appear in this project. -->
     <ForbiddenDomainDependency Include="Microsoft.EntityFrameworkCore" />
     <ForbiddenDomainDependency Include="Microsoft.AspNetCore" />

@@ -51,6 +51,17 @@ public sealed class ApiFixture : IAsyncLifetime
     /// <summary>Password given to every internal account this fixture seeds.</summary>
     public const string SeededPassword = "seeded-password-123";
 
+    /// <summary>
+    /// The clinic timezone every host in this collection runs on.
+    /// </summary>
+    /// <remarks>
+    /// A real zone with a real history rather than UTC, on purpose: UTC would make an
+    /// accidental instant-conversion invisible, which is precisely the bug design E3 exists to
+    /// prevent. São Paulo has no DST today but had it until 2019, so the zone database has
+    /// something to say about it.
+    /// </remarks>
+    public const string ClinicTimezoneId = "America/Sao_Paulo";
+
     // Same tag as infra/docker-compose.yml — that agreement is the point of pinning
     // (00-context.md §1).
     private readonly PostgreSqlContainer _database =
@@ -289,6 +300,11 @@ public sealed class ApiFixture : IAsyncLifetime
             builder.UseSetting("Auth:Google:ClientSecret", "test-client-secret");
             builder.UseSetting("Auth:Google:RedirectUri", "https://localhost/api/auth/google/callback");
             builder.UseSetting("Auth:Google:Issuer", GoogleTestDouble.Issuer);
+
+            // Required configuration with no default (design E3): without it every host in
+            // this collection fails to start, which is the behaviour ClinicTimezoneTests
+            // asserts deliberately and every other test must not trip over.
+            builder.UseSetting("Clinic:Timezone", ClinicTimezoneId);
 
             builder.UseSetting("Auth:BootstrapAdministrator:Email", BootstrapAdministratorEmail);
             builder.UseSetting("Auth:BootstrapAdministrator:Password", BootstrapAdministratorPassword);

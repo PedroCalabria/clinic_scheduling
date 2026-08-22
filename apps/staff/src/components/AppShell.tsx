@@ -21,6 +21,7 @@ interface NavigationEntry {
 const NAVIGATION: readonly NavigationEntry[] = [
   { to: '/', labelKey: 'staff.navHealth' },
   { to: '/users', labelKey: 'staff.navUsers', roles: ['Administrator'] },
+  { to: '/admin/professionals', labelKey: 'staff.navProfessionals', roles: ['Administrator'] },
   { to: '/admin/specialties', labelKey: 'staff.navSpecialties', roles: ['Administrator'] },
   { to: '/admin/resources', labelKey: 'staff.navResources', roles: ['Administrator'] },
   {

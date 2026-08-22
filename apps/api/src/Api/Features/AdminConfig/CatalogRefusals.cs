@@ -37,6 +37,17 @@ internal static class CatalogRefusals
         CatalogRefusal.ReferenceInactive =>
             ApiError.Result(ErrorCodes.ConfigNotFound, StatusCodes.Status404NotFound),
 
+        // 422 rather than 409: the request is well-formed and the data exists, it just breaks a
+        // business rule — the same status the booking codes use for that shape of refusal.
+        CatalogRefusal.SpecialtyNotHeld =>
+            ApiError.Result(ErrorCodes.ConfigSpecialtyNotHeld, StatusCodes.Status422UnprocessableEntity),
+
+        CatalogRefusal.WorkingHoursOverlap =>
+            ApiError.Result(ErrorCodes.ConfigWorkingHoursOverlap, StatusCodes.Status409Conflict),
+
+        CatalogRefusal.WorkingHoursInvalid =>
+            ApiError.Result(ErrorCodes.ConfigWorkingHoursInvalid, StatusCodes.Status422UnprocessableEntity),
+
         // Unreachable while the enum and this switch agree; if a value is added without a
         // mapping, failing loudly in development beats emitting a code the frontend cannot
         // translate.

@@ -17,6 +17,26 @@ public enum CatalogRefusal
     /// (design D5).
     /// </summary>
     ReferenceInactive = 3,
+
+    /// <summary>
+    /// A duration was set for an appointment type whose specialty the professional does not
+    /// hold — <c>config.specialty_not_held</c>, 422 (invariant I2's gate, design E2).
+    /// </summary>
+    SpecialtyNotHeld = 4,
+
+    /// <summary>
+    /// A working-hour segment collides with one already stored — <c>config.working_hours_overlap</c>,
+    /// 409. A conflict needs BOTH the effective ranges and the times of day to overlap
+    /// (design E5).
+    /// </summary>
+    WorkingHoursOverlap = 5,
+
+    /// <summary>
+    /// A working-hour segment is impossible rather than merely conflicting — its end is not
+    /// after its start, which covers both a zero-length segment and one crossing midnight —
+    /// <c>config.working_hours_invalid</c>, 422 (design E5).
+    /// </summary>
+    WorkingHoursInvalid = 6,
 }
 
 /// <summary>

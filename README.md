@@ -3,7 +3,7 @@
 **A scheduling system for clinics where appointments, professionals and rooms all have to line up
 at the same time.**
 
-*A portfolio project, built in nine reviewed increments. Two are built and running; seven remain.
+*A portfolio project, built in nine reviewed increments. Three are built and running; six remain.
 The order is deliberate — infrastructure first, then identity, then the domain — and every
 increment leaves the system working end to end.*
 
@@ -56,7 +56,7 @@ claimed.
 |---|---|---|---|
 | 1 | Walking skeleton | **running** | The whole stack comes up with one command: reverse proxy, API, database. Both web surfaces are served from a single origin, and the system reports its own health including database connectivity. |
 | 2 | Identity & session | **running** | An administrator signs in, is required to replace the bootstrap password before doing anything else, and creates staff accounts. A patient signs in with Google, and can see and correct their own data and consents — and nobody else's. Every screen is in Portuguese and English. |
-| 3a | Clinic catalog | not yet built | What the clinic offers: specialties, rooms and equipment, and the kinds of visit that need them. |
+| 3a | Clinic catalog | **running** | An administrator defines what the clinic offers: specialties, rooms and equipment, and the kinds of visit that need them. A specialty still in use cannot be retired, and the refusal says how much is in the way. |
 | 3b | Professional configuration | not yet built | What each professional does and when: their specialties, how long each kind of visit takes them, and their working hours. |
 | 4 | Availability | not yet built | The three-way check above, computed for a date range. |
 | 5 | Booking | not yet built | The patient books, reschedules and cancels; the front desk does it on their behalf. Double-booking prevented by the database, not by convention. |
@@ -88,6 +88,13 @@ docker compose --env-file .env -f infra/docker-compose.yml up --build
 `--env-file .env` is not optional. Compose looks for a bare `.env` next to the compose file
 (`infra/`), not in the directory you are standing in, so without the flag every setting silently
 comes out empty.
+
+If you already had a `.env` from an earlier version, add one line to it — the API now refuses to
+start without knowing which timezone the clinic runs in, rather than guessing:
+
+```
+Clinic__Timezone=America/Sao_Paulo
+```
 
 **The first build takes several minutes** — it compiles the API and both web apps from source, then
 waits up to 30 seconds for database migrations on first boot. It has not hung.

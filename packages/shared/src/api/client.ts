@@ -467,3 +467,159 @@ export async function updateAppointmentType(
     body: JSON.stringify(input),
   }))!;
 }
+
+// --- Professional configuration (S7) ------------------------------------------------
+
+/**
+ * Keyed by `userId`, not by a professional id.
+ *
+ * That is deliberate and worth knowing: S7 lists users holding the professional role, and the
+ * configuration record is created on the first save. A caller should not have to know whether
+ * it exists yet.
+ */
+export interface ProfessionalListEntry {
+  userId: string;
+  email: string;
+  /** False for an invited professional nobody has configured yet. */
+  isConfigured: boolean;
+  /** True while the invitation has not been claimed by a first Google sign-in. */
+  awaitsClaim: boolean;
+  isActive: boolean;
+  specialtyCount: number;
+  durationCount: number;
+  workingHoursCount: number;
+}
+
+export interface HeldSpecialty {
+  specialtyId: string;
+  specialtyName: string;
+}
+
+export interface ConfiguredDuration {
+  appointmentTypeId: string;
+  appointmentTypeName: string;
+  specialtyId: string;
+  specialtyName: string;
+  durationMinutes: number;
+}
+
+/** Times are `"HH:mm"` and dates `"yyyy-MM-dd"` — wall clock, never an instant. */
+export interface WorkingHoursSegment {
+  id: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+}
+
+export interface WorkingHoursOverride {
+  id: string;
+  date: string;
+  /** Null on both when the professional is unavailable all day. */
+  startTime: string | null;
+  endTime: string | null;
+}
+
+export interface ProfessionalDetail {
+  userId: string;
+  email: string;
+  isConfigured: boolean;
+  awaitsClaim: boolean;
+  specialties: HeldSpecialty[];
+  durations: ConfiguredDuration[];
+  workingHours: WorkingHoursSegment[];
+  exceptions: WorkingHoursOverride[];
+}
+
+/** The weekdays a working-hour segment may name, in the order a week is read. */
+export const WEEKDAYS = [
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+  'Sunday',
+] as const;
+
+export type Weekday = (typeof WEEKDAYS)[number];
+
+export async function listProfessionals(): Promise<ProfessionalListEntry[]> {
+  return (await apiFetch<ProfessionalListEntry[]>('/config/professionals'))!;
+}
+
+export async function getProfessional(userId: string): Promise<ProfessionalDetail> {
+  return (await apiFetch<ProfessionalDetail>(`/config/professionals/${userId}`))!;
+}
+
+export function grantSpecialty(userId: string, specialtyId: string): Promise<undefined> {
+  return apiFetch<undefined>(`/config/professionals/${userId}/specialties`, {
+    method: 'POST',
+    body: JSON.stringify({ specialtyId }),
+  }) as Promise<undefined>;
+}
+
+export function revokeSpecialty(userId: string, specialtyId: string): Promise<undefined> {
+  return apiFetch<undefined>(
+    `/config/professionals/${userId}/specialties/${specialtyId}/revoke`,
+    { method: 'POST' },
+  ) as Promise<undefined>;
+}
+
+export function setDuration(
+  userId: string,
+  input: { appointmentTypeId: string; durationMinutes: number },
+): Promise<undefined> {
+  return apiFetch<undefined>(`/config/professionals/${userId}/durations`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  }) as Promise<undefined>;
+}
+
+export function clearDuration(userId: string, appointmentTypeId: string): Promise<undefined> {
+  return apiFetch<undefined>(
+    `/config/professionals/${userId}/durations/${appointmentTypeId}/clear`,
+    { method: 'POST' },
+  ) as Promise<undefined>;
+}
+
+export function defineWorkingHours(
+  userId: string,
+  input: {
+    dayOfWeek: string;
+    startTime: string;
+    endTime: string;
+    effectiveFrom: string;
+    effectiveTo: string | null;
+  },
+): Promise<undefined> {
+  return apiFetch<undefined>(`/config/professionals/${userId}/working-hours`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }) as Promise<undefined>;
+}
+
+export function retireWorkingHours(userId: string, segmentId: string): Promise<undefined> {
+  return apiFetch<undefined>(
+    `/config/professionals/${userId}/working-hours/${segmentId}/retire`,
+    { method: 'POST' },
+  ) as Promise<undefined>;
+}
+
+export function defineException(
+  userId: string,
+  input: { date: string; startTime?: string; endTime?: string },
+): Promise<undefined> {
+  return apiFetch<undefined>(`/config/professionals/${userId}/exceptions`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }) as Promise<undefined>;
+}
+
+export function retireException(userId: string, exceptionId: string): Promise<undefined> {
+  return apiFetch<undefined>(
+    `/config/professionals/${userId}/exceptions/${exceptionId}/retire`,
+    { method: 'POST' },
+  ) as Promise<undefined>;
+}
