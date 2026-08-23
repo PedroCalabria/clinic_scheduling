@@ -1,14 +1,22 @@
 using Clinic.Api.Infrastructure.Auth;
 using Clinic.Domain.Configuration;
 using Clinic.Domain.Identity;
+using Clinic.Domain.Scheduling;
 using Microsoft.EntityFrameworkCore;
 
 namespace Clinic.Api.Infrastructure.Persistence;
 
 /// <summary>
-/// EF Core context for the write path (Decision L). Reads on the availability hot path
-/// go through Dapper instead, and arrive in change 4.
+/// EF Core context for the write path, and for the availability read's bounded input
+/// (Decision L).
 /// </summary>
+/// <remarks>
+/// The Dapper half of Decision L was re-scoped by <c>availability-read</c>: the solver turned
+/// out to be interval arithmetic in the domain core rather than range SQL (design F1), so the
+/// availability read is an ordinary bounded query through this context. Dapper arrives with
+/// change 5's booking write path, where the <c>tstzrange</c> columns and GiST indexes that
+/// justify it actually exist.
+/// </remarks>
 /// <remarks>
 /// Mapping lives in <see cref="IEntityTypeConfiguration{TEntity}"/> classes under
 /// <c>Configurations</c>, discovered from this assembly. Change 1 mapped its single marker
@@ -48,6 +56,12 @@ internal sealed class ClinicDbContext(DbContextOptions<ClinicDbContext> options)
     public DbSet<WorkingHoursTemplate> WorkingHoursTemplates => Set<WorkingHoursTemplate>();
 
     public DbSet<WorkingHoursException> WorkingHoursExceptions => Set<WorkingHoursException>();
+
+    /// <summary>
+    /// Professional unavailability. Internally sourced today; change 7 adds the external half
+    /// to the same table.
+    /// </summary>
+    public DbSet<TimeBlock> TimeBlocks => Set<TimeBlock>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

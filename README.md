@@ -3,7 +3,7 @@
 **A scheduling system for clinics where appointments, professionals and rooms all have to line up
 at the same time.**
 
-*A portfolio project, built in nine reviewed increments. Three are built and running; six remain.
+*A portfolio project, built in nine reviewed increments. Five are built and running; four remain.
 The order is deliberate — infrastructure first, then identity, then the domain — and every
 increment leaves the system working end to end.*
 
@@ -57,14 +57,14 @@ claimed.
 | 1 | Walking skeleton | **running** | The whole stack comes up with one command: reverse proxy, API, database. Both web surfaces are served from a single origin, and the system reports its own health including database connectivity. |
 | 2 | Identity & session | **running** | An administrator signs in, is required to replace the bootstrap password before doing anything else, and creates staff accounts. A patient signs in with Google, and can see and correct their own data and consents — and nobody else's. Every screen is in Portuguese and English. |
 | 3a | Clinic catalog | **running** | An administrator defines what the clinic offers: specialties, rooms and equipment, and the kinds of visit that need them. A specialty still in use cannot be retired, and the refusal says how much is in the way. |
-| 3b | Professional configuration | not yet built | What each professional does and when: their specialties, how long each kind of visit takes them, and their working hours. |
-| 4 | Availability | not yet built | The three-way check above, computed for a date range. |
+| 3b | Professional configuration | **running** | What each professional does and when: their specialties, how long each kind of visit takes them, and their working hours. A duration can only be set for something they are qualified to do, and revoking a qualification something depends on is refused. |
+| 4 | Availability | **running** | Free times computed for a date range: working hours minus days off, converted against the clinic's timezone, cut into slots as long as that professional takes, minus the periods they have blocked. A professional blocks their own time on their own screen. The patient and room halves of the three-way check arrive with the appointments they need — increment 5. |
 | 5 | Booking | not yet built | The patient books, reschedules and cancels; the front desk does it on their behalf. Double-booking prevented by the database, not by convention. |
 | 6 | Calendar — outbound | not yet built | A booked appointment appears in the professional's Google Calendar, reliably, even if Google is briefly unreachable. |
 | 7 | Calendar — inbound | not yet built | A block made in Google Calendar becomes unavailability here, and collisions are queued for a human. |
 | 8 | Reminders | not yet built | A reminder email before the appointment. |
 
-The two that are running are the least glamorous and the most load-bearing: a deployment shaped
+The first two were the least glamorous and the most load-bearing: a deployment shaped
 like production rather than like a demo, a domain boundary the compiler enforces, tests that run
 against a real database, a third test tier that goes through the real reverse proxy, two different
 ways of signing in that produce one revocable session, permission checks at two levels (what your

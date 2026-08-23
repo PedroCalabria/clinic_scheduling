@@ -83,7 +83,7 @@ Professional signs in via Google OIDC; Reception/Admin via internal account.
 |---|---|---|---|---|---|
 | **S1 — My schedule** | `/staff/schedule` | See own agenda | day/week view of appointments + blocks | UC-2 | booking |
 | **S2 — Calendar connection** | `/staff/calendar` | Connect Google Calendar (the integration) | connect (OAuth consent), status, reconnect on revoke, last-sync info | UC-2 | calendar-integration |
-| **S3 — Block time** | `/staff/blocks` | Create internal unavailability | create/edit `TimeBlock` (internal) | UC-2 | calendar-integration |
+| **S3 — Block time** | `/staff/blocks` | Create internal unavailability | create/edit internal `TimeBlock` (source=Internal) | UC-2 | availability |
 
 ### Reception (day-to-day + conflict resolution)
 
@@ -114,10 +114,10 @@ So each frontend change knows exactly which screens it delivers:
 | 2 · identity-session | P1, S0, P7, S11 |
 | 3a · clinic-catalog | S8, S9, S10 |
 | 3b · professional-configuration | S7 |
-| 4 · availability-read | (feeds P2/S5; no standalone screen) |
+| 4 · availability-read | S3 (internal block time — the producer of a real subtrahend); availability itself feeds P2/S5 and is API/test-verified until P2 lands in change 5 |
 | 5 · booking | P2, P3, P4, P5, P6, S1, S4, S5 |
 | 6 · calendar-outbound | S2 |
-| 7 · calendar-inbound | S3, S6 |
+| 7 · calendar-inbound | S6 (S3 moved to change 4 — internal blocks are not a Google concern) |
 | 8 · reminders | (no screen; email) |
 
 ---

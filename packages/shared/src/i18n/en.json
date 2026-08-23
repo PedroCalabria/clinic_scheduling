@@ -68,7 +68,8 @@
     "navSpecialties": "Specialties",
     "navResources": "Resources & types",
     "navAppointmentTypes": "Appointment types",
-    "navProfessionals": "Professionals"
+    "navProfessionals": "Professionals",
+    "navBlocks": "Blocked time"
   },
   "users": {
     "title": "Users",
@@ -124,7 +125,9 @@
     "config_not_found": "That item does not exist, or is not active.",
     "config_specialty_not_held": "This professional does not hold the specialty this kind of visit belongs to. Assign the specialty first.",
     "config_working_hours_overlap": "These hours overlap hours already set for that day.",
-    "config_working_hours_invalid": "Hours must end after they start, on the same day."
+    "config_working_hours_invalid": "Hours must end after they start, on the same day.",
+    "block_invalid_range": "A blocked period has to end after it starts. Check both times — they cannot be equal or reversed.",
+    "availability_window_invalid": "That date range cannot be used. Check the dates, and ask for a shorter period."
   },
   "catalog": {
     "specialtiesTitle": "Specialties",
@@ -227,5 +230,27 @@
     "Friday": "Friday",
     "Saturday": "Saturday",
     "Sunday": "Sunday"
+  },
+  "blocks": {
+    "title": "Blocked time",
+    "description": "Periods you are unavailable. These are removed from the times patients can book with you.",
+    "empty": "No blocked time recorded.",
+    "add": "Block time",
+    "edit": "Edit block",
+    "columnFrom": "From",
+    "columnTo": "To",
+    "columnState": "State",
+    "columnActions": "Actions",
+    "stateActive": "In force",
+    "stateRetired": "Retired",
+    "from": "From",
+    "to": "To",
+    "retire": "Retire",
+    "restore": "Restore",
+    "timezoneNote": "Times are the clinic's local time ({{timezone}}).",
+    "created": "Blocked time added.",
+    "updated": "Blocked time updated.",
+    "retired": "Blocked time retired.",
+    "restored": "Blocked time back in force."
   }
 }

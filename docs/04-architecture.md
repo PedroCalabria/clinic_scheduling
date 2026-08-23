@@ -18,7 +18,7 @@ Put architecture where the complexity is, not uniformly. The genuinely hard part
 | ID | Decision | Choice |
 |---|---|---|
 | K | Backend architecture | Vertical Slice + protected domain core, **no MediatR** |
-| L | Persistence | EF Core (writes) + Dapper (availability read) — CQRS-lite |
+| L | Persistence | EF Core (writes) + Dapper (raw SQL over `tstzrange`/GiST on the **booking write path**, change 5) — CQRS-lite. The **availability solver** is interval arithmetic in the Domain core (C#), fed by a bounded input read — see §2 |
 | M | Frontend | Feature folders + TanStack Query + react-i18next |
 | N | Production email | External transactional SMTP relay (free tier) |
 | O | Background jobs | Hangfire with PostgreSQL storage |
@@ -44,7 +44,8 @@ The slices are thin. A small, **protected domain core** holds the genuinely comp
 ## 2. Persistence (L) — CQRS-lite
 
 - **Writes** go through the `Appointment` aggregate via **EF Core**, which enforces invariants and persists within the transaction that also protects the DB `EXCLUDE` constraint.
-- **The availability read** uses **Dapper** (a micro-ORM: hand-written SQL, parameterized, with a cached IL-emitted materializer; no change tracking, no LINQ translation, near-ADO.NET performance). Chosen specifically because the tri-constraint query is heavy SQL over `tstzrange` with GiST indexes and native PostgreSQL range operators that EF LINQ would fight; it is a read-only hot path where change-tracking is pure overhead.
+- **The availability solver** is **interval arithmetic in the Domain core (C#)**: a bounded read fetches the raw inputs for the requested date window (working-hour templates + exceptions, internal/external busy intervals, resources), and the Domain computes free slots (wall-clock→UTC via NodaTime, duration slicing, per-slot pairing with a free resource of the required type including its turnaround buffer, any-professional union). At clinic scale the input is small, so the computation belongs in the protected, unit-testable core — and the DST/interval logic is exactly what wants to be pure domain code. This resolves the earlier §1/§2 tension: the solver is Domain, not SQL.
+- **Dapper** (a micro-ORM: hand-written SQL, parameterized, cached IL-emitted materializer; no change tracking, near-ADO.NET) earns its place on the **booking write path (change 5)**: the atomic insert backed by `EXCLUDE USING gist` over `tstzrange`, and the write-time overlap handling. That is where `tstzrange` columns and GiST indexes actually exist — they arrive with `Appointment`, not in `availability-read`. CQRS-lite still holds: the aggregate for writes, tuned SQL where the hot write path needs it.
 - **Framing:** writes and reads have different needs — the aggregate for correctness, an optimized query path for the hot read. Honest cost: two data-access technologies + hand-maintained SQL that can drift from schema (mitigated by integration tests against a real PostgreSQL).
 
 ## 3. Frontend architecture (M)

@@ -68,7 +68,8 @@
     "navSpecialties": "Especialidades",
     "navResources": "Recursos e tipos",
     "navAppointmentTypes": "Tipos de consulta",
-    "navProfessionals": "Profissionais"
+    "navProfessionals": "Profissionais",
+    "navBlocks": "Períodos bloqueados"
   },
   "users": {
     "title": "Usuários",
@@ -124,7 +125,9 @@
     "config_not_found": "Esse item não existe ou não está ativo.",
     "config_specialty_not_held": "Este profissional não tem a especialidade a que esse tipo de consulta pertence. Atribua a especialidade primeiro.",
     "config_working_hours_overlap": "Esse horário se sobrepõe a um já definido para o dia.",
-    "config_working_hours_invalid": "O horário deve terminar depois de começar, no mesmo dia."
+    "config_working_hours_invalid": "O horário deve terminar depois de começar, no mesmo dia.",
+    "block_invalid_range": "Um período bloqueado precisa terminar depois de começar. Confira os dois horários — eles não podem ser iguais nem invertidos.",
+    "availability_window_invalid": "Esse intervalo de datas não pode ser usado. Confira as datas e solicite um período mais curto."
   },
   "catalog": {
     "specialtiesTitle": "Especialidades",
@@ -227,5 +230,27 @@
     "Friday": "Sexta",
     "Saturday": "Sábado",
     "Sunday": "Domingo"
+  },
+  "blocks": {
+    "title": "Períodos bloqueados",
+    "description": "Períodos em que você está indisponível. Eles são removidos dos horários que os pacientes podem agendar com você.",
+    "empty": "Nenhum período bloqueado registrado.",
+    "add": "Bloquear período",
+    "edit": "Editar bloqueio",
+    "columnFrom": "De",
+    "columnTo": "Até",
+    "columnState": "Situação",
+    "columnActions": "Ações",
+    "stateActive": "Em vigor",
+    "stateRetired": "Encerrado",
+    "from": "De",
+    "to": "Até",
+    "retire": "Encerrar",
+    "restore": "Reativar",
+    "timezoneNote": "Os horários são no fuso da clínica ({{timezone}}).",
+    "created": "Período bloqueado adicionado.",
+    "updated": "Período bloqueado atualizado.",
+    "retired": "Período bloqueado encerrado.",
+    "restored": "Período bloqueado novamente em vigor."
   }
 }

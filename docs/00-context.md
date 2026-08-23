@@ -95,6 +95,7 @@ Two SPAs (patient-portal, staff) + `packages/shared`. Feature-folder structure m
 - **Acting as a user (change 2):** `ApiFixture.AsRoleAsync(role)` seeds a user and a session and returns a client already holding the cookie — one line, and the seam every later change's tests use. It deliberately skips session issuance, so the login flows carry their own end-to-end tests.
 - **Google, offline (change 2):** the token exchange is stubbed and the signing keys are replaced; the validation itself (signature, `iss`, `aud`, `exp`, `nonce`, `email_verified`) runs for real against a locally minted token. CI therefore needs no Google credentials.
 - **A third tier:** `pnpm smoke` asserts against the running Compose stack what the in-process host cannot — Caddy's routing, the base paths, the session cookie surviving the proxy, and the built CSS.
+- **Timezone tests (from change 4):** conversion tests use a **DST-observing zone** (e.g. `America/New_York` or `Europe/London`), not just `America/Sao_Paulo` — Brazil has no DST since 2019, so a Sao_Paulo-only test cannot catch a broken wall-clock→UTC conversion. The spring-forward gap (a wall-clock time with no instant) and the fall-back overlap (two instants) are the cases NodaTime was brought in to handle, so they must be exercised.
 - **CI (GitHub Actions):** `openspec validate --strict` → i18n-key presence check → README link check → build (both ecosystems) → unit → integration (Testcontainers) → compose smoke. The cheap, hermetic gates run first so a broken spec, a missing translation, or a README pointing at a renamed file fails in seconds rather than after two Docker tiers. `.github/workflows/ci.yml` is the source of truth for the order.
 
 ## 7. Definition of Done (every change)
@@ -109,7 +110,7 @@ Tests (unit + integration) green in CI; i18n keys present (pt-BR + en) for new u
 - the **"N of 9 increments shipped"** line — only when N changes;
 - the **local-run section** — only when a change adds a prerequisite or an environment variable.
 
-Everything else derives from these docs, so it moves only when a documented decision moves. The status cell flips when the change reaches `main`, not when it is applied — otherwise `main`'s README claims a capability whose code is not on `main`. Rewriting the README per change is not the intent and is explicitly out of scope for a change's task list.
+Everything else derives from these docs, so it moves only when a documented decision moves. Each change flips **its own** status cell in its own feature commit (so claim and code reach `main` together via the PR) — not the previous change's cell, which causes a systematic off-by-one. The cell reflects what is on `main`, not what has merely been applied. Rewriting the README per change is not the intent and is explicitly out of scope for a change's task list.
 
 ## 9. The validation guide (human verification)
 

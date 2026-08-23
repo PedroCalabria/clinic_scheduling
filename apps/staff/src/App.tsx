@@ -2,6 +2,7 @@ import { HealthPanel, RequireAuth } from '@clinic/shared';
 import { useTranslation } from 'react-i18next';
 import { Route, Routes } from 'react-router';
 import { AppShell } from './components/AppShell';
+import { BlockedTimePage } from './features/blocks/BlockedTimePage';
 import { AppointmentTypesPage } from './features/catalog/AppointmentTypesPage';
 import { ResourcesPage } from './features/catalog/ResourcesPage';
 import { SpecialtiesPage } from './features/catalog/SpecialtiesPage';
@@ -14,7 +15,8 @@ import { UsersPage } from './features/users/UsersPage';
  * The staff console: sign-in (S0), the app-shell, users (S11), and the clinic catalog
  * (S8-S10, added by `clinic-catalog`).
  *
- * S1-S6 arrive from change 4 onward and mount into the same shell. The catch-all route
+ * S3 arrived with change 4; the rest of S1-S6 come from change 5 onward and mount into the
+ * same shell. The catch-all route
  * stays for the reason it existed in change 1: a full reload of `/staff/anything` must render
  * this app, which is the client half of Caddy's per-prefix SPA fallback (design D2).
  */
@@ -92,6 +94,20 @@ export function App() {
         element={
           <Guarded allow={['Administrator']}>
             <ProfessionalsPage />
+          </Guarded>
+        }
+      />
+
+      {/*
+        S3 — blocked time (change 4). The first professional-role screen: every route above is
+        an administrator's. Professional-only in the guard AND at the API, same as the catalog —
+        the guard is the courtesy, the API's policy is the boundary.
+      */}
+      <Route
+        path="/blocks"
+        element={
+          <Guarded allow={['Professional']}>
+            <BlockedTimePage />
           </Guarded>
         }
       />
