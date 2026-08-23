@@ -1,5 +1,7 @@
+using Clinic.Api.Infrastructure.Time;
 using Clinic.Domain.Configuration;
 using Clinic.Domain.Identity;
+using Clinic.Domain.Scheduling;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
 
@@ -33,6 +35,7 @@ internal sealed class DevelopmentClinicSeed(
     IHostEnvironment environment,
     IConfiguration configuration,
     TimeProvider clock,
+    ClinicTimezone timezone,
     ILogger<DevelopmentClinicSeed> logger) : IHostedService
 {
     /// <summary>Presence of this specialty means the clinic has already been seeded.</summary>
@@ -68,6 +71,7 @@ internal sealed class DevelopmentClinicSeed(
         }
 
         var now = clock.GetUtcNow();
+        var instantNow = Instant.FromDateTimeOffset(now);
 
         // --- The catalog (3a's entities) ---------------------------------------------
         var cardiology = Specialty.Define(MarkerSpecialty, now);
@@ -148,13 +152,51 @@ internal sealed class DevelopmentClinicSeed(
 
         database.WorkingHoursTemplates.AddRange(segments);
 
+        // --- Blocked time (availability-read's entities) ------------------------------
+        // Two blocks inside the working week, so the subtraction is visible on a fresh stack
+        // without anybody filling in a form first. This is what makes change 4 demonstrable at
+        // all: without a producer, availability would be a computation nobody could see removing
+        // anything.
+        //
+        // Placed relative to "now" rather than on fixed dates, because a hard-coded date drifts
+        // into the past and then subtracts nothing — a seeded fixture that silently stops
+        // demonstrating its own feature is worse than none.
+        var today = instantNow.InZone(timezone.Zone).Date;
+        var nextMonday = today.Next(IsoDayOfWeek.Monday);
+
+        database.TimeBlocks.AddRange(
+            // A Monday morning off: overlaps the 08:00-12:00 segment, so those slots disappear
+            // while the afternoon's remain.
+            TimeBlock.ForProfessional(
+                professional.Id,
+                AtClinicTime(nextMonday, 9, 0),
+                AtClinicTime(nextMonday, 11, 0),
+                now),
+
+            // A Tuesday lunch extension that abuts the afternoon segment exactly, so the 13:00
+            // slot is still offered — the half-open rule, visible rather than asserted.
+            TimeBlock.ForProfessional(
+                professional.Id,
+                AtClinicTime(nextMonday.PlusDays(1), 12, 0),
+                AtClinicTime(nextMonday.PlusDays(1), 13, 0),
+                now));
+
         await database.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "Seeded a development clinic: {Specialties} specialties, {Types} appointment types, "
-            + "and {Professional} with {Segments} working-hour segments.",
-            2, 3, ProfessionalEmail, segments.Count);
+            + "and {Professional} with {Segments} working-hour segments and {Blocks} blocked periods.",
+            2, 3, ProfessionalEmail, segments.Count, 2);
     }
+
+    /// <summary>A clinic wall-clock time on a date, as the instant a block stores.</summary>
+    /// <remarks>
+    /// Strict resolution, unlike the solver's lenient one: a seed is written by this project
+    /// rather than typed by a clinic, so a chosen time landing in a daylight-saving gap is a bug
+    /// in the seed and should fail startup loudly instead of being quietly shifted.
+    /// </remarks>
+    private Instant AtClinicTime(LocalDate date, int hour, int minute) =>
+        timezone.Zone.AtStrictly(date.At(new LocalTime(hour, minute))).ToInstant();
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
 }

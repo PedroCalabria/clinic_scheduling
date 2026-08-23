@@ -1,5 +1,6 @@
 using Clinic.Api.Infrastructure.Auth;
 using Clinic.Api.Infrastructure.Persistence;
+using Clinic.Api.Infrastructure.Time;
 using Clinic.Domain;
 using Clinic.Domain.Configuration;
 using Clinic.Domain.Identity;

@@ -90,6 +90,16 @@ public readonly record struct EffectivePeriod
         return new EffectivePeriod(from, to);
     }
 
+    /// <summary>
+    /// Whether this period is in force on <paramref name="date"/>. An open end never expires.
+    /// </summary>
+    /// <remarks>
+    /// Added by <c>availability-read</c>, which is where the effective-date dimension stops being
+    /// stored data and starts deciding answers (design F3). The half that is easy to get wrong is
+    /// the open end: a null <c>To</c> means "until further notice", not "expired".
+    /// </remarks>
+    public bool Covers(LocalDate date) => From <= date && (To is null || date <= To);
+
     /// <summary>Whether two periods share any day. Open ends extend forever.</summary>
     public bool Overlaps(EffectivePeriod other)
     {

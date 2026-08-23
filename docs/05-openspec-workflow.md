@@ -49,10 +49,10 @@ Each change delivers a demonstrable increment. Two capabilities are split along 
 2. **identity-session** _(done)_ — hybrid auth, unified session, roles, ownership primitive. Also delivered the two seams every later change's tests depend on: acting as a role, and validating a Google token offline. Google's calendar scope was deferred to change 6 via incremental authorization; see `08-google-setup.md`.
    3a. **clinic-catalog** — what the clinic offers: specialties, resource types (+ buffer), resources, appointment types. Flat CRUD (S8, S9, S10) with deactivation (soft-delete) refusal rules. Zero dependency on 3b.
    3b. **professional-configuration** — what a professional does and when: `Professional` row, specialties, per-type durations, working-hour templates + exceptions (S7). Introduces the clinic timezone (Decision H) and the dev seed. Depends on 3a.
-3. **availability-read** — tri-constraint solver, both variations.
+3. **availability-read** — the availability engine (interval arithmetic in the Domain core; wall-clock→UTC via NodaTime with a DST-observing test zone; duration slicing; per-slot pairing with a free resource of the required type, buffer included; specific + any-professional union; respects working-hour **effective-date** ranges). Also brings **internal `TimeBlock` (source=Internal) + S3 Block time** (option C) so the subtraction has a real, producer-backed subtrahend and a browser surface — internal blocks were mis-filed under the Google capability. Appointment-based subtraction and the `EXCLUDE`/GiST machinery stay in change 5 (their producer). Availability output is API/test-verified until P2 lands in change 5.
 4. **booking** — atomic booking + reschedule/cancel, state machine, resource auto-assignment, cutoff.
 5. **calendar-outbound** — OAuth connection, outbox, dispatcher, idempotent event create, cancel/reschedule propagation.
-6. **calendar-inbound** — webhook, incremental sync, reconcile job, external `TimeBlock`s feeding availability, `ReconciliationConflict` + front-desk resolution, watch-channel renewal.
+6. **calendar-inbound** — **external** `TimeBlock`s only (source=External): webhook, incremental sync, reconcile job (widened to the internal↔appointment catch-all, G2), `ReconciliationConflict` + front-desk resolution (S6), watch-channel renewal. Internal blocks + S3 moved to change 4.
 7. **reminders** — scheduled job, email via SMTP (Mailpit in dev).
 
 Both `clinic-catalog` and `professional-configuration` contribute deltas to the single `clinic-configuration` capability.

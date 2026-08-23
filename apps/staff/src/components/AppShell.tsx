@@ -13,13 +13,14 @@ interface NavigationEntry {
 /**
  * The staff console's navigation.
  *
- * S11 is administrator-only here AND administrator-only at the API. That duplication is
+ * Every entry below is role-scoped here AND at the API. That duplication is
  * intentional and is not a security decision: hiding an entry is a courtesy so nobody walks
  * into a refusal, while the API's policy is what actually stops them. Requesting a hidden
  * destination directly still gets `auth.forbidden` (design A8), and there is a test for it.
  */
 const NAVIGATION: readonly NavigationEntry[] = [
   { to: '/', labelKey: 'staff.navHealth' },
+  { to: '/blocks', labelKey: 'staff.navBlocks', roles: ['Professional'] },
   { to: '/users', labelKey: 'staff.navUsers', roles: ['Administrator'] },
   { to: '/admin/professionals', labelKey: 'staff.navProfessionals', roles: ['Administrator'] },
   { to: '/admin/specialties', labelKey: 'staff.navSpecialties', roles: ['Administrator'] },

@@ -129,6 +129,27 @@ internal static class ErrorCodes
     /// </summary>
     internal const string ConfigWorkingHoursInvalid = "config.working_hours_invalid";
 
+    /// <summary>
+    /// The requested availability window is malformed or wider than the configured maximum — 400
+    /// (added in <c>availability-read</c>).
+    /// </summary>
+    /// <remarks>
+    /// A refusal rather than a truncation: a read that quietly answers a narrower question than
+    /// it was asked is worse than one that says no, because the caller cannot tell.
+    /// </remarks>
+    internal const string AvailabilityWindowInvalid = "availability.window_invalid";
+
+    /// <summary>
+    /// An internal time block whose end does not follow its start — 422 (added in
+    /// <c>availability-read</c>).
+    /// </summary>
+    /// <remarks>
+    /// One code for both the reversed and the zero-length case, because they are one rule and one
+    /// remedy. The translated message has to read sensibly for both, which is a check the
+    /// validation guide makes a human confirm.
+    /// </remarks>
+    internal const string BlockInvalidRange = "block.invalid_range";
+
     /// <summary>Unhandled error — 500. Never leaks internals.</summary>
     internal const string ServerUnexpected = "server.unexpected";
 }

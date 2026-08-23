@@ -1,5 +1,6 @@
 using Clinic.Api.Features.AdminConfig;
 using Clinic.Api.Features.Auth;
+using Clinic.Api.Features.Availability;
 using Clinic.Api.Features.Health;
 using Clinic.Api.Features.Patients;
 using Clinic.Api.Features.StaffAccounts;
@@ -50,12 +51,27 @@ builder.Services.AddOptions<ClinicTimeOptions>()
 builder.Services.AddSingleton<IValidateOptions<ClinicTimeOptions>, ClinicTimeOptionsValidator>();
 builder.Services.AddSingleton<ClinicTimezone>();
 
+// --- Scheduling policy (design F8) --------------------------------------------------
+// Defaults here, unlike the timezone above: a 15-minute slot step is right until a clinic
+// says otherwise, whereas a timezone default is wrong for every clinic but one. Range
+// attributes plus ValidateOnStart still refuse a nonsensical value at startup.
+builder.Services.AddOptions<SchedulingOptions>()
+    .Bind(builder.Configuration.GetSection(SchedulingOptions.SectionName))
+    .ValidateDataAnnotations()
+    .ValidateOnStart();
+
+builder.Services.AddSingleton<ClinicScheduling>();
+
 // --- Identity & session (Decision J, design A1) -------------------------------------
 // Registers the session store, the password hasher, the custom authentication scheme, and
 // the role policies — including the authenticated-by-default fallback, so an endpoint
 // reaches the public internet only by saying AllowAnonymous out loud.
 builder.Services.AddClinicAuth(builder.Configuration);
 builder.Services.AddLoginRateLimiting();
+
+// The second limiter Decision R anticipated, on the endpoint 03-nfr.md §2 names as the
+// abusable surface. Separate policy, separate budget, shared rejection envelope.
+builder.Services.AddAvailabilityRateLimiting();
 
 // Registered AFTER the migration service so the schema exists when it runs (design A6).
 // Idempotent, so it is safe on every boot rather than only the first.
@@ -109,5 +125,10 @@ app.MapResourceTypeEndpoints();
 app.MapResourceEndpoints();
 app.MapAppointmentTypeEndpoints();
 app.MapProfessionalEndpoints();
+
+// Availability (change 4). The read has no screen of its own until P2 lands in change 5; S3 is
+// the surface, and it is what gives the read's subtraction something real to subtract.
+app.MapAvailabilityEndpoints();
+app.MapTimeBlockEndpoints();
 
 app.Run();

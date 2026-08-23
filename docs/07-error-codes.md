@@ -41,7 +41,7 @@ Every error response carries a machine-readable body:
 | `auth.ownership_denied` | 403 | patient accessing data that is not theirs |
 | `auth.invalid_credentials` | 401 | internal account: wrong email/password |
 | `auth.account_disabled` | 403 | account locked or disabled |
-| `auth.rate_limited` | 429 | too many login attempts (brute-force guard) |
+| `auth.rate_limited` | 429 | too many requests from one caller — the login brute-force guard, and from `availability-read` the availability search's per-caller budget (03-nfr.md §2). One code because the caller sees the same failure and has the same remedy; per the rules below, that is one user-meaningful failure and not one per throw site |
 | `auth.google_failed` | 401 | Google OIDC flow failed (bad state/nonce, token invalid, email unverified, or the address belongs to an internal account) |
 | `auth.google_unavailable` | 503 | this deployment has no Google client configured, so the federated path is off (added in `identity-session`) |
 | `auth.consent_required` | 422 | a required consent has not been granted |
@@ -96,6 +96,11 @@ Every error response carries a machine-readable body:
 | `config.specialty_not_held` | 422 | assigning a per-type duration for an appointment type whose specialty the professional does not hold (I2 qualification gate) — added in `professional-configuration` |
 | `config.working_hours_overlap` | 409 | two working-hour templates for the same `dayOfWeek` with overlapping effective ranges — added in `professional-configuration` |
 | `config.working_hours_invalid` | 422 | working-hour segment with `startTime >= endTime` or crossing midnight — added in `professional-configuration` |
+
+### time blocks — capability `availability` (internal) / `calendar-integration` (external)
+| Code | Status | When |
+|---|---|---|
+| `block.invalid_range` | 422 | internal `TimeBlock` with `start >= end` (S3) — added in `availability-read` |
 
 ### generic
 | Code | Status | When |

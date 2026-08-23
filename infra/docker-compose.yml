@@ -65,6 +65,13 @@ services:
       - Clinic__Timezone=${Clinic__Timezone:-America/Sao_Paulo}
       # Opt-in, and inert outside Development regardless of the value.
       - Clinic__SeedDevelopmentData=${Clinic__SeedDevelopmentData:-false}
+      # Scheduling policy for the availability read. All have code defaults, so absent is
+      # fine and the API still starts — the deliberate contrast with Clinic__Timezone above.
+      - Scheduling__SlotStartStepMinutes
+      - Scheduling__MinimumLeadTimeMinutes
+      - Scheduling__HorizonDays
+      - Scheduling__MaxWindowDays
+      - Scheduling__AvailabilityRequestsPerMinute
       # Session, lockout, and consent tuning. Absent means "use the code default".
       - Auth__SessionLifetime
       - Auth__LockoutThreshold

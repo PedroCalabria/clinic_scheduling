@@ -99,9 +99,11 @@ For one professional, free time =
 sliced by the `durationMinutes` from `ProfessionalAppointmentType`,
 and cross-checked against the existence of a free `Resource` of the required `ResourceType`.
 
+The solver respects each working-hour template's **effective-date range** (a template effective only from a future date does not apply to earlier dates) — the match is two-dimensional: `dayOfWeek` **and** the concrete date falling within the template's effective range. The interval arithmetic runs in the Domain core (C#), not SQL (see `04-architecture.md` §2).
+
 For **"any professional of specialty X"**, the solver runs this across every eligible professional and returns the union of slots, each already carrying which `(professional, resource)` pair satisfies it. The pairing is resolved server-side; the patient only sees "Thursday 2:00 PM available".
 
-**Buffer handling (F1):** a resource's effective occupied interval for availability is `[start, end + bufferMinutes)`. This keeps turnaround time (cleaning/prep) out of the bookable window. Note: the buffer is applied in the **domain availability computation**, while the DB `EXCLUDE` constraint operates on the raw appointment interval. Consequence: two exactly-abutting bookings in the same room are theoretically race-possible. For the MVP this is acceptable; if strict buffer enforcement is later required, the resource exclusion constraint can be extended to an expression over the buffered range. Recorded as a conscious trade-off.
+**Buffer handling (F1):** a resource's effective occupied interval for availability is `[start, end + bufferMinutes)`. Implemented in `availability-read`: trailing only, and applied to resources rather than to professionals, since turnaround belongs to the room and not to the person leaving it. This keeps turnaround time (cleaning/prep) out of the bookable window. Note: the buffer is applied in the **domain availability computation**, while the DB `EXCLUDE` constraint operates on the raw appointment interval. Consequence: two exactly-abutting bookings in the same room are theoretically race-possible. For the MVP this is acceptable; if strict buffer enforcement is later required, the resource exclusion constraint can be extended to an expression over the buffered range. Recorded as a conscious trade-off.
 
 **Scheduling parameters (config, not code):** slot start step (default 15 min), minimum lead time (default 1 h), scheduling horizon (default 60 days).
 

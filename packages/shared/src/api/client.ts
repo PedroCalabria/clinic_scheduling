@@ -623,3 +623,114 @@ export function retireException(userId: string, exceptionId: string): Promise<un
     { method: 'POST' },
   ) as Promise<undefined>;
 }
+
+// --- Blocked time (S3) --------------------------------------------------------------
+
+/**
+ * A professional's own unavailability.
+ *
+ * Times are clinic wall clock (`"2026-08-25T14:00"`), not instants, and deliberately so: a
+ * `datetime-local` input has no zone to give, and the server owns the conversion using the
+ * clinic's configured timezone. That keeps zone arithmetic out of the browser entirely.
+ */
+export interface TimeBlockResponse {
+  id: string;
+  startsAt: string;
+  endsAt: string;
+  /** Retired blocks stay listed, and stop removing availability. */
+  isActive: boolean;
+}
+
+export interface TimeBlockListResponse {
+  /** The IANA zone the times above are expressed in, so the screen can say which it means. */
+  timezone: string;
+  blocks: TimeBlockResponse[];
+}
+
+/** No professional: a new block always belongs to the caller. */
+export interface SaveTimeBlockInput {
+  startsAt: string;
+  endsAt: string;
+}
+
+export async function listMyBlocks(): Promise<TimeBlockListResponse> {
+  return (await apiFetch<TimeBlockListResponse>('/blocks'))!;
+}
+
+export async function createMyBlock(input: SaveTimeBlockInput): Promise<TimeBlockResponse> {
+  return (await apiFetch<TimeBlockResponse>('/blocks', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }))!;
+}
+
+export async function updateMyBlock(
+  id: string,
+  input: SaveTimeBlockInput,
+): Promise<TimeBlockResponse> {
+  return (await apiFetch<TimeBlockResponse>(`/blocks/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(input),
+  }))!;
+}
+
+export function setMyBlockActive(id: string, active: boolean): Promise<undefined> {
+  const action = active ? 'restore' : 'retire';
+
+  return apiFetch<undefined>(`/blocks/${id}/${action}`, { method: 'POST' }) as Promise<undefined>;
+}
+
+// --- Availability (change 4) --------------------------------------------------------
+
+/**
+ * One time an appointment could be placed.
+ *
+ * UTC instants, unlike a block's wall clock above: the consumer is a booking flow that has to
+ * reason about real time.
+ */
+export interface AvailabilitySlotResponse {
+  professionalId: string;
+  /**
+   * The room or machine that satisfies this slot.
+   *
+   * An explanation, not a reservation: by the time a patient confirms, it may be taken. Booking
+   * assigns the resource server-side, so do NOT send this back expecting it to be honoured.
+   */
+  resourceId: string;
+  start: string;
+  end: string;
+}
+
+export interface AvailabilityResponse {
+  appointmentTypeId: string;
+  from: string;
+  to: string;
+  timezone: string;
+  slots: AvailabilitySlotResponse[];
+}
+
+/**
+ * Asks what is free. Omitting `professionalId` asks about every professional qualified for the
+ * appointment type.
+ *
+ * No consumer screen yet: P2 arrives with change 5. Declared here so the contract lives beside
+ * every other one rather than being rediscovered.
+ */
+export async function getAvailability(input: {
+  appointmentTypeId: string;
+  from: string;
+  to: string;
+  professionalId?: string;
+}): Promise<AvailabilityResponse> {
+  const query = new URLSearchParams({
+    appointmentTypeId: input.appointmentTypeId,
+    from: input.from,
+    to: input.to,
+  });
+
+  if (input.professionalId) {
+    query.set('professionalId', input.professionalId);
+  }
+
+  return (await apiFetch<AvailabilityResponse>(`/availability?${query.toString()}`))!;
+}
