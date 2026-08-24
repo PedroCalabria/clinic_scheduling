@@ -118,12 +118,20 @@ Done and on `main`: walking-skeleton, identity-session, clinic-catalog, professi
 
 Change 5 is split three ways (see §3): **5a — booking-core** *(done)*, **5b — booking-lifecycle** *(done)*; next is **5c — booking-desk** (`Professional.fullName`, book-on-behalf as a Modified Capability, the front-desk cutoff override, AccessLog on staff PII reads; S1, S4, S5).
 
-**Two debts are open and have now been carried twice.** They were written as a precondition for 5b and 5b shipped without closing them, which is recorded plainly in its validation Outcome rather than quietly:
+**Both debts that 5b carried are now closed** (2026-08-24), in the artifacts that own them rather
+than here:
 
-- the **F8 availability response-size number**. When it was first asked for, P2 was the only consumer; P6 has since become the second, so a figure captured now can no longer be attributed to one screen. `booking-desk` adds S4 and S5 and makes that worse again. One number, one browser, one network panel.
-- whether **`availability-read`'s validation guide** was ever run against the configured Google client. Two later guides have now opened by assuming S3 works.
-
-Both belong in `booking-desk` as its own group 0, on the same terms 5b gave them. A third deferral should be an explicit decision to drop them, not another carry.
+- **F8, the availability response size.** Measured and recorded in `availability-read`'s design F8
+  note. The prediction was right — growth is linear in professionals and window at ≈170 bytes per
+  slot — and the conclusion is that it is not a problem yet: the worst realistic case (20
+  professionals, the widest permitted window) is **614 KiB uncompressed**, and the seeded clinic's is
+  62 KiB. The genuinely new fact is that the cost is **payload, not compute**: the solver answers a
+  twenty-professional month in under 20 ms, so F1's small-inputs bet is winning comfortably. The
+  revisit trigger is re-armed at roughly ten professionals, not discharged.
+- **`availability-read`'s validation guide.** Closed in its own Outcome as *discharged rather than
+  executed*: the Google client it was blocked on now exists, and `booking-core`'s checks 13 and 14 —
+  which were run — cover S3 as a real professional in both locales. One gap is named and left open:
+  the wall-clock round trip on S3 specifically has still never been seen by a person.
 
 Per change: branch, `/opsx:explore` (optional), `/opsx:propose <change-id>`, review the
 proposal, `/opsx:apply`, review the diff, `/opsx:archive`, merge to `main`.

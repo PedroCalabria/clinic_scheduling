@@ -332,6 +332,11 @@ one, so the gaps are named rather than left to be inferred.
   screen shows both ends of the change convincingly. The maintainer confirmed the guide passed but did
   not relay a written opinion on either. Silence is not approval: the screens work; whether they are
   *good* is unrecorded. Check 4 is the one that matters most, because `02 §5` rests an argument on it.
+- **The two inherited debts were still open when this was written. Both were closed later the same
+  day** — see `availability-read`'s design F8 note for the measurement and its own Outcome for the
+  guide. The paragraph below is left exactly as recorded, because what it says about *this* change
+  stays true: 5b shipped without them.
+
 - **The two inherited debts are still open.** Change 4's **F8 response-size number** (task 0.1) was not
   captured, and whether `availability-read`'s validation guide was run (task 0.2) is still unrecorded
   in that guide's own Outcome. Both were open when this change started and both are open now — and P6
