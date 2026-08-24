@@ -1,31 +1,22 @@
 ## Why
 
-Validating change 4 with a real Google client exposed a door nobody meant to leave open. A
-professional signed in on **S0** *before* an administrator had invited them. The staff surface
-sent them through the same Google flow the patient portal uses, that flow found no record for
-their address, and change 2's provisioning rule did what it says: an unknown Google email
-becomes a **patient**. They ended up with a patient account they never asked for — and then
-could not be invited as a professional at all, because S11 refuses an address another live
-account already holds (`auth.email_already_in_use`).
+Validating change 4 with a real Google client found a door nobody meant to leave open. A
+professional signed in on **S0** before being invited; the staff surface ran the same flow the
+portal runs, found no record, and change 2's rule did what it says — an unknown Google email
+becomes a **patient**. They got an account they never asked for, and were then un-invitable,
+because S11 refuses an address a live account already holds.
 
-Two defects in one incident. The first is that S0 promises "the account the clinic registered
-for you" and delivers just-in-time patient provisioning instead; nothing about a staff sign-in
-should ever *create* an account. The second is that the recovery path `00-context.md` §5
-describes — deactivate the wrong account, invite the address anew — is documented but not
-actually reachable: `disable` turns an account off without releasing its address, and S11 lists
-staff only, so a patient account created by mistake is invisible to the administrator who has
-to clear it.
+Running this change's own validation guide found the mirror image: a **professional** signing in
+on **P1** was admitted, and P7 answered `patient.not_found`. Quieter and worse, an unclaimed
+invitation was *claimed* on the way in.
 
-Running this change's own validation guide then turned up the **mirror image on the patient
-portal**: a professional signing in on P1 was admitted, and P7 answered "no such patient record"
-— because a professional has no patient row and never will. Quieter and worse, an unclaimed
-invitation was *claimed* on the way in. Same defect, opposite direction: a surface establishing a
-session for someone it cannot serve. So the fix is stated as one symmetric rule rather than as a
-guard bolted onto S0.
+Both are one sentence — a surface established a session for someone it cannot serve — so the fix
+is one symmetric rule, not a guard bolted onto S0. Separately, the recovery `00-context.md` §5
+documents (deactivate the wrong account, invite the address anew) was unreachable: `disable`
+keeps the address, and S11 lists staff only.
 
-It lands **before 5a** deliberately (`05-openspec-workflow.md` §7). Change 5 stacks five more
-Google-reachable screens on this flow; fixing the door first means those screens are validated
-against a sign-in that behaves.
+It lands **before 5a** deliberately (`05-openspec-workflow.md` §7) — change 5 stacks five more
+Google-reachable screens on this flow.
 
 ## What Changes
 

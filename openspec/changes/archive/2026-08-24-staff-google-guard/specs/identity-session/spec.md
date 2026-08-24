@@ -4,7 +4,7 @@
 
 The system SHALL determine a role at the moment a user first comes into existence and SHALL NOT infer it from the identity provider. Provisioning SHALL depend on the surface the sign-in was started from, and that surface SHALL be fixed when the flow starts rather than derived from the identity the provider returns. Each surface SHALL establish a session only for a user holding the role that surface serves — the patient portal a patient, the staff surface a professional — and SHALL refuse any other role without establishing a session, reporting which surface serves that user instead. A Google sign-in started from the **patient portal** whose email is unknown SHALL create a patient. A Google sign-in started from the **staff surface** SHALL be claim-only: it SHALL claim a pre-created professional the first time and reuse it afterwards, and SHALL refuse an unknown email without creating any user, patient, consent, or session. Every refusal SHALL be decided before any state is written, so a refused sign-in SHALL NOT claim a pending invitation. Role SHALL NOT change as a side effect of signing in, and no sign-in SHALL change a role that already exists.
 
-#### Scenario: Unknown Google email on the patient portal becomes a patient
+#### Scenario: Unknown Google email becomes a patient
 
 - **WHEN** a Google sign-in started from the patient portal succeeds for an email no user record holds
 - **THEN** the system creates a user with the patient role and its associated patient record holding only the minimal personal data the provider supplied
