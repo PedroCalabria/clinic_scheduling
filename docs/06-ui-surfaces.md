@@ -115,7 +115,8 @@ So each frontend change knows exactly which screens it delivers:
 | 3a · clinic-catalog | S8, S9, S10 |
 | 3b · professional-configuration | S7 |
 | 4 · availability-read | S3 (internal block time — the producer of a real subtrahend); availability itself feeds P2/S5 and is API/test-verified until P2 lands in change 5 |
-| 5 · booking | P2, P3, P4, P5, P6, S1, S4, S5 |
+| 5a · booking-core | P2, P3, P4 |
+| 5b · booking-lifecycle | P5, P6, S1, S4, S5 |
 | 6 · calendar-outbound | S2 |
 | 7 · calendar-inbound | S6 (S3 moved to change 4 — internal blocks are not a Google concern) |
 | 8 · reminders | (no screen; email) |

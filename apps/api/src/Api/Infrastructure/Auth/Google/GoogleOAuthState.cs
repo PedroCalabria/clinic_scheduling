@@ -15,6 +15,19 @@ internal sealed record GoogleOAuthState(string State, string Nonce, string Retur
     /// <summary>Where a sign-in with no stated destination lands.</summary>
     internal const string DefaultReturnPath = "/";
 
+    /// <summary>
+    /// Which frontend started this sign-in, and therefore which provisioning rule applies
+    /// (design D1).
+    /// </summary>
+    /// <remarks>
+    /// Computed from <see cref="ReturnPath"/> rather than stored beside it, so the two cannot
+    /// disagree and the cookie's format is unchanged — an in-flight sign-in started before this
+    /// change still classifies correctly. Because <see cref="ReturnPath"/> is fixed when the
+    /// flow STARTS and travels in an <c>HttpOnly</c> cookie, the callback cannot restate it, and
+    /// nothing in the ID token can influence it.
+    /// </remarks>
+    internal SignInSurface Surface => SignInSurfaces.FromReturnPath(ReturnPath);
+
     internal static GoogleOAuthState Start(string? requestedReturnPath) =>
         new(GenerateToken(), GenerateToken(), SafeReturnPath(requestedReturnPath));
 

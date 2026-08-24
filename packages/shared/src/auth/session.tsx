@@ -111,7 +111,23 @@ export function RequireAuth({
 
   if (!session) {
     // The attempted destination travels along, so sign-in can return the visitor to it.
-    return <Navigate to={signInPath} replace state={{ from: location.pathname }} />;
+    //
+    // The query string travels along too, and that is load-bearing rather than tidy
+    // (staff-google-guard, design D6). Both surfaces send a failed Google sign-in back to a
+    // GUARDED path carrying `?authError=<code>`, so the refusal arrives here first: dropping
+    // the query meant the code never reached the sign-in screen, and the alert that S0 and P1
+    // both already render for it could not fire. A refusal that silently renders nothing is
+    // worse than a raw one.
+    // Composed as a string rather than a `{ pathname, search }` object: the object form sends
+    // this file's type-checking into a stack overflow on the pinned TypeScript, and the string
+    // is what the router parses anyway.
+    return (
+      <Navigate
+        to={`${signInPath}${location.search}`}
+        replace
+        state={{ from: location.pathname }}
+      />
+    );
   }
 
   if (session.mustChangePassword && changePasswordPath && location.pathname !== changePasswordPath) {

@@ -73,6 +73,50 @@ internal static class ErrorCodes
     /// </summary>
     internal const string GoogleUnavailable = "auth.google_unavailable";
 
+    /// <summary>
+    /// A Google sign-in started from the staff surface by an address the clinic has not
+    /// registered — 403 (added in <c>staff-google-guard</c>).
+    /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="GoogleFailed"/>, and the distinction is the remedy: there the
+    /// sign-in itself went wrong and the user may have a password to try instead, here the
+    /// token is perfectly valid and there is simply nothing to claim. The only way forward is
+    /// for an administrator to register the address, which is what the message says.
+    /// <para>
+    /// Delivered as a redirect carrying the code, not as a 403 body — the callback is reached
+    /// by a top-level navigation, so a JSON body would land in the address bar. 403 is the
+    /// status this code MEANS, the same way <see cref="GoogleUnavailable"/> means 503 and is
+    /// also delivered as a redirect (design D3).
+    /// </para>
+    /// </remarks>
+    internal const string NotProvisioned = "auth.not_provisioned";
+
+    /// <summary>
+    /// A patient account arrived at the staff sign-in — 403 (added in
+    /// <c>staff-google-guard</c>).
+    /// </summary>
+    /// <remarks>
+    /// Separate from <see cref="NotProvisioned"/> because the remedy is different and that is
+    /// the whole basis on which this catalogue splits codes: there, nobody has registered the
+    /// address and administration has to; here, the address is perfectly good and simply belongs
+    /// to the other door. Telling this visitor to "ask administration" would send them away to
+    /// be told nothing was wrong.
+    /// </remarks>
+    internal const string UsePatientSignIn = "auth.use_patient_sign_in";
+
+    /// <summary>
+    /// A professional's account arrived at the patient portal — 403 (added in
+    /// <c>staff-google-guard</c>).
+    /// </summary>
+    /// <remarks>
+    /// The mirror of <see cref="UsePatientSignIn"/>, and the reason the surface rule is stated
+    /// as "each surface admits the role it serves" rather than as a guard bolted onto S0. An
+    /// internal account reaching the portal is refused earlier and differently
+    /// (<see cref="GoogleFailed"/>) — that one is the account-takeover defence, not a wrong-door
+    /// mistake.
+    /// </remarks>
+    internal const string UseStaffSignIn = "auth.use_staff_sign_in";
+
     /// <summary>A required consent has not been granted — 422.</summary>
     internal const string ConsentRequired = "auth.consent_required";
 

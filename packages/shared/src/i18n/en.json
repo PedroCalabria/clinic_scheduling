@@ -94,7 +94,15 @@
     "statusLocked": "Locked",
     "statusPendingClaim": "Invited",
     "empty": "No accounts yet.",
-    "professionalPasswordNote": "Professionals do not get a password."
+    "professionalPasswordNote": "Professionals do not get a password.",
+    "takenTitle": "That address already belongs to an account",
+    "takenNote": "A role never changes here, so the account holding the address has to be retired before the address can be registered again. Find out which account uses it, then decide.",
+    "findHolder": "See which account uses it",
+    "holderNone": "No active account uses that address now. Register it again above.",
+    "holderSummary": "{{email}} — {{role}}, {{status}}.",
+    "retire": "Retire this account and free the address",
+    "retireNote": "Access ends immediately and the address becomes available again. The account and its history are kept, and no role is changed — you register the address afresh as a new account.",
+    "retired": "Account retired. The address is free — register it again above."
   },
   "roles": {
     "Patient": "Patient",
@@ -113,6 +121,9 @@
     "auth_rate_limited": "Too many attempts. Please try again in a moment.",
     "auth_google_failed": "Google sign-in did not complete. Please try again — and if you use an email and password for this clinic, sign in with those instead.",
     "auth_google_unavailable": "Google sign-in is not available on this installation.",
+    "auth_not_provisioned": "This clinic has not registered an account for that Google address. Ask administration to register your access, then sign in again.",
+    "auth_use_patient_sign_in": "This is a patient account. Sign in on the patient portal instead — the staff console is only for accounts the clinic registers for its team.",
+    "auth_use_staff_sign_in": "This account is registered as a clinic professional. Sign in through the staff console instead.",
     "auth_consent_required": "That requires a consent you have not granted.",
     "auth_email_already_in_use": "Another account already uses that email.",
     "auth_account_not_found": "That account no longer exists.",

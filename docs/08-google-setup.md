@@ -19,6 +19,20 @@ normally, internal accounts (reception and administration) sign in as usual, and
 button reports `auth.google_unavailable`. CI never needs these values either: the federated path
 is covered through substituted seams, so no secret is required to run the test suite.
 
+## Do this now (before change 5)
+
+This was originally optional and slated for change 6. It is now a **prerequisite for change 5**, because change 5 delivers the patient/professional screens (P2–P6, S1) that are reachable *only* via Google sign-in — including P2, the flagship. Two increments of human validation (change 4's deferred guide, then change 5's) otherwise stack up unexecuted on this one missing piece. It is cheap to remove: local sign-in needs no tunnel (Google treats `localhost` as a special case; the tunnel is a change-7 webhook concern).
+
+Concrete checklist:
+
+1. Do the OAuth-client setup below (§Steps) — ~5 minutes in the Google Cloud Console. Put the client id/secret in `.env`.
+2. On the OAuth consent screen (still in *Testing*), add **your own Google account** and a **second Google account** as test users.
+3. In S11 (staff → users), invite your own Google email as a **professional**. Sign in with Google to **claim** it → this is the professional path (S1 and, later, S2).
+4. Sign in with the **second** Google account with no prior record → provisioned as a **patient** (JIT) → this is the patient path (P1–P6).
+5. **Run change 4's deferred validation guide now** (`openspec/changes/availability-read/validation.md`) as the professional you just claimed — clearing the debt that was honestly deferred for lack of a Google client. Then check the box.
+
+Note: the seeded `dra.helena@clinic.local` is dev fixture data on a non-existent domain and is **not** claimable via Google — it drives the API/solver, not browser sign-in. Human validation of Google screens uses the real accounts from steps 2–4.
+
 ## Steps
 
 1. In the [Google Cloud Console](https://console.cloud.google.com/), create or select a project.

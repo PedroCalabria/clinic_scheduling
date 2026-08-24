@@ -43,6 +43,9 @@ Every error response carries a machine-readable body:
 | `auth.account_disabled` | 403 | account locked or disabled |
 | `auth.rate_limited` | 429 | too many requests from one caller — the login brute-force guard, and from `availability-read` the availability search's per-caller budget (03-nfr.md §2). One code because the caller sees the same failure and has the same remedy; per the rules below, that is one user-meaningful failure and not one per throw site |
 | `auth.google_failed` | 401 | Google OIDC flow failed (bad state/nonce, token invalid, email unverified, or the address belongs to an internal account) |
+| `auth.not_provisioned` | 403 | Google sign-in on the **staff** entry (S0) by an email with **no account at all** — nothing is created; the user is told to ask administration to register their access (added in `staff-google-guard`). Distinct from `auth.google_failed`: the token is valid, there is simply nothing to claim. Distinct from the two codes below: there is no other door to send them to |
+| `auth.use_patient_sign_in` | 403 | Google sign-in on the **staff** entry (S0) by an address that holds a **patient** account — no session; the user is sent to the patient portal (added in `staff-google-guard`) |
+| `auth.use_staff_sign_in` | 403 | Google sign-in on the **patient portal** (P1) by an address that holds a **professional** account — no session, and an unclaimed invitation is **not** claimed; the user is sent to the staff console (added in `staff-google-guard`). Each surface admits only the role it serves, so a session is never established for someone every screen on it would refuse |
 | `auth.google_unavailable` | 503 | this deployment has no Google client configured, so the federated path is off (added in `identity-session`) |
 | `auth.consent_required` | 422 | a required consent has not been granted |
 | `auth.email_already_in_use` | 409 | staff account creation with a taken email |

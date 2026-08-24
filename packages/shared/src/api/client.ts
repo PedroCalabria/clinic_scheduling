@@ -311,6 +311,43 @@ export function disableStaffAccount(id: string): Promise<undefined> {
   return apiFetch<undefined>(`/staff-accounts/${id}/disable`, { method: 'POST' }) as Promise<undefined>;
 }
 
+/**
+ * Which account holds an address, or `null` if none does.
+ *
+ * S11 lists staff only, so the account most likely to be blocking an invitation — a patient
+ * provisioned by mistake on the portal — cannot be found by browsing. This resolves the exact
+ * address the administrator has just typed, and nothing else.
+ *
+ * A 404 is a normal answer here ("nobody holds it") rather than a failure, so it comes back as
+ * `null` instead of throwing.
+ */
+export async function findStaffAccountByEmail(email: string): Promise<StaffAccountResponse | null> {
+  try {
+    return (await apiFetch<StaffAccountResponse>(
+      `/staff-accounts/by-email?email=${encodeURIComponent(email)}`,
+    ))!;
+  } catch (error) {
+    if (error instanceof ApiRequestError && error.status === 404) {
+      return null;
+    }
+
+    throw error;
+  }
+}
+
+/**
+ * Retires an account, releasing its address so it can be registered again.
+ *
+ * Distinct from {@link disableStaffAccount}, which ends access but keeps the address. This is
+ * the deactivate half of the deactivate-and-invite-anew recovery: a role never changes, so an
+ * account created with the wrong one is retired and the address invited afresh.
+ */
+export function deactivateStaffAccount(id: string): Promise<undefined> {
+  return apiFetch<undefined>(`/staff-accounts/${id}/deactivate`, {
+    method: 'POST',
+  }) as Promise<undefined>;
+}
+
 // --- Clinic catalog (S8-S10) --------------------------------------------------------
 
 /**

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Clinic.Api.Infrastructure.Auth;
 using Clinic.Api.Infrastructure.Errors;
@@ -37,8 +38,10 @@ internal static class StaffAccountEndpoints
             .RequireAuthorization(AuthorizationPolicies.Administrator);
 
         group.MapGet("/", ListAsync).WithName("ListStaffAccounts");
+        group.MapGet("/by-email", FindByEmailAsync).WithName("FindStaffAccountByEmail");
         group.MapPost("/", CreateAsync).WithName("CreateStaffAccount");
         group.MapPost("/{userId:guid}/disable", DisableAsync).WithName("DisableStaffAccount");
+        group.MapPost("/{userId:guid}/deactivate", DeactivateAsync).WithName("DeactivateStaffAccount");
 
         return endpoints;
     }
@@ -61,6 +64,71 @@ internal static class StaffAccountEndpoints
             .ToListAsync(cancellationToken);
 
         return Results.Ok(accounts);
+    }
+
+    /// <summary>
+    /// Which account holds an address — the lookup that makes the recovery path usable
+    /// (design D4).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Exists because <see cref="ListAsync"/> deliberately shows staff only, so the account most
+    /// likely to be blocking an invitation — a patient provisioned by mistake — is invisible to
+    /// the administrator who has to clear it. This answers one question about one address the
+    /// administrator has just typed into the invite form.
+    /// </para>
+    /// <para>
+    /// Not a patient search, and not a step towards one. It takes an exact normalized address and
+    /// returns the same shape the list returns: id, role, status, and whether an invitation is
+    /// still unclaimed. No name, no contact details — nothing the administrator did not already
+    /// supply. Browsing patients belongs to change 5, where it has a purpose and an
+    /// <c>AccessLog</c> reason.
+    /// </para>
+    /// </remarks>
+    private static async Task<IResult> FindByEmailAsync(
+        string? email,
+        ClinicDbContext database,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return ApiError.Result(
+                ErrorCodes.ValidationRequired,
+                StatusCodes.Status400BadRequest,
+                new Dictionary<string, object?> { ["field"] = "email" });
+        }
+
+        string normalized;
+
+        try
+        {
+            normalized = EmailAddress.Normalize(email);
+        }
+        catch (DomainRuleViolationException)
+        {
+            return ApiError.Result(
+                ErrorCodes.ValidationInvalidFormat,
+                StatusCodes.Status400BadRequest,
+                new Dictionary<string, object?> { ["field"] = "email" });
+        }
+
+        // Live accounts only — the same filter the uniqueness rule uses, so this answers exactly
+        // the question the administrator is really asking: is this address taken?
+        var account = await database.Users
+            .AsNoTracking()
+            .Where(user => user.Email == normalized && user.DeletedAtUtc == null)
+            .Select(user => new StaffAccountResponse(
+                user.Id,
+                user.Email,
+                user.Role.ToString(),
+                user.Status.ToString(),
+                user.AuthProvider.ToString(),
+                user.Status == UserStatus.PendingClaim && user.ExternalSubjectId == null))
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return account is null
+            ? ApiError.Result(ErrorCodes.AccountNotFound, StatusCodes.Status404NotFound)
+            : Results.Ok(account);
     }
 
     private static async Task<IResult> CreateAsync(
@@ -190,6 +258,78 @@ internal static class StaffAccountEndpoints
         await sessions.RevokeAllForUserAsync(account.Id, cancellationToken);
 
         logger.LogWarning("Disabled account {UserId} and revoked its sessions.", account.Id);
+
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Retires an account: ends its access AND releases its address (design D4).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The recovery half of <c>staff-google-guard</c>. <c>00-context.md</c> §5 has always said the
+    /// way to fix a mistakenly-created account is to deactivate it and invite the address anew —
+    /// but nothing in the product could do the first half. <see cref="DisableAsync"/> turns an
+    /// account off while keeping its address, so a patient created by mistake went on blocking
+    /// the professional invitation forever.
+    /// </para>
+    /// <para>
+    /// Releasing the address needs no new rule: <c>ix_users_email_live</c> is filtered to
+    /// <c>deleted_at_utc IS NULL</c> and every by-email lookup filters the same way, so the
+    /// address is free the moment the row is soft-deleted (I10 — the row and its history stay).
+    /// </para>
+    /// <para>
+    /// Kept as a SECOND action rather than folded into <see cref="DisableAsync"/>, tempting as
+    /// that is given there is no un-disable: a soft-deleted account is not found by the password
+    /// sign-in lookup, so merging them would quietly turn <c>auth.account_disabled</c> into
+    /// <c>auth.invalid_credentials</c> for a deactivated internal account — a behaviour change on
+    /// a path this change is not meant to touch. Revisit after change 5: if <c>disable</c> is
+    /// still unused by any real workflow, collapse the two deliberately.
+    /// </para>
+    /// <para>
+    /// Reachable for an account of ANY role, patients included. That is the point — the account
+    /// in the way is usually a patient, and <see cref="ListAsync"/> does not show those.
+    /// </para>
+    /// </remarks>
+    private static async Task<IResult> DeactivateAsync(
+        Guid userId,
+        ClaimsPrincipal principal,
+        ClinicDbContext database,
+        SessionStore sessions,
+        TimeProvider clock,
+        ILogger<StaffAccountMarker> logger,
+        CancellationToken cancellationToken)
+    {
+        // Before the lookup, because it needs no lookup: an administrator retiring their own
+        // account would revoke their own session on the way out, and if they were the only one
+        // left the clinic would have no way back into S11. The first destructive account action
+        // this product has is not the place to leave that open.
+        if (principal.UserId() == userId)
+        {
+            return ApiError.Result(ErrorCodes.Forbidden, StatusCodes.Status403Forbidden);
+        }
+
+        var account = await database.Users.SingleOrDefaultAsync(
+            user => user.Id == userId && user.DeletedAtUtc == null,
+            cancellationToken);
+
+        if (account is null)
+        {
+            // Covers "no such account" and "already deactivated" with one answer, because from
+            // the perspective of live data those are the same fact.
+            return ApiError.Result(ErrorCodes.AccountNotFound, StatusCodes.Status404NotFound);
+        }
+
+        account.SoftDelete(clock.GetUtcNow());
+        await database.SaveChangesAsync(cancellationToken);
+
+        await sessions.RevokeAllForUserAsync(account.Id, cancellationToken);
+
+        // Warning level with the actor named: this releases an identity, and six months from now
+        // the question "who retired this account, and what was it?" needs an answer.
+        logger.LogWarning(
+            "Administrator {ActorId} deactivated {Role} account {UserId}, releasing its address, and revoked its sessions.",
+            principal.UserId(), account.Role, account.Id);
 
         return Results.NoContent();
     }
