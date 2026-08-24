@@ -17,9 +17,11 @@
 | UI | **shadcn/ui + Tailwind** | Radix primitives → WCAG 2.1 AA baseline |
 | Server state | **TanStack Query** | availability is volatile server state |
 | i18n | **react-i18next** (pt-BR + en) | frontend owns translation; API returns codes + params |
-| Node | **Node 22 (LTS)** | pinned via root `package.json` `engines` + CI `setup-node`; **pnpm 9** via `packageManager` |
+| Node | **Node 22.20.0 (LTS)** | pinned four ways, because `engines` alone only produces a *warning*: `engines` declares it, CI `setup-node` supplies it, `volta` in root `package.json` and `.nvmrc` / `.node-version` make a version manager actually switch to it. **pnpm 9.15.2** via `packageManager` — and note that Volta pins a *tool* to the Node it was installed with, so `volta install pnpm` must be re-run after a Node upgrade or pnpm keeps running the old one (see below) |
 
 > Pins were fixed in change 1 (`walking-skeleton`). Changing any of them is a deliberate act: update this table, `global.json`, the Compose/Testcontainers tags, and CI together, or integration tests stop being reproducible.
+>
+> **The Node pin acquired teeth in `booking-core`, after it silently failed.** A machine had Volta's Node default at 22 but its pnpm still pinned to a Node 20 installed earlier, so every `pnpm` command ran on 20 — `engines` produced one line of warning, and the visible symptom was `tsc` and `vite` dying with heap errors that looked like a code problem. Hence the version-manager pin files, and hence the warning above: **check `volta list` (or `pnpm exec node --version`) rather than `node --version`**, because the two can legitimately disagree and only the first is what the build runs on.
 
 ## 2. Monorepo layout
 

@@ -1,6 +1,7 @@
 using Clinic.Api.Features.AdminConfig;
 using Clinic.Api.Features.Auth;
 using Clinic.Api.Features.Availability;
+using Clinic.Api.Features.Booking;
 using Clinic.Api.Features.Health;
 using Clinic.Api.Features.Patients;
 using Clinic.Api.Features.StaffAccounts;
@@ -8,6 +9,7 @@ using Clinic.Api.Infrastructure.Auth;
 using Clinic.Api.Infrastructure.Errors;
 using Clinic.Api.Infrastructure.Observability;
 using Clinic.Api.Infrastructure.Persistence;
+using Clinic.Api.Infrastructure.Scheduling;
 using Clinic.Api.Infrastructure.Time;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -61,6 +63,13 @@ builder.Services.AddOptions<SchedulingOptions>()
     .ValidateOnStart();
 
 builder.Services.AddSingleton<ClinicScheduling>();
+
+// --- The one schedule read (design B11) ---------------------------------------------
+// Scoped, because it holds the request's DbContext — and that matters more than usual here:
+// the booking path runs it inside a transaction it has already begun, so the appointment
+// overlap query sees the snapshot the insert will be committed against. Shared by the
+// availability read and the booking check so the two cannot see different busy sets.
+builder.Services.AddScoped<ScheduleReader>();
 
 // --- Identity & session (Decision J, design A1) -------------------------------------
 // Registers the session store, the password hasher, the custom authentication scheme, and
@@ -130,5 +139,11 @@ app.MapProfessionalEndpoints();
 // the surface, and it is what gives the read's subtraction something real to subtract.
 app.MapAvailabilityEndpoints();
 app.MapTimeBlockEndpoints();
+
+// Booking (change 5a). The write that makes the read's promise true: P3 commits here, and the
+// three exclusion constraints behind it are what make "no double-booking" a property of the
+// schema rather than of the code above it.
+app.MapBookingOptionsEndpoints();
+app.MapBookingEndpoints();
 
 app.Run();

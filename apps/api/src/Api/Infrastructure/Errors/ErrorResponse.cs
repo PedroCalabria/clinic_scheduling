@@ -118,6 +118,13 @@ internal static class ErrorCodes
     internal const string UseStaffSignIn = "auth.use_staff_sign_in";
 
     /// <summary>A required consent has not been granted — 422.</summary>
+    /// <remarks>
+    /// <b>The booking gate, from <c>booking-core</c> onward.</b> A patient must hold an active
+    /// <c>DataProcessing</c> consent at the configured current version to book. Change 2 grants
+    /// it at just-in-time provisioning and P7 lets a patient revoke it, so until change 5
+    /// revocation was possible with nothing checking it — this is the code that closes that
+    /// loop. Also returned when revoking a consent that is not in force.
+    /// </remarks>
     internal const string ConsentRequired = "auth.consent_required";
 
     /// <summary>Staff account creation with an email another user already holds — 409.</summary>
@@ -193,6 +200,89 @@ internal static class ErrorCodes
     /// validation guide makes a human confirm.
     /// </remarks>
     internal const string BlockInvalidRange = "block.invalid_range";
+
+    /// <summary>
+    /// The professional already holds an appointment over the requested time — 409, invariant
+    /// I4 (added in <c>booking-core</c>).
+    /// </summary>
+    /// <remarks>
+    /// Reported both when the pre-commit check sees the collision and when the exclusion
+    /// constraint rejects a racing insert. Deliberately the same code for both: the caller sees
+    /// the same failure and has the same remedy — pick another time — and one code per
+    /// user-meaningful failure is the catalogue's own rule.
+    /// </remarks>
+    internal const string BookingSlotTaken = "booking.slot_taken";
+
+    /// <summary>
+    /// The professional has an internal block over the requested time — 409, the booking
+    /// direction of invariant I7 (added in <c>booking-core</c>).
+    /// </summary>
+    /// <remarks>
+    /// Distinct from <see cref="BookingSlotTaken"/>, and the distinction is what the patient
+    /// would do next: there somebody was faster and another time will do, here the professional
+    /// declared themselves unavailable and the read that offered the slot is stale for a wholly
+    /// different reason. Telling this patient "someone just booked it" would send them looking
+    /// for a race that did not happen.
+    /// <para>
+    /// It is also the mirror of <see cref="BookingBlockOverlapsAppointment"/>, which named the
+    /// other direction from the start. Having one direction named and the other overloaded
+    /// would have been the asymmetry.
+    /// </para>
+    /// </remarks>
+    internal const string BookingSlotBlocked = "booking.slot_blocked";
+
+    /// <summary>
+    /// The patient already holds an appointment over the requested time — 409, invariant I6
+    /// (added in <c>booking-core</c>).
+    /// </summary>
+    /// <remarks>
+    /// The catalogue had a code for the professional's collision and one for the room's, and
+    /// none for the patient's, so the third exclusion constraint had no way to answer.
+    /// Overloading <see cref="BookingSlotTaken"/> would tell a patient that somebody else took a
+    /// slot they are themselves standing in.
+    /// <para>
+    /// It also makes a double-submitted confirmation self-defending: the second request overlaps
+    /// the appointment the first one created, so it is refused here rather than by an
+    /// idempotency mechanism this system does not have.
+    /// </para>
+    /// </remarks>
+    internal const string BookingPatientBusy = "booking.patient_busy";
+
+    /// <summary>The requested start lies outside the professional's candidate hours — 422.</summary>
+    internal const string BookingOutsideWorkingHours = "booking.outside_working_hours";
+
+    /// <summary>The requested start is sooner than the configured minimum lead time — 422 (I8).</summary>
+    internal const string BookingLeadTimeViolation = "booking.lead_time_violation";
+
+    /// <summary>The requested start is beyond the configured scheduling horizon — 422 (I8).</summary>
+    internal const string BookingHorizonExceeded = "booking.horizon_exceeded";
+
+    /// <summary>
+    /// The professional holds no active duration for the requested appointment type — 422 (I2).
+    /// </summary>
+    /// <remarks>
+    /// The duration is the qualification gate 3b built: it may only exist for a type whose
+    /// specialty the professional holds, so its absence is exactly "not qualified for this kind
+    /// of visit". Reachable in practice when a qualification is cleared between a search and a
+    /// confirmation.
+    /// </remarks>
+    internal const string BookingSpecialtyMismatch = "booking.specialty_mismatch";
+
+    /// <summary>
+    /// Every active resource of the required type is occupied for the requested time — 409 (I5).
+    /// </summary>
+    internal const string BookingResourceUnavailable = "booking.resource_unavailable";
+
+    /// <summary>
+    /// An internal block would overlap one of that professional's live appointments — 409, the
+    /// block direction of invariant I7 (added in <c>booking-core</c>).
+    /// </summary>
+    /// <remarks>
+    /// Catalogued from the seed and unreachable until now: <c>availability-read</c> shipped block
+    /// creation with no appointment check because there was nothing to race. This change created
+    /// the racer, so the refusal became reachable as planned rather than as a repair.
+    /// </remarks>
+    internal const string BookingBlockOverlapsAppointment = "booking.block_overlaps_appointment";
 
     /// <summary>Unhandled error — 500. Never leaks internals.</summary>
     internal const string ServerUnexpected = "server.unexpected";

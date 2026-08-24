@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc.Testing.Handlers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Npgsql;
 using Respawn;
 using Respawn.Graph;
@@ -199,6 +200,14 @@ public sealed class ApiFixture : IAsyncLifetime
         var clock = scope.ServiceProvider.GetRequiredService<TimeProvider>();
         var now = clock.GetUtcNow();
 
+        // The version the RUNNING host is configured with, not a literal. Read from configuration
+        // by `booking-core`, which made this consent load-bearing: until then nothing checked it,
+        // so a seeded patient holding version "test" was indistinguishable from a real one. Now the
+        // booking gate compares versions, and a fixture that seeds a stale one would refuse every
+        // test in the suite while looking like a bug in the gate (design B12).
+        var consentVersion = scope.ServiceProvider
+            .GetRequiredService<IOptions<AuthOptions>>().Value.ConsentVersion;
+
         var address = email ?? $"{role.ToString().ToLowerInvariant()}-{Guid.NewGuid():N}@clinic.test";
 
         User user;
@@ -222,7 +231,7 @@ public sealed class ApiFixture : IAsyncLifetime
                 user = User.RegisterGooglePatient(address, $"google-sub-{Guid.NewGuid():N}", now);
                 database.Users.Add(user);
                 database.Patients.Add(Patient.Register(user.Id, "Test Patient", address, now));
-                database.Consents.Add(Consent.Grant(user.Id, ConsentType.DataProcessing, "test", now));
+                database.Consents.Add(Consent.Grant(user.Id, ConsentType.DataProcessing, consentVersion, now));
                 break;
         }
 
@@ -244,6 +253,18 @@ public sealed class ApiFixture : IAsyncLifetime
         await using var scope = Factory.Services.CreateAsyncScope();
         await work(scope.ServiceProvider.GetRequiredService<ClinicDbContext>());
     }
+
+    /// <summary>
+    /// A scope the caller owns, for tests that need <b>two live contexts at once</b>.
+    /// </summary>
+    /// <remarks>
+    /// Added by <c>booking-core</c>. <see cref="WithDatabaseAsync"/> opens and closes its own
+    /// scope around one callback, which is right for arranging and asserting and useless for the
+    /// thing this change has to prove: that two concurrent transactions on two connections
+    /// contend for a lock, and that one of them blocks. That needs both contexts alive
+    /// simultaneously, so the lifetime has to belong to the test.
+    /// </remarks>
+    internal AsyncServiceScope CreateScope() => Factory.Services.CreateAsyncScope();
 
     /// <summary>Runs the administrator bootstrap again, as a restart would.</summary>
     /// <remarks>

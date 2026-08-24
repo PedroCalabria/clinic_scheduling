@@ -315,10 +315,25 @@ public sealed class AvailabilitySolverTests
 
     // --- 4.4 Subtracting the busy set (F5) -------------------------------------------
 
-    private static BusyInterval Busy(int fromHour, int toHour, int fromMinute = 0, int toMinute = 0) =>
+    /// <summary>
+    /// A busy interval on the target Monday.
+    /// </summary>
+    /// <remarks>
+    /// The cause defaults to an internal block because that was the only producer when these
+    /// tests were written, and the subtraction is cause-agnostic (F5) so every assertion below
+    /// holds for any value. The tests that care which cause it was — the ones distinguishing
+    /// `slot_blocked` from `slot_taken` — pass it explicitly.
+    /// </remarks>
+    private static BusyInterval Busy(
+        int fromHour,
+        int toHour,
+        int fromMinute = 0,
+        int toMinute = 0,
+        BusyCause cause = BusyCause.InternalBlock) =>
         BusyInterval.Between(
             SaoPaulo.AtStrictly(Monday.At(new LocalTime(fromHour, fromMinute))).ToInstant(),
-            SaoPaulo.AtStrictly(Monday.At(new LocalTime(toHour, toMinute))).ToInstant());
+            SaoPaulo.AtStrictly(Monday.At(new LocalTime(toHour, toMinute))).ToInstant(),
+            cause);
 
     [Fact]
     public void A_busy_interval_removes_the_slots_it_covers_and_leaves_the_abutting_ones()

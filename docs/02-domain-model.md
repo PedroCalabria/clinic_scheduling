@@ -345,3 +345,4 @@ erDiagram
 | P-2 | Incremental-sync design (`syncToken`) + webhooks | Phase 6 (architecture) |
 | P-3 | Calibrate architecture layering (avoid full Clean Architecture by reflex) | Phase 6 |
 | P-4 | Strict buffer enforcement at DB level (expression over buffered range) — deferred trade-off from §4 | Phase 6 (if needed) |
+| P-5 | `Professional.full_name` — present in the §9 ERD, never implemented. 3b created the record with only a user reference and S7 lists by email, which is fine for an administrator who knows their own staff and not fine for a patient. `booking-core` needed a patient-facing label and derived one from the account's local part, deliberately behind a `displayName` field so the server can start telling the truth without any client changing | `booking-lifecycle` (5b), with the field on S7 |

@@ -68,7 +68,7 @@ public sealed class TimeBlock
     public bool IsActive => DeactivatedAtUtc is null;
 
     /// <summary>The block as the solver consumes it — one busy interval among many.</summary>
-    public BusyInterval Interval => BusyInterval.Between(StartsAt, EndsAt);
+    public BusyInterval Interval => BusyInterval.Between(StartsAt, EndsAt, BusyCause.InternalBlock);
 
     /// <summary>
     /// Records a professional's own unavailability.

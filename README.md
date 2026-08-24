@@ -3,7 +3,7 @@
 **A scheduling system for clinics where appointments, professionals and rooms all have to line up
 at the same time.**
 
-*A portfolio project, built in nine reviewed increments. Five are built and running; four remain.
+*A portfolio project, built in nine reviewed increments. Six are built and running; three remain.
 The order is deliberate — infrastructure first, then identity, then the domain — and every
 increment leaves the system working end to end.*
 
@@ -59,7 +59,7 @@ claimed.
 | 3a | Clinic catalog | **running** | An administrator defines what the clinic offers: specialties, rooms and equipment, and the kinds of visit that need them. A specialty still in use cannot be retired, and the refusal says how much is in the way. |
 | 3b | Professional configuration | **running** | What each professional does and when: their specialties, how long each kind of visit takes them, and their working hours. A duration can only be set for something they are qualified to do, and revoking a qualification something depends on is refused. |
 | 4 | Availability | **running** | Free times computed for a date range: working hours minus days off, converted against the clinic's timezone, cut into slots as long as that professional takes, minus the periods they have blocked. A professional blocks their own time on their own screen. The patient and room halves of the three-way check arrive with the appointments they need — increment 5. |
-| 5 | Booking | not yet built | The patient books, reschedules and cancels; the front desk does it on their behalf. Double-booking prevented by the database, not by convention. |
+| 5 | Booking | **running** | A patient searches real availability and books: only genuinely free times, then a confirmation. Two people cannot take the same slot, the same room, or double-book themselves — the database refuses it, not the code. A professional can no longer block time over an appointment they already have. Rescheduling and cancelling arrive with the next increment. |
 | 6 | Calendar — outbound | not yet built | A booked appointment appears in the professional's Google Calendar, reliably, even if Google is briefly unreachable. |
 | 7 | Calendar — inbound | not yet built | A block made in Google Calendar becomes unavailability here, and collisions are queued for a human. |
 | 8 | Reminders | not yet built | A reminder email before the appointment. |
@@ -193,8 +193,8 @@ that increment.
 | Decision | Why, and what it costs |
 |---|---|
 | **Vertical slices with a protected core** | Each feature owns its endpoint, handler and validation; the genuinely hard rules live in one small domain project. That project references no database, no web framework, nothing. The *compiler* enforces it — a build target fails on a forbidden package, and a test inspects the compiled assembly's references to catch infrastructure sneaking in indirectly. Honest cost: slices can duplicate each other without discipline. |
-| **Two data-access tools on purpose** *(read path: increment 4)* | An ORM for writes, where correctness matters and the aggregate enforces invariants. Hand-written SQL for the availability query, which is heavy range logic the ORM would fight. Cost: two things to know, and SQL that can drift from the schema — which is why integration tests run against a real database. |
-| **Double-booking prevented by the database** *(increment 5)* | A time-range exclusion constraint in PostgreSQL, not an application check. Two simultaneous bookings for the same slot cannot both succeed, regardless of what the code does. Application checks give the *nice error message*; the constraint is what makes the guarantee true. |
+| **Two data-access tools on purpose** | An ORM for writes, where correctness matters and the aggregate enforces invariants. Hand-written SQL for exactly the two things the ORM cannot express: the per-professional lock that makes the cross-table check race-safe, and the time-range overlap query behind availability. Cost: two things to know, and SQL that can drift from the schema — which is why integration tests run against a real database. |
+| **Double-booking prevented by the database** | Three time-range exclusion constraints in PostgreSQL — one each for the professional, the room and the patient — not an application check. Two simultaneous bookings for the same slot cannot both succeed, regardless of what the code does; there is a test that writes a colliding appointment straight past the application to prove it. Application checks give the *nice error message*; the constraint is what makes the guarantee true. |
 | **A session in a table, not a self-contained token** | The cookie holds a meaningless identifier; the row is the authority. Signing out, disabling an account, or being locked out takes effect on the **very next request** rather than whenever a token happens to expire. Cost: one indexed database read per request, accepted deliberately. |
 | **Two levels of permission** | What your role may *do*, and separately whether this particular record is *yours*. A patient reading another patient's file is refused even though patients may read files. The second check is the one most systems forget. |
 | **The outbox pattern for calendar sync** *(increment 6)* | There is no shared transaction between our database and Google, so "save the appointment, then create the event" has a window where one succeeds and the other does not. Instead the intent is written in the same transaction as the appointment, and a background job delivers it with retries. Why it matters in product terms: a silently failed sync means the doctor's calendar does not show the appointment, so they book something over it — precisely the failure this product exists to prevent. |

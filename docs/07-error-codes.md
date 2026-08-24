@@ -26,7 +26,7 @@ Every error response carries a machine-readable body:
 | 401 | not authenticated | `auth.session_expired` |
 | 403 | authenticated but not allowed | `auth.forbidden`, `auth.ownership_denied` |
 | 404 | not found | `booking.appointment_not_found` |
-| 409 | conflict (state/race) | `booking.slot_taken`, `booking.block_overlaps_appointment` |
+| 409 | conflict (state/race) | `booking.slot_taken`, `booking.slot_blocked`, `booking.patient_busy`, `booking.block_overlaps_appointment` |
 | 422 | valid shape, violates a business rule | `booking.cutoff_passed`, `booking.outside_working_hours` |
 | 429 | rate-limited | `auth.rate_limited` |
 | 503 | dependency unavailable | `availability.unavailable`, `calendar.sync_failed` |
@@ -47,7 +47,7 @@ Every error response carries a machine-readable body:
 | `auth.use_patient_sign_in` | 403 | Google sign-in on the **staff** entry (S0) by an address that holds a **patient** account — no session; the user is sent to the patient portal (added in `staff-google-guard`) |
 | `auth.use_staff_sign_in` | 403 | Google sign-in on the **patient portal** (P1) by an address that holds a **professional** account — no session, and an unclaimed invitation is **not** claimed; the user is sent to the staff console (added in `staff-google-guard`). Each surface admits only the role it serves, so a session is never established for someone every screen on it would refuse |
 | `auth.google_unavailable` | 503 | this deployment has no Google client configured, so the federated path is off (added in `identity-session`) |
-| `auth.consent_required` | 422 | a required consent has not been granted |
+| `auth.consent_required` | 422 | a required consent has not been granted. **First used in `booking-core`**, as the booking gate: a patient must hold an *active* `DataProcessing` consent at the configured current version. Change 2 grants that consent at just-in-time provisioning and P7 lets a patient revoke it, so until change 5 revocation was possible with nothing checking it — this code closes that loop. Also returned when revoking a consent that is not in force |
 | `auth.email_already_in_use` | 409 | staff account creation with a taken email |
 | `auth.account_not_found` | 404 | an administrator acted on a staff account that does not exist (added in `identity-session`) |
 | `auth.password_change_required` | 403 | the bootstrapped administrator must replace the supplied credential before doing anything else (added in `identity-session`) |
@@ -73,7 +73,9 @@ Every error response carries a machine-readable body:
 ### booking — capability `booking`
 | Code | Status | When |
 |---|---|---|
-| `booking.slot_taken` | 409 | optimistic booking lost the race (P3 "taken" state) |
+| `booking.slot_taken` | 409 | optimistic booking lost the race — the professional already holds an appointment over that time (I4). The P3 "taken" state |
+| `booking.slot_blocked` | 409 | the professional has an internal `TimeBlock` over the requested time — the **booking direction** of I7 (added in `booking-core`). Deliberately not `slot_taken`: nobody took this slot, the professional declared themselves unavailable, so a patient told "someone was faster" would go looking for a race that did not happen. The mirror of `booking.block_overlaps_appointment`, which already named the other direction |
+| `booking.patient_busy` | 409 | the patient already holds an appointment over that time (I6) — added in `booking-core`. Exists because the third exclusion constraint would otherwise have no answer; overloading `slot_taken` would tell a patient somebody else took a slot they are themselves standing in |
 | `booking.outside_working_hours` | 422 | slot outside the professional's working hours |
 | `booking.lead_time_violation` | 422 | inside minimum lead time |
 | `booking.horizon_exceeded` | 422 | beyond scheduling horizon |
