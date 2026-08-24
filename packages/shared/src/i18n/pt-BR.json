@@ -94,7 +94,15 @@
     "statusLocked": "Bloqueada",
     "statusPendingClaim": "Convidada",
     "empty": "Nenhuma conta ainda.",
-    "professionalPasswordNote": "Profissionais não recebem senha."
+    "professionalPasswordNote": "Profissionais não recebem senha.",
+    "takenTitle": "Esse endereço já pertence a uma conta",
+    "takenNote": "Aqui um papel nunca muda, então a conta que ocupa o endereço precisa ser encerrada antes de o endereço ser cadastrado de novo. Veja qual conta usa o endereço e decida.",
+    "findHolder": "Ver qual conta usa o endereço",
+    "holderNone": "Nenhuma conta ativa usa esse endereço agora. Cadastre-o novamente acima.",
+    "holderSummary": "{{email}} — {{role}}, {{status}}.",
+    "retire": "Encerrar esta conta e liberar o e-mail",
+    "retireNote": "O acesso termina na hora e o endereço fica livre outra vez. A conta e o seu histórico são preservados, e nenhum papel é alterado — você cadastra o endereço de novo, como uma conta nova.",
+    "retired": "Conta encerrada. O endereço está livre — cadastre-o novamente acima."
   },
   "roles": {
     "Patient": "Paciente",
@@ -113,6 +121,9 @@
     "auth_rate_limited": "Muitas tentativas. Tente novamente em instantes.",
     "auth_google_failed": "O acesso pelo Google não foi concluído. Tente novamente — e se você usa e-mail e senha nesta clínica, entre por ali.",
     "auth_google_unavailable": "O acesso pelo Google não está disponível nesta instalação.",
+    "auth_not_provisioned": "Esta clínica não tem uma conta cadastrada para esse endereço do Google. Peça à administração para cadastrar o seu acesso e entre novamente.",
+    "auth_use_patient_sign_in": "Esta é uma conta de paciente. Entre pelo portal do paciente — o console da equipe é só para as contas que a clínica cadastra para o seu time.",
+    "auth_use_staff_sign_in": "Esta conta está cadastrada como profissional da clínica. Entre pelo console da equipe.",
     "auth_consent_required": "Isso exige um consentimento que você não concedeu.",
     "auth_email_already_in_use": "Outra conta já usa esse e-mail.",
     "auth_account_not_found": "Essa conta não existe mais.",

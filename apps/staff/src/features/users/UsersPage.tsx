@@ -1,5 +1,6 @@
 import {
   Alert,
+  ApiRequestError,
   Badge,
   Button,
   Card,
@@ -15,7 +16,9 @@ import {
   TableHeaderCell,
   TableRow,
   createStaffAccount,
+  deactivateStaffAccount,
   disableStaffAccount,
+  findStaffAccountByEmail,
   listStaffAccounts,
   useApiErrorMessage,
   type RoleName,
@@ -76,6 +79,46 @@ export function UsersPage() {
     },
   });
 
+  // --- The recovery path (design D4/D5) ---------------------------------------------
+  //
+  // `undefined` means nobody has looked yet, `null` means nobody holds the address.
+  const [holder, setHolder] = useState<StaffAccountResponse | null | undefined>(undefined);
+
+  const findHolder = useMutation({
+    mutationFn: () => findStaffAccountByEmail(email),
+    onSuccess: setHolder,
+  });
+
+  const retire = useMutation({
+    mutationFn: (id: string) => deactivateStaffAccount(id),
+    onSuccess: () => {
+      setNotice(t('users.retired'));
+      setHolder(undefined);
+      // Clears the refusal, so the form is back to a plain invite the administrator submits
+      // again themselves. Retiring and registering stay two acts they each ask for — one
+      // combined button would be the role change this system does not have.
+      create.reset();
+      void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+    },
+  });
+
+  // Shown only for the one refusal it can help with. Any other creation failure is just an
+  // error message; offering to retire an account would be a non-sequitur.
+  const addressIsTaken =
+    create.error instanceof ApiRequestError
+    && create.error.error.code === 'auth.email_already_in_use';
+
+  /** Drops a stale refusal so the panel cannot outlive the address it was about. */
+  function resetRecovery() {
+    setHolder(undefined);
+    findHolder.reset();
+    retire.reset();
+
+    if (create.isError) {
+      create.reset();
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -108,7 +151,10 @@ export function UsersPage() {
                 aria-describedby={describedBy}
                 aria-invalid={invalid}
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  resetRecovery();
+                }}
                 required
               />
             )}
@@ -161,6 +207,29 @@ export function UsersPage() {
             <Button type="submit" disabled={create.isPending}>
               {t('users.create')}
             </Button>
+
+            {addressIsTaken ? (
+              <TakenAddressRecovery
+                holder={holder}
+                onFind={() => {
+                  setNotice(null);
+                  findHolder.mutate();
+                }}
+                onRetire={(id) => {
+                  setNotice(null);
+                  retire.mutate(id);
+                }}
+                finding={findHolder.isPending}
+                retiring={retire.isPending}
+                failure={
+                  findHolder.isError
+                    ? describeError(findHolder.error)
+                    : retire.isError
+                      ? describeError(retire.error)
+                      : undefined
+                }
+              />
+            ) : null}
           </div>
         </form>
       </Card>
@@ -198,6 +267,82 @@ export function UsersPage() {
         </Table>
       ) : (
         <p className="text-meta">{t('users.empty')}</p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The way out of "that address is already in use" (design D5).
+ *
+ * Two steps a person asks for separately — see who holds the address, then retire that account
+ * — and never one "deactivate and invite" button. The combined version would be
+ * indistinguishable in the UI from changing somebody's role, which is a thing this system
+ * deliberately cannot do (`00-context.md` §5): a role is fixed when an account is created, so
+ * the old account is retired and the address registered afresh as a NEW account. That is what
+ * keeps the access log honest about who held which role when.
+ *
+ * It also has to exist at all because S11 lists staff only, so the account most likely to be in
+ * the way — a patient provisioned on the portal — cannot be found by looking down the table.
+ */
+function TakenAddressRecovery({
+  holder,
+  onFind,
+  onRetire,
+  finding,
+  retiring,
+  failure,
+}: {
+  holder: StaffAccountResponse | null | undefined;
+  onFind: () => void;
+  onRetire: (id: string) => void;
+  finding: boolean;
+  retiring: boolean;
+  failure: string | undefined;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="space-y-3 rounded-md border border-line bg-surface-raised p-4">
+      <h3 className="font-medium text-heading">{t('users.takenTitle')}</h3>
+      <p className="text-sm text-meta">{t('users.takenNote')}</p>
+
+      {failure ? <Alert tone="error">{failure}</Alert> : null}
+
+      {holder === undefined ? (
+        // `type="button"`, and so is the retire button: both live inside the invite form, and a
+        // submit here would re-run the creation that just failed.
+        <Button type="button" variant="secondary" size="sm" onClick={onFind} disabled={finding}>
+          {t('users.findHolder')}
+        </Button>
+      ) : holder === null ? (
+        <p className="text-sm text-meta">{t('users.holderNone')}</p>
+      ) : (
+        <div className="space-y-3">
+          {/*
+            The address, the role and the status, before anything is offered. An administrator
+            about to retire an account should be reading what they are retiring — this is the
+            difference between a confirmed decision and a button they clicked.
+          */}
+          <p className="text-sm text-body">
+            {t('users.holderSummary', {
+              email: holder.email,
+              role: t(`roles.${holder.role}`),
+              status: t(`users.status${holder.status}`),
+            })}
+          </p>
+          <p className="text-sm text-meta">{t('users.retireNote')}</p>
+
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => onRetire(holder.id)}
+            disabled={retiring}
+          >
+            {t('users.retire')}
+          </Button>
+        </div>
       )}
     </div>
   );

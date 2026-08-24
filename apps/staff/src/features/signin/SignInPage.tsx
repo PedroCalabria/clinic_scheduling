@@ -10,12 +10,12 @@ import {
   Input,
   LanguageSwitch,
   SESSION_QUERY_KEY,
-  googleSignInUrl,
   signIn,
   useApiCodeMessage,
   useApiErrorMessage,
   useSession,
 } from '@clinic/shared';
+import { staffGoogleSignInUrl } from '../../config/signIn';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -131,7 +131,7 @@ export function SignInPage() {
         </CardHeader>
 
         <Button asChild variant="secondary" className="w-full">
-          <a href={googleSignInUrl('/staff/')}>{t('portal.signInWithGoogle')}</a>
+          <a href={staffGoogleSignInUrl()}>{t('portal.signInWithGoogle')}</a>
         </Button>
       </Card>
     </div>

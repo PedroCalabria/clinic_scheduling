@@ -253,4 +253,261 @@ public sealed class StaffAccountTests(ApiFixture fixture)
             Assert.Single(rows, row => row.DeletedAtUtc is not null);
         });
     }
+
+    // --- Recovery: deactivate, then invite anew (staff-google-guard) -------------------
+    //
+    // `00-context.md` §5 has always said this is how a mistakenly-created account is fixed — a
+    // role never changes, so the account is retired and the address invited afresh. Until now
+    // nothing in the product could do the retiring: `disable` turns an account off while KEEPING
+    // its address, and S11 lists staff only, so a patient created by mistake was invisible to the
+    // administrator who had to clear it.
+
+    [Fact]
+    public async Task Deactivating_a_patient_account_frees_its_address_for_a_professional_invitation()
+    {
+        // The recovery path end to end, and the reason the filtered unique index is filtered.
+        var (administrator, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _administrator = administrator;
+
+        var mistake = await fixture.SeedUserAsync(Role.Patient);
+
+        // While it is still live the address is taken, whatever role wants it.
+        var blocked = await administrator.PostAsync("/api/staff-accounts", new
+        {
+            email = mistake.Email,
+            role = nameof(Role.Professional),
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, blocked.StatusCode);
+        Assert.Equal("auth.email_already_in_use", await InternalSignInTests.ReadCodeAsync(blocked));
+
+        var deactivated = await administrator.PostAsync($"/api/staff-accounts/{mistake.Id}/deactivate");
+        Assert.Equal(HttpStatusCode.NoContent, deactivated.StatusCode);
+
+        var invited = await administrator.PostAsync("/api/staff-accounts", new
+        {
+            email = mistake.Email,
+            role = nameof(Role.Professional),
+        });
+
+        Assert.Equal(HttpStatusCode.Created, invited.StatusCode);
+
+        await fixture.WithDatabaseAsync(async database =>
+        {
+            var rows = await database.Users
+                .Where(candidate => candidate.Email == mistake.Email)
+                .ToListAsync();
+
+            // A NEW account, not a mutated one. That is what keeps the access log honest about
+            // who held which role when, and it is why "promote this user" is not a feature.
+            Assert.Equal(2, rows.Count);
+
+            var retired = Assert.Single(rows, row => row.DeletedAtUtc is not null);
+            Assert.Equal(Role.Patient, retired.Role);
+
+            var fresh = Assert.Single(rows, row => row.DeletedAtUtc is null);
+            Assert.Equal(Role.Professional, fresh.Role);
+            Assert.NotEqual(mistake.Id, fresh.Id);
+            Assert.True(fresh.AwaitsClaim);
+
+            // Soft-delete only (I10): the patient's own record and consent are still there.
+            Assert.True(await database.Patients.AnyAsync(candidate => candidate.UserId == retired.Id));
+            Assert.True(await database.Consents.AnyAsync(candidate => candidate.UserId == retired.Id));
+        });
+    }
+
+    [Fact]
+    public async Task Disabling_an_account_keeps_its_address_while_deactivating_releases_it()
+    {
+        // The two actions differ in exactly one way, and it is the way that matters here. Pinned
+        // by test rather than left to their names, because the names alone will not stop someone
+        // from folding one into the other (design D4).
+        var (administrator, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _administrator = administrator;
+
+        var account = await fixture.SeedUserAsync(Role.FrontDesk);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await administrator.PostAsync($"/api/staff-accounts/{account.Id}/disable")).StatusCode);
+
+        var stillTaken = await administrator.PostAsync("/api/staff-accounts", new
+        {
+            email = account.Email,
+            role = nameof(Role.FrontDesk),
+            password = "a-long-enough-password",
+        });
+
+        Assert.Equal(HttpStatusCode.Conflict, stillTaken.StatusCode);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await administrator.PostAsync($"/api/staff-accounts/{account.Id}/deactivate")).StatusCode);
+
+        var nowFree = await administrator.PostAsync("/api/staff-accounts", new
+        {
+            email = account.Email,
+            role = nameof(Role.FrontDesk),
+            password = "a-long-enough-password",
+        });
+
+        Assert.Equal(HttpStatusCode.Created, nowFree.StatusCode);
+    }
+
+    [Fact]
+    public async Task Deactivating_an_account_ends_a_session_it_already_holds()
+    {
+        var (administrator, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _administrator = administrator;
+
+        var (victim, victimUser) = await fixture.AsRoleAsync(Role.FrontDesk);
+        using var _victim = victim;
+
+        Assert.Equal(HttpStatusCode.OK, (await victim.GetAsync("/api/auth/session")).StatusCode);
+
+        var deactivated = await administrator.PostAsync($"/api/staff-accounts/{victimUser.Id}/deactivate");
+        Assert.Equal(HttpStatusCode.NoContent, deactivated.StatusCode);
+
+        // Next request, not next expiry — releasing the address must not be the only effect.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await victim.GetAsync("/api/auth/session")).StatusCode);
+    }
+
+    [Fact]
+    public async Task An_administrator_cannot_deactivate_their_own_account()
+    {
+        // Otherwise the clinic can lock itself out of the one screen that creates accounts.
+        var (administrator, self) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _administrator = administrator;
+
+        var response = await administrator.PostAsync($"/api/staff-accounts/{self.Id}/deactivate");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.Equal("auth.forbidden", await InternalSignInTests.ReadCodeAsync(response));
+
+        // Still working, which is the point.
+        Assert.Equal(HttpStatusCode.OK, (await administrator.GetAsync("/api/auth/session")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Deactivating_is_administrator_only()
+    {
+        var (frontDesk, _) = await fixture.AsRoleAsync(Role.FrontDesk);
+        using var _frontDesk = frontDesk;
+
+        var target = await fixture.SeedUserAsync(Role.Patient);
+
+        var response = await frontDesk.PostAsync($"/api/staff-accounts/{target.Id}/deactivate");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+
+        await fixture.WithDatabaseAsync(async database =>
+        {
+            var user = await database.Users.SingleAsync(candidate => candidate.Id == target.Id);
+            Assert.Null(user.DeletedAtUtc);
+        });
+    }
+
+    [Fact]
+    public async Task Deactivating_an_account_twice_reports_that_it_is_gone()
+    {
+        var (administrator, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _administrator = administrator;
+
+        var account = await fixture.SeedUserAsync(Role.FrontDesk);
+
+        Assert.Equal(
+            HttpStatusCode.NoContent,
+            (await administrator.PostAsync($"/api/staff-accounts/{account.Id}/deactivate")).StatusCode);
+
+        var again = await administrator.PostAsync($"/api/staff-accounts/{account.Id}/deactivate");
+
+        Assert.Equal(HttpStatusCode.NotFound, again.StatusCode);
+        Assert.Equal("auth.account_not_found", await InternalSignInTests.ReadCodeAsync(again));
+    }
+
+    [Fact]
+    public async Task The_address_lookup_finds_a_patient_the_listing_deliberately_hides()
+    {
+        // The listing hides patients on purpose, so without this an administrator could not
+        // reach the account most likely to be blocking an invitation.
+        var (administrator, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _administrator = administrator;
+
+        var patient = await fixture.SeedUserAsync(Role.Patient);
+
+        var found = await administrator.GetAsync(
+            $"/api/staff-accounts/by-email?email={Uri.EscapeDataString(patient.Email)}");
+
+        Assert.Equal(HttpStatusCode.OK, found.StatusCode);
+
+        using var document = JsonDocument.Parse(await found.Content.ReadAsStringAsync());
+        Assert.Equal(patient.Id, document.RootElement.GetProperty("id").GetGuid());
+        Assert.Equal(nameof(Role.Patient), document.RootElement.GetProperty("role").GetString());
+        Assert.Equal(nameof(UserStatus.Active), document.RootElement.GetProperty("status").GetString());
+
+        // Only what the administrator already typed, plus the account's shape. No name, no phone.
+        Assert.False(document.RootElement.TryGetProperty("fullName", out _));
+        Assert.False(document.RootElement.TryGetProperty("contactPhone", out _));
+    }
+
+    [Fact]
+    public async Task The_address_lookup_normalizes_the_address_it_is_given()
+    {
+        // The same normalization the uniqueness rule and the invite-claim rule use, or the
+        // recovery flow would report "nobody holds it" about an address that is taken.
+        var (administrator, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _administrator = administrator;
+
+        var patient = await fixture.SeedUserAsync(Role.Patient);
+
+        var found = await administrator.GetAsync(
+            $"/api/staff-accounts/by-email?email={Uri.EscapeDataString(patient.Email.ToUpperInvariant())}");
+
+        Assert.Equal(HttpStatusCode.OK, found.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_address_lookup_reports_an_unused_address_as_not_found()
+    {
+        var (administrator, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _administrator = administrator;
+
+        var response = await administrator.GetAsync(
+            $"/api/staff-accounts/by-email?email=nobody-{Guid.NewGuid():N}%40example.test");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("auth.account_not_found", await InternalSignInTests.ReadCodeAsync(response));
+    }
+
+    [Fact]
+    public async Task The_address_lookup_ignores_an_account_that_is_already_deactivated()
+    {
+        // "Is this address taken?" is a question about live accounts only — the same filter the
+        // uniqueness rule applies. A deactivated row must not look like an obstacle.
+        var (administrator, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _administrator = administrator;
+
+        var account = await fixture.SeedUserAsync(Role.FrontDesk);
+
+        await administrator.PostAsync($"/api/staff-accounts/{account.Id}/deactivate");
+
+        var response = await administrator.GetAsync(
+            $"/api/staff-accounts/by-email?email={Uri.EscapeDataString(account.Email)}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task The_address_lookup_is_administrator_only()
+    {
+        var (frontDesk, _) = await fixture.AsRoleAsync(Role.FrontDesk);
+        using var _frontDesk = frontDesk;
+
+        var patient = await fixture.SeedUserAsync(Role.Patient);
+
+        var response = await frontDesk.GetAsync(
+            $"/api/staff-accounts/by-email?email={Uri.EscapeDataString(patient.Email)}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
 }

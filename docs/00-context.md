@@ -76,10 +76,32 @@ Two SPAs (patient-portal, staff) + `packages/shared`. Feature-folder structure m
   rule, which also decides whether the access is recorded (`AccessLog`). A role is fixed when
   a user is created and never changes — an administrator disables one account and creates
   another. Established in change 2.
-- **Provisioning (change 2):** an unknown Google email becomes a **patient**; a professional
-  is **pre-created by an administrator** (S11) and claimed by their first Google sign-in; a
-  Google sign-in whose address belongs to an internal account is **refused**. Roles are never
-  inferred from the identity provider. The `User` (identity) and the `Professional` row (clinical
+- **Provisioning (change 2, refined in `staff-google-guard`):** Google sign-in behaves **by
+  surface**, and the rule is symmetric: **each surface admits only the role it serves**, and tells
+  anyone else which door is theirs — a patient at the staff sign-in gets
+  `auth.use_patient_sign_in`, a professional at the patient portal gets `auth.use_staff_sign_in`,
+  and neither gets a session. Admitting them would mean a session in which every screen on that
+  surface fails, which reads as a broken product rather than as an answer. The surfaces differ in
+  exactly one further respect — what happens to an address with **no account at all**: on the
+  **patient portal (P1)** it becomes a **patient** (JIT), while on the **staff sign-in (S0)** it
+  is refused with `auth.not_provisioned` and *nothing is created*, because S0 promises "the
+  account the clinic registered for you". Which surface a flow belongs to is decided by the
+  **return path it started with**, carried in the flow's own `HttpOnly` state cookie — never by
+  anything in the token, so the same Google identity is a legitimate patient on P1 and a refused
+  stranger on S0. Every refusal is decided **before any write**: an unclaimed invitation reached
+  through the wrong surface is not claimed. A professional is **pre-created by an administrator**
+  (S11) and claimed by their first Google sign-in *on S0*; a Google sign-in whose address belongs
+  to an internal account is **refused** (`auth.google_failed`) from either surface — that one is
+  the account-takeover defence, not a wrong-door mistake. Roles are never inferred from the
+  identity provider, and **a role never changes** — the recovery path for a mistakenly-created
+  account is to **deactivate it and invite anew**, which produces a *new* `User` and keeps
+  `AccessLog` history honest about who held which role when. `User` email uniqueness is evaluated
+  over **live (non-deactivated)** records only, so a deactivated address can be registered again.
+  The two administrator actions are deliberately different here: **disable** ends access and
+  **keeps** the address (a reversible off-switch), while **deactivate** soft-deletes (I10) and
+  **releases** it. Deactivation reaches an account of any role, patients included, because the
+  account blocking an invitation usually is one and S11 lists staff only.
+  The `User` (identity) and the `Professional` row (clinical
   configuration) are created in **separate steps** (Fork 1 · option iii): an administrator invites
   the professional in S11 (change 2 — creates the `User`, `Role=Professional`, `Status=PendingClaim`);
   the `Professional` row is created later in S7 (change 3b) on first configuration — S7 lists
@@ -120,3 +142,4 @@ Automated tests cover domain invariants, DB constraints, and API behavior — bu
 - **When:** produced during `apply`/`verify`; the maintainer **runs the checks against the local app and confirms them before archive/merge**. The change is not done until the guide has been executed.
 - **Why:** this replaces the anti-pattern of archiving with human-verification task boxes left unchecked (as happened in `identity-session` and `clinic-catalog`). The guide collects exactly the human-only surface in one place, so it stops being buried, unchecked boxes.
 - **Scope:** only what tests cannot assert. If a check *can* be automated, it belongs in the test suite, not the guide.
+- **Validating Google-only screens:** the patient and professional surfaces (P1–P6, S1) are reachable only via Google sign-in, so their validation needs a configured Google OAuth client (`08-google-setup.md`). Validate with **real Google accounts you control**: invite your own Google email as a professional in S11, then sign in to claim it; use a second Google account to exercise the JIT-patient path. The seeded `dra.helena@clinic.local` is dev fixture data on a non-existent domain — not claimable — so it exercises the API and the solver, not the browser sign-in. A change that introduces Google-only screens is **not** done until its guide has been run against a real client (this is why the Google client is pulled forward before change 5, not left to change 6).
