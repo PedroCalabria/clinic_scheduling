@@ -63,6 +63,12 @@ internal sealed class ClinicDbContext(DbContextOptions<ClinicDbContext> options)
     /// </summary>
     public DbSet<TimeBlock> TimeBlocks => Set<TimeBlock>();
 
+    /// <summary>
+    /// The scheduling core. Written through the aggregate, protected by three exclusion
+    /// constraints EF does not model — see the <c>BookingCore</c> migration.
+    /// </summary>
+    public DbSet<Appointment> Appointments => Set<Appointment>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // The change-1 marker table keeps its original inline mapping so the existing

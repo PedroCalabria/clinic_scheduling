@@ -111,7 +111,7 @@ public sealed class TimeBlockTests
     [Fact]
     public void Touching_intervals_do_not_overlap()
     {
-        var interval = BusyInterval.Between(At(14), At(15));
+        var interval = BusyInterval.Between(At(14), At(15), BusyCause.InternalBlock);
 
         // Half-open, and this is the case a naive implementation refuses: a visit that runs
         // right up to when the professional steps out.
@@ -126,6 +126,6 @@ public sealed class TimeBlockTests
     {
         // The value that would silently subtract nothing. NodaTime's own Interval permits it,
         // which is why this type exists.
-        Assert.Throws<DomainRuleViolationException>(() => BusyInterval.Between(At(14), At(14)));
+        Assert.Throws<DomainRuleViolationException>(() => BusyInterval.Between(At(14), At(14), BusyCause.InternalBlock));
     }
 }

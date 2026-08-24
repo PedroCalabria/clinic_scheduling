@@ -10,6 +10,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!--
+      Decision L's second data-access technology, and it belongs to THIS project only. Domain
+      references no infrastructure, and Domain.csproj's ForbidInfrastructureReferences target
+      plus DomainBoundaryTests would both fail if this line were added there instead — which is
+      the likelier mistake, since the booking rules it serves live in Domain.
+    -->
+    <PackageReference Include="Dapper" Version="2.1.66" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>

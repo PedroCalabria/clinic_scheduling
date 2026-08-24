@@ -3,6 +3,7 @@ using Clinic.Api.Features.AdminConfig;
 using Clinic.Api.Infrastructure.Auth;
 using Clinic.Api.Infrastructure.Errors;
 using Clinic.Api.Infrastructure.Persistence;
+using Clinic.Api.Infrastructure.Scheduling;
 using Clinic.Api.Infrastructure.Time;
 using Clinic.Domain;
 using Clinic.Domain.Configuration;
@@ -41,6 +42,17 @@ namespace Clinic.Api.Features.Availability;
 /// Times cross the wire as clinic wall clock and are converted here, using the same zone and the
 /// same lenient resolver the solver uses — so a block and a working hour can never disagree about
 /// what a wall-clock time meant.
+/// </para>
+/// <para>
+/// <b>Modified by <c>booking-core</c>: creating and moving a block is no longer unconditional.</b>
+/// <c>availability-read</c> shipped this path with no appointment-collision check and no lock, and
+/// said exactly why — both mechanisms exist to protect a race against appointments (I7, G1), and
+/// with no appointments in the system there was nothing to race, so shipping a lock would have been
+/// a mechanism nobody could test. Change 5a created the racer, so both arrive here now: the path
+/// takes the professional-scoped transaction lock and refuses a range overlapping one of the
+/// professional's live appointments with <c>booking.block_overlaps_appointment</c>. This is a
+/// fulfilled plan rather than a repaired oversight, and it is why the change lists
+/// <c>availability</c> among its <em>modified</em> capabilities rather than only adding code.
 /// </para>
 /// </remarks>
 internal static class TimeBlockEndpoints
@@ -90,6 +102,7 @@ internal static class TimeBlockEndpoints
         SaveTimeBlockRequest request,
         ClaimsPrincipal actor,
         ClinicDbContext database,
+        ScheduleReader reader,
         ClinicTimezone timezone,
         TimeProvider clock,
         CancellationToken cancellationToken)
@@ -110,8 +123,19 @@ internal static class TimeBlockEndpoints
         {
             var block = TimeBlock.ForProfessional(caller.Id, times.StartsAt, times.EndsAt, clock.GetUtcNow());
 
+            // The I7 + G1 retrofit (design B7). Change 4 shipped this path unlocked and unchecked
+            // and said why: both mechanisms exist to protect a race against appointments, and with
+            // no appointments there was nothing to race. booking-core created the racer, so the
+            // check and the lock arrive here as a fulfilled plan rather than a repaired oversight.
+            if (await RefuseIfAppointmentOverlapsAsync(database, reader, block, cancellationToken)
+                is { } refusal)
+            {
+                return refusal;
+            }
+
             database.TimeBlocks.Add(block);
             await database.SaveChangesAsync(cancellationToken);
+            await database.Database.CommitTransactionAsync(cancellationToken);
 
             return Results.Ok(Describe(block, timezone));
         }
@@ -128,6 +152,7 @@ internal static class TimeBlockEndpoints
         SaveTimeBlockRequest request,
         ClaimsPrincipal actor,
         ClinicDbContext database,
+        ScheduleReader reader,
         ClinicTimezone timezone,
         CancellationToken cancellationToken)
     {
@@ -148,7 +173,19 @@ internal static class TimeBlockEndpoints
         try
         {
             block.Reschedule(times.StartsAt, times.EndsAt);
+
+            // Moving a block onto an appointment is the same collision as creating one there, so
+            // it takes the same lock and the same check. On refusal nothing is saved, so the
+            // stored range is untouched even though the in-memory entity was moved — the property
+            // the screen relies on to keep showing the truth after a refusal.
+            if (await RefuseIfAppointmentOverlapsAsync(database, reader, block, cancellationToken)
+                is { } refusal)
+            {
+                return refusal;
+            }
+
             await database.SaveChangesAsync(cancellationToken);
+            await database.Database.CommitTransactionAsync(cancellationToken);
 
             return Results.Ok(Describe(block, timezone));
         }
@@ -193,6 +230,48 @@ internal static class TimeBlockEndpoints
         await database.SaveChangesAsync(cancellationToken);
 
         return Results.NoContent();
+    }
+
+    // --- The I7 / G1 retrofit --------------------------------------------------------
+
+    /// <summary>
+    /// Opens the transaction, takes the professional lock, and refuses if a live appointment
+    /// overlaps the block. Returns null when the block may be stored.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The block half of invariant I7, and the second of the two paths domain-model G1's lock
+    /// covers. The lock is taken <b>before</b> the appointment read, because the race being closed
+    /// is read-then-write across two tables: this path reads appointments and the booking path
+    /// reads blocks, so a lock acquired after the read would serialize nothing while every
+    /// functional test still passed.
+    /// </para>
+    /// <para>
+    /// The transaction is left open on success for the caller to commit alongside its write, and
+    /// disposed by the request scope on refusal — which is also what releases the lock, since it is
+    /// transaction-scoped precisely so a failing handler cannot leak it.
+    /// </para>
+    /// </remarks>
+    private static async Task<IResult?> RefuseIfAppointmentOverlapsAsync(
+        ClinicDbContext database,
+        ScheduleReader reader,
+        TimeBlock block,
+        CancellationToken cancellationToken)
+    {
+        await database.Database.BeginTransactionAsync(cancellationToken);
+
+        await ScheduleMutation.TakeProfessionalLockAsync(database, block.ProfessionalId, cancellationToken);
+
+        var range = TimeRange.Between(block.StartsAt, block.EndsAt);
+
+        if (await reader.ProfessionalHasAppointmentAsync(block.ProfessionalId, range, cancellationToken))
+        {
+            return ApiError.Result(
+                ErrorCodes.BookingBlockOverlapsAppointment,
+                StatusCodes.Status409Conflict);
+        }
+
+        return null;
     }
 
     // --- Resolution ------------------------------------------------------------------

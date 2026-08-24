@@ -155,6 +155,30 @@ async function* sourceFiles(directory) {
   }
 }
 
+/**
+ * The CLDR plural categories i18next appends to a key when `count` is passed.
+ *
+ * pt-BR and en both use only `one` and `other`, but the whole set is listed because the cost is
+ * nothing and a third locale should not silently start failing this check.
+ */
+const PLURAL_SUFFIXES = ['zero', 'one', 'two', 'few', 'many', 'other'];
+
+/**
+ * Whether a key used in source resolves — directly, or as a pluralised family.
+ *
+ * Added by `booking-core`, whose search results say "3 times available" and must not say "1 times
+ * available". i18next resolves `t('a.b', { count })` to `a.b_one` / `a.b_other`, so the literal key
+ * legitimately does not exist. Without this, the check pushes every future change toward copy that
+ * cannot pluralise — which is a worse outcome than the check was written to prevent.
+ *
+ * A family counts as present only if at least one suffixed form exists; the consistency check above
+ * has already proved that whatever exists, exists in BOTH locales, so a half-translated plural is
+ * still caught.
+ */
+function resolves(key, keys) {
+  return keys.has(key) || PLURAL_SUFFIXES.some((suffix) => keys.has(`${key}_${suffix}`));
+}
+
 const referenceKeys = allKeys.get('packages/shared/src/i18n');
 
 if (referenceKeys) {
@@ -177,7 +201,7 @@ if (referenceKeys) {
 
         checked += 1;
 
-        if (!referenceKeys.has(key)) {
+        if (!resolves(key, referenceKeys)) {
           const where = file.slice(repoRoot.length + 1).split(sep).join('/');
           missing.set(key, where);
         }

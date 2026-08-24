@@ -1,9 +1,11 @@
 using Clinic.Api.Infrastructure.Persistence;
 using Clinic.Domain.Identity;
+using Clinic.Domain.Scheduling;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using NodaTime;
 
 namespace Clinic.Api.IntegrationTests;
 
@@ -51,6 +53,77 @@ public sealed class DevelopmentClinicSeedTests(ApiFixture fixture)
 
             Assert.NotEmpty(await database.WorkingHoursTemplates
                 .Where(x => x.ProfessionalId == professional!.Id).ToListAsync());
+        });
+    }
+
+    [Fact]
+    public async Task It_provisions_a_patient_with_appointments_that_booking_core_can_demonstrate()
+    {
+        using var host = SeedingHost(enabled: true, environment: Environments.Development);
+
+        await RunSeedAsync(host);
+
+        await WithDatabaseAsync(host, async database =>
+        {
+            var patient = await database.Patients.FirstOrDefaultAsync();
+
+            Assert.NotNull(patient);
+
+            // Provisioned like a real Google patient, consent included — which the booking gate
+            // now reads, so a seeded patient without one could not book their own demo.
+            var consent = await database.Consents.FirstOrDefaultAsync(
+                candidate => candidate.UserId == patient!.UserId
+                    && candidate.Type == ConsentType.DataProcessing
+                    && candidate.RevokedAtUtc == null);
+
+            Assert.NotNull(consent);
+
+            var appointments = await database.Appointments.ToListAsync();
+
+            // Two, in two different rooms and of two different lengths, so a fresh stack shows the
+            // subtraction removing time from BOTH halves of the tri-constraint rather than only
+            // from a professional's diary.
+            Assert.Equal(2, appointments.Count);
+            Assert.Equal(2, appointments.Select(a => a.ResourceId).Distinct().Count());
+            Assert.Equal(2, appointments.Select(a => a.EndsAt - a.StartsAt).Distinct().Count());
+            Assert.All(appointments, a => Assert.Equal(AppointmentStatus.Scheduled, a.Status));
+
+            // And they are in the future, so the seed keeps demonstrating its own feature instead
+            // of quietly drifting past the horizon into a set of historical rows.
+            Assert.All(appointments, a => Assert.True(a.StartsAt > SystemClock.Instance.GetCurrentInstant()));
+        });
+    }
+
+    [Fact]
+    public async Task The_seeded_appointments_do_not_collide_with_the_seeded_blocks()
+    {
+        using var host = SeedingHost(enabled: true, environment: Environments.Development);
+
+        await RunSeedAsync(host);
+
+        await WithDatabaseAsync(host, async database =>
+        {
+            var appointments = await database.Appointments.ToListAsync();
+            var blocks = await database.TimeBlocks.ToListAsync();
+
+            Assert.NotEmpty(appointments);
+            Assert.NotEmpty(blocks);
+
+            // Task 13.2, and it is not decoration: the I7 retrofit means a block overlapping one of
+            // that professional's appointments is now REFUSED. The seed writes both directly, so a
+            // collision here would not fail loudly — it would produce a demo clinic in a state the
+            // product itself would have refused to create, which is exactly what going through the
+            // domain factories is supposed to prevent.
+            foreach (var appointment in appointments)
+            {
+                foreach (var block in blocks.Where(b => b.ProfessionalId == appointment.ProfessionalId))
+                {
+                    Assert.False(
+                        block.Interval.Overlaps(appointment.StartsAt, appointment.EndsAt),
+                        $"seeded block {block.Interval} overlaps seeded appointment "
+                        + $"{appointment.StartsAt}..{appointment.EndsAt}");
+                }
+            }
         });
     }
 

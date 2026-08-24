@@ -771,3 +771,107 @@ export async function getAvailability(input: {
 
   return (await apiFetch<AvailabilityResponse>(`/availability?${query.toString()}`))!;
 }
+
+// --- Booking (change 5a) ------------------------------------------------------------
+
+/**
+ * A professional a patient may choose on P2.
+ *
+ * `displayName` is derived server-side from the account address today, because the
+ * `Professional` record carries no name yet — a seam, not a finished feature. The field is named
+ * for what it IS rather than where it comes from, so the day a real name lands in S7 no client
+ * changes.
+ */
+export interface BookableProfessional {
+  professionalId: string;
+  displayName: string;
+}
+
+export interface BookableAppointmentType {
+  appointmentTypeId: string;
+  name: string;
+  specialtyId: string;
+  /** Everyone qualified for this kind of visit. Never empty — the server filters. */
+  professionals: BookableProfessional[];
+}
+
+export interface BookableSpecialty {
+  specialtyId: string;
+  name: string;
+  /** Never empty: a specialty nobody can deliver anything in is not offered at all. */
+  appointmentTypes: BookableAppointmentType[];
+}
+
+export interface BookingOptionsResponse {
+  /**
+   * The clinic's configured zone.
+   *
+   * Carried here as well as on the availability response so that a booking screen which does NOT
+   * ask for availability — the confirmation step — still has something to render wall clock
+   * against other than the browser's own zone. Reading the browser's zone is the exact bug storing
+   * instants exists to avoid, and the last screen before the commit is the worst place to
+   * reintroduce it.
+   */
+  timezone: string;
+  specialties: BookableSpecialty[];
+}
+
+/**
+ * What a patient may choose from: specialties, kinds of visit, and who offers them.
+ *
+ * One request rather than three, and already filtered to what is genuinely bookable — a
+ * specialty nobody is qualified in would otherwise be a path that always ends in an empty
+ * result. Unlike `/api/config/*`, this is readable by any authenticated caller: it is the
+ * clinic's service catalogue, not patient data.
+ */
+export async function getBookingOptions(): Promise<BookingOptionsResponse> {
+  return (await apiFetch<BookingOptionsResponse>('/booking/options'))!;
+}
+
+/** The appointment that now exists. Instants, like an availability slot. */
+export interface AppointmentResponse {
+  id: string;
+  professionalId: string;
+  appointmentTypeId: string;
+  startsAt: string;
+  endsAt: string;
+  /** `Scheduled` for anything this change can create. */
+  status: string;
+  /** The zone to render the instants above in, so the browser never guesses. */
+  timezone: string;
+}
+
+/**
+ * Books a slot.
+ *
+ * **Carries no resource and no patient, on purpose.** The server assigns the room itself and
+ * reads the patient from the session, so neither is a value a client could get wrong or abuse —
+ * `resourceId` on an availability slot explains the answer and is never authority. `startsAt`
+ * is the slot's UTC instant exactly as the availability response gave it: sending wall clock is
+ * refused rather than coerced, because a coerced local time is an appointment an hour out on a
+ * clock-change date.
+ */
+export async function bookAppointment(input: {
+  appointmentTypeId: string;
+  professionalId: string;
+  startsAt: string;
+}): Promise<AppointmentResponse> {
+  return (await apiFetch<AppointmentResponse>('/appointments', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }))!;
+}
+
+/**
+ * Grants a consent again, at the version currently in force.
+ *
+ * The counterpart to {@link revokeConsent}, added because booking now requires an active
+ * data-processing consent: without this, withdrawing one on P7 left a patient unable to book and
+ * with no way back. A new record rather than un-revoking the old one, so "consented, withdrew,
+ * consented again" stays three facts.
+ */
+export async function grantConsent(type: string): Promise<ConsentResponse> {
+  return (await apiFetch<ConsentResponse>(`/patients/me/consents/${type}/grant`, {
+    method: 'POST',
+  }))!;
+}

@@ -12,6 +12,10 @@ internal static class PatientEndpoints
         endpoints.MapUpdatePatientProfile();
         endpoints.MapRevokeConsent();
 
+        // Added by booking-core: revoking was one-way until a consent became load-bearing
+        // (design B12). P3 offers the grant in place so a refusal is recoverable where it happened.
+        endpoints.MapGrantConsent();
+
         return endpoints;
     }
 }

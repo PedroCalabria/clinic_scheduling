@@ -2,6 +2,7 @@ using Clinic.Api.Features.AdminConfig;
 using Clinic.Api.Infrastructure.Auth;
 using Clinic.Api.Infrastructure.Errors;
 using Clinic.Api.Infrastructure.Persistence;
+using Clinic.Api.Infrastructure.Scheduling;
 using Clinic.Api.Infrastructure.Time;
 using Clinic.Domain.Scheduling;
 using Microsoft.AspNetCore.RateLimiting;
@@ -58,9 +59,9 @@ internal static class AvailabilityEndpoints
         string? to,
         Guid? professionalId,
         ClinicDbContext database,
+        ScheduleReader reader,
         ClinicTimezone timezone,
         ClinicScheduling scheduling,
-        TimeProvider clock,
         HttpResponse response,
         CancellationToken cancellationToken)
     {
@@ -118,137 +119,25 @@ internal static class AvailabilityEndpoints
             }
         }
 
-        // Every room of the required type, with its type's turnaround buffer, ordered by name so
-        // the solver's "first free one" is a stable and explicable choice rather than whatever
-        // the database happened to return. Occupancy is empty until change 5 books something into
-        // one of them (design F6).
-        var resources = await database.Resources
-            .AsNoTracking()
-            .Where(resource => resource.ResourceTypeId == appointmentType.RequiredResourceTypeId
-                && resource.DeactivatedAtUtc == null)
-            .Join(
-                database.ResourceTypes,
-                resource => resource.ResourceTypeId,
-                type => type.Id,
-                (resource, type) => new { resource.Id, resource.Name, type.BufferMinutes })
-            .OrderBy(entry => entry.Name)
-            .Select(entry => new ResourceCandidate(entry.Id, entry.BufferMinutes, new List<BusyInterval>()))
-            .ToListAsync(cancellationToken);
-
-        // Eligibility in one join, because of what 3b built: a duration may only exist for a type
-        // whose specialty the professional holds (the I2 gate), so "qualified for this kind of
-        // visit" IS "has an active duration for it". The specialty check comes along for free
-        // rather than being re-derived here (design F7).
-        var durationQuery = database.ProfessionalAppointmentTypes
-            .AsNoTracking()
-            .Where(duration => duration.AppointmentTypeId == appointmentType.Id
-                && duration.DeactivatedAtUtc == null);
-
-        if (professionalId is { } only)
-        {
-            durationQuery = durationQuery.Where(duration => duration.ProfessionalId == only);
-        }
-
-        var eligible = await durationQuery
-            .Join(
-                database.Professionals.Where(professional => professional.DeactivatedAtUtc == null),
-                duration => duration.ProfessionalId,
-                professional => professional.Id,
-                (duration, professional) => new { professional.Id, duration.DurationMinutes })
-            .ToListAsync(cancellationToken);
-
-        var response_ = await BuildAsync(
-            database,
-            timezone,
-            scheduling,
-            clock,
-            appointmentType.Id,
+        // ONE loading step, shared with the booking path (design B11). Before this change the
+        // read owned its own queries; now both callers use the same reader, so the availability
+        // answer and the booking check cannot see different busy sets. That is the structural half
+        // of "the read never offers what the write refuses" — the solver being shared is the other.
+        var loaded = await reader.ReadAsync(
+            appointmentType,
             fromDate,
             toDate,
-            resources,
-            eligible.Select(entry => (entry.Id, entry.DurationMinutes)).ToList(),
+            professionalId,
             cancellationToken);
+
+        var slots = AvailabilitySolver.Solve(loaded.Inputs);
 
         // Decision S: availability is deliberately uncached, and a cached slot may already be
         // taken. Saying so on the wire is what stops an intermediary undoing that decision.
         response.Headers.CacheControl = "no-store";
 
-        return Results.Ok(response_);
-    }
-
-    /// <summary>
-    /// The bounded input read, and the one call into the domain.
-    /// </summary>
-    /// <remarks>
-    /// One place, as design F1 requires. An over-fetch here is merely slow; an under-fetch is
-    /// <em>wrong</em>, and a solver handed an incomplete busy set cheerfully offers a slot that is
-    /// already taken. That asymmetry is why this is not spread across the handler.
-    /// </remarks>
-    private static async Task<AvailabilityResponse> BuildAsync(
-        ClinicDbContext database,
-        ClinicTimezone timezone,
-        ClinicScheduling scheduling,
-        TimeProvider clock,
-        Guid appointmentTypeId,
-        LocalDate fromDate,
-        LocalDate toDate,
-        IReadOnlyList<ResourceCandidate> resources,
-        IReadOnlyList<(Guid ProfessionalId, int DurationMinutes)> eligible,
-        CancellationToken cancellationToken)
-    {
-        var ids = eligible.Select(entry => entry.ProfessionalId).ToList();
-
-        var segments = await database.WorkingHoursTemplates
-            .AsNoTracking()
-            .Where(segment => ids.Contains(segment.ProfessionalId) && segment.DeactivatedAtUtc == null)
-            .ToListAsync(cancellationToken);
-
-        var exceptions = await database.WorkingHoursExceptions
-            .AsNoTracking()
-            .Where(exception => ids.Contains(exception.ProfessionalId)
-                && exception.DeactivatedAtUtc == null
-                && exception.Date >= fromDate
-                && exception.Date <= toDate)
-            .ToListAsync(cancellationToken);
-
-        // The window as instants, so blocks can be filtered in the database rather than loaded
-        // wholesale. AtStartOfDay rather than midnight-plus-conversion, because on a
-        // spring-forward date midnight itself can be the thing that does not exist.
-        var windowStart = timezone.Zone.AtStartOfDay(fromDate).ToInstant();
-        var windowEnd = timezone.Zone.AtStartOfDay(toDate.PlusDays(1)).ToInstant();
-
-        var blocks = await database.TimeBlocks
-            .AsNoTracking()
-            .Where(block => ids.Contains(block.ProfessionalId)
-                && block.DeactivatedAtUtc == null
-                && block.EndsAt > windowStart
-                && block.StartsAt < windowEnd)
-            .ToListAsync(cancellationToken);
-
-        var schedules = eligible
-            .Select(entry => new ProfessionalSchedule(
-                entry.ProfessionalId,
-                entry.DurationMinutes,
-                segments.Where(segment => segment.ProfessionalId == entry.ProfessionalId).ToList(),
-                exceptions.Where(exception => exception.ProfessionalId == entry.ProfessionalId).ToList(),
-                // One list, whatever the cause. Change 5 appends appointments here and change 7
-                // external blocks, and the subtraction does not change (design F5).
-                TimeBlock.BusyIntervalsOf(
-                    blocks.Where(block => block.ProfessionalId == entry.ProfessionalId))))
-            .ToList();
-
-        var slots = AvailabilitySolver.Solve(new AvailabilityInputs(
-            appointmentTypeId,
-            fromDate,
-            toDate,
-            timezone.Zone,
-            Instant.FromDateTimeOffset(clock.GetUtcNow()),
-            resources,
-            scheduling.Parameters,
-            schedules));
-
-        return new AvailabilityResponse(
-            appointmentTypeId,
+        return Results.Ok(new AvailabilityResponse(
+            appointmentType.Id,
             WallClockText.Format(fromDate),
             WallClockText.Format(toDate),
             timezone.Id,
@@ -258,7 +147,7 @@ internal static class AvailabilityEndpoints
                     slot.ResourceId,
                     InstantPattern.ExtendedIso.Format(slot.Start),
                     InstantPattern.ExtendedIso.Format(slot.End)))
-                .ToList());
+                .ToList()));
     }
 
     private static IResult WindowInvalid() =>

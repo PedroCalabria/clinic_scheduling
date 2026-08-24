@@ -735,6 +735,58 @@ async function main() {
     }
   });
 
+  await check('the booking screens resolve as portal deep links', async () => {
+    // The client half of the SPA fallback, for the three routes booking-core adds. It matters more
+    // here than for any earlier screen: P2 and P3 keep their entire state in the query string
+    // precisely so a reload or a shared link restores the search, and that promise is void if a
+    // full page load of the URL 404s. A deep link must return the PORTAL index, not the staff one.
+    for (const path of ['/book', '/book/confirm', '/book/success']) {
+      const response = await fetch(`${base}${path}`);
+
+      assert(response.status === 200, `${path} returned ${response.status}`);
+
+      const html = await response.text();
+
+      assert(
+        !html.includes('/staff/assets/'),
+        `${path} served the staff build rather than the portal`,
+      );
+    }
+  });
+
+  await check('a query string survives a booking deep link', async () => {
+    // The specific thing P2 relies on: Caddy must serve the index for the PATH and leave the query
+    // alone, rather than redirecting to a canonical URL and dropping the search a patient made.
+    const path = '/book?specialty=demo&from=2026-09-01&to=2026-09-14';
+    const response = await fetch(`${base}${path}`, { redirect: 'manual' });
+
+    assert(response.status === 200, `${path} returned ${response.status}`);
+  });
+
+  await check('the booking catalogue and the booking write are reachable through Caddy', async () => {
+    // Both refuse an unauthenticated caller with the catalogue's own code rather than a proxy
+    // error page — which is what says the routes exist behind Caddy at all. The authenticated
+    // behaviour is the integration tier's; this is the plumbing.
+    for (const [path, method] of [
+      ['/api/booking/options', 'GET'],
+      ['/api/appointments', 'POST'],
+    ]) {
+      const response = await fetch(`${base}${path}`, { method });
+
+      assert(
+        response.status === 401 || response.status === 403,
+        `${method} ${path} returned ${response.status}, expected an auth refusal`,
+      );
+
+      const body = await response.json();
+
+      assert(
+        typeof body.code === 'string' && body.code.length > 0,
+        `${method} ${path} answered without a catalogue code`,
+      );
+    }
+  });
+
   await check('api and db publish no host ports', async () => {
     for (const name of ['api', 'db']) {
       const publishers = services.get(name)?.Publishers ?? [];

@@ -8,6 +8,9 @@ import {
 } from '@clinic/shared';
 import { useTranslation } from 'react-i18next';
 import { Link, Route, Routes, useNavigate } from 'react-router';
+import { BookingSearchPage } from './features/booking/BookingSearchPage';
+import { BookingSuccessPage } from './features/booking/BookingSuccessPage';
+import { ConfirmBookingPage } from './features/booking/ConfirmBookingPage';
 import { LandingPage } from './features/landing/LandingPage';
 import { ProfilePage } from './features/profile/ProfilePage';
 
@@ -15,15 +18,57 @@ import { ProfilePage } from './features/profile/ProfilePage';
  * The patient portal's surface after change 2: the public door (P1) and the patient's own
  * record (P7).
  *
- * The booking flow (P2-P6) arrives in change 5. The catch-all route stays for the same
- * reason it was there in change 1: a full reload of a deep link must render this app rather
- * than a blank page — the client half of the SPA-fallback contract Caddy serves (design D2).
+ * The booking flow's first three screens arrive with `booking-core`: P2 searches real
+ * availability, P3 confirms and commits, P4 reassures. P5 and P6 — the patient's own list, and
+ * reschedule or cancel — belong to `booking-lifecycle`, which is why P4's onward link points at the
+ * profile for now.
+ *
+ * All three are behind `RequireAuth`: availability is readable by any authenticated caller and
+ * booking is the patient's own act, so there is no anonymous browsing of the schedule.
+ *
+ * The catch-all route stays for the same reason it was there in change 1: a full reload of a deep
+ * link must render this app rather than a blank page — the client half of the SPA-fallback contract
+ * Caddy serves (design D2). It matters more now, because P2 and P3 keep their whole state in the
+ * query string and are meant to survive a reload.
  */
 export function App() {
   return (
     <Routes>
       {/* Full-bleed, no shell: the landing page is the designed surface (Z2). */}
       <Route path="/" element={<LandingPage />} />
+
+      <Route
+        path="/book"
+        element={
+          <RequireAuth signInPath="/">
+            <Shell>
+              <BookingSearchPage />
+            </Shell>
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/book/confirm"
+        element={
+          <RequireAuth signInPath="/">
+            <Shell>
+              <ConfirmBookingPage />
+            </Shell>
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/book/success"
+        element={
+          <RequireAuth signInPath="/">
+            <Shell>
+              <BookingSuccessPage />
+            </Shell>
+          </RequireAuth>
+        }
+      />
 
       <Route
         path="/profile"
@@ -60,16 +105,27 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
       <header className="border-b border-line bg-surface-raised">
-        <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-4 px-6 py-4">
+        <div className="mx-auto flex max-w-4xl flex-wrap items-center justify-between gap-4 px-6 py-4">
           <Link to="/" className="font-semibold text-heading">
             {t('portal.clinicName')}
           </Link>
 
           <div className="flex flex-wrap items-center gap-4">
             {session ? (
-              <span className="text-sm text-meta">
-                {t('portal.signedInAs', { email: session.email })}
-              </span>
+              <>
+                {/* The one action this portal exists for, reachable from every screen in it. */}
+                <Link to="/book" className="text-sm font-medium text-primary underline">
+                  {t('portal.bookAppointment')}
+                </Link>
+
+                <Link to="/profile" className="text-sm text-meta underline">
+                  {t('portal.myProfile')}
+                </Link>
+
+                <span className="text-sm text-meta">
+                  {t('portal.signedInAs', { email: session.email })}
+                </span>
+              </>
             ) : null}
 
             <LanguageSwitch />
@@ -91,7 +147,7 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-3xl px-6 py-10">{children}</main>
+      <main className="mx-auto max-w-4xl px-6 py-10">{children}</main>
     </div>
   );
 }

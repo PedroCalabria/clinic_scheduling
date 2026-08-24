@@ -35,7 +35,10 @@ export function LandingPage() {
   const signInError = describeCode(searchParams.get(AUTH_ERROR_PARAM));
 
   if (session && !isPending) {
-    return <Navigate to="/profile" replace />;
+    // Booking, not the profile, from `booking-core` on. P1's stated purpose is to explain the
+    // clinic and START BOOKING (06 §P1); sending a signed-in patient to their own record was only
+    // ever right while booking did not exist.
+    return <Navigate to="/book" replace />;
   }
 
   return (
@@ -66,7 +69,7 @@ export function LandingPage() {
           so middle-click and open-in-new-tab still behave.
         */}
         <Button asChild size="lg" className="w-full">
-          <a href={googleSignInUrl('/profile')}>{t('portal.signInWithGoogle')}</a>
+          <a href={googleSignInUrl('/book')}>{t('portal.signInWithGoogle')}</a>
         </Button>
       </Card>
     </div>

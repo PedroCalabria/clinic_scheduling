@@ -1,8 +1,10 @@
+using Clinic.Api.Infrastructure.Auth;
 using Clinic.Api.Infrastructure.Time;
 using Clinic.Domain.Configuration;
 using Clinic.Domain.Identity;
 using Clinic.Domain.Scheduling;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using NodaTime;
 
 namespace Clinic.Api.Infrastructure.Persistence;
@@ -36,12 +38,26 @@ internal sealed class DevelopmentClinicSeed(
     IConfiguration configuration,
     TimeProvider clock,
     ClinicTimezone timezone,
+    ClinicScheduling scheduling,
+    IOptions<AuthOptions> auth,
     ILogger<DevelopmentClinicSeed> logger) : IHostedService
 {
     /// <summary>Presence of this specialty means the clinic has already been seeded.</summary>
     private const string MarkerSpecialty = "Cardiologia";
 
     private const string ProfessionalEmail = "dra.helena@clinic.local";
+
+    /// <summary>
+    /// The demo patient whose appointments make the subtraction visible.
+    /// </summary>
+    /// <remarks>
+    /// A non-existent domain, like the professional's, and for the same reason: this is fixture
+    /// data that exercises the API and the solver, never the browser sign-in. Validating P2 in a
+    /// browser needs a real Google account (00-context.md §9) — the seed cannot stand in for one.
+    /// </remarks>
+    private const string PatientEmail = "paciente.demo@clinic.local";
+
+    private const string PatientGoogleSubject = "seed-patient-google-subject";
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
@@ -72,6 +88,7 @@ internal sealed class DevelopmentClinicSeed(
 
         var now = clock.GetUtcNow();
         var instantNow = Instant.FromDateTimeOffset(now);
+        var consentVersion = auth.Value.ConsentVersion;
 
         // --- The catalog (3a's entities) ---------------------------------------------
         var cardiology = Specialty.Define(MarkerSpecialty, now);
@@ -83,10 +100,13 @@ internal sealed class DevelopmentClinicSeed(
         database.Specialties.AddRange(cardiology, dermatology);
         database.ResourceTypes.AddRange(consultingRoom, ultrasoundRoom);
 
-        database.Resources.AddRange(
-            Resource.Define(consultingRoom.Id, "Consultório 1", now),
-            Resource.Define(consultingRoom.Id, "Consultório 2", now),
-            Resource.Define(ultrasoundRoom.Id, "Ultrassom 1", now));
+        // Held in locals from booking-core on, because the seeded appointments name a concrete
+        // room — the server assigns one at booking (domain-model F2) and a seed is the server.
+        var consultingRoomOne = Resource.Define(consultingRoom.Id, "Consultório 1", now);
+        var consultingRoomTwo = Resource.Define(consultingRoom.Id, "Consultório 2", now);
+        var ultrasoundOne = Resource.Define(ultrasoundRoom.Id, "Ultrassom 1", now);
+
+        database.Resources.AddRange(consultingRoomOne, consultingRoomTwo, ultrasoundOne);
 
         var cardiologyVisit = AppointmentType.Define(
             cardiology.Id, consultingRoom.Id, "Consulta cardiológica", now);
@@ -181,12 +201,75 @@ internal sealed class DevelopmentClinicSeed(
                 AtClinicTime(nextMonday.PlusDays(1), 13, 0),
                 now));
 
+        // --- A patient and their appointments (booking-core's entities) ---------------
+        // The seam made visible on a fresh stack: without a booked appointment, "a booked slot
+        // stops being offered" is a claim only the test suite has ever seen. With one, the very
+        // first availability search on a new stack shows a gap somebody's visit made.
+        //
+        // A Google patient, exactly as just-in-time provisioning creates one (design B12), including
+        // the data-processing consent at the configured version — which the booking gate now reads,
+        // so a seeded patient holding a stale version would be unable to book their own demo.
+        var patientUser = User.RegisterGooglePatient(PatientEmail, PatientGoogleSubject, now);
+
+        var patient = Patient.Register(patientUser.Id, "Paciente Demonstração", PatientEmail, now);
+
+        database.Users.Add(patientUser);
+        database.Patients.Add(patient);
+        database.Consents.Add(Consent.Grant(
+            patientUser.Id, ConsentType.DataProcessing, consentVersion, now));
+
+        // Wednesday and Thursday, deliberately NOT the Monday and Tuesday the blocks occupy: a
+        // block and an appointment on the same morning would prove nothing that either proves
+        // alone, and the Wednesday appointment would be refused outright by the I7 check the block
+        // path now performs (task 13.2).
+        var wednesday = nextMonday.PlusDays(2);
+        var thursday = nextMonday.PlusDays(3);
+
+        database.Appointments.AddRange(
+            // A cardiology visit mid-morning: 40 minutes, so the slots it removes are visibly
+            // narrower than the hour a naive fixture would suggest.
+            Appointment.Book(
+                new AppointmentBooking(
+                    patient.Id,
+                    professional.Id,
+                    consultingRoomOne.Id,
+                    cardiologyVisit.Id,
+                    AtClinicTime(wednesday, 9, 0),
+                    DurationMinutes: 40,
+                    ProfessionalHoldsDurationForType: true,
+                    consultingRoom.Id,
+                    cardiologyVisit.RequiredResourceTypeId,
+                    AppointmentSource.SelfService),
+                scheduling.Parameters,
+                instantNow,
+                now),
+
+            // An echocardiogram in the ultrasound room, so the resource half of the subtraction
+            // has something to show too — a different room, a different duration, and a turnaround
+            // buffer of twenty minutes rather than fifteen.
+            Appointment.Book(
+                new AppointmentBooking(
+                    patient.Id,
+                    professional.Id,
+                    ultrasoundOne.Id,
+                    echocardiogram.Id,
+                    AtClinicTime(thursday, 14, 0),
+                    DurationMinutes: 30,
+                    ProfessionalHoldsDurationForType: true,
+                    ultrasoundRoom.Id,
+                    echocardiogram.RequiredResourceTypeId,
+                    AppointmentSource.SelfService),
+                scheduling.Parameters,
+                instantNow,
+                now));
+
         await database.SaveChangesAsync(cancellationToken);
 
         logger.LogInformation(
             "Seeded a development clinic: {Specialties} specialties, {Types} appointment types, "
-            + "and {Professional} with {Segments} working-hour segments and {Blocks} blocked periods.",
-            2, 3, ProfessionalEmail, segments.Count, 2);
+            + "{Professional} with {Segments} working-hour segments and {Blocks} blocked periods, "
+            + "and {Patient} with {Appointments} appointments.",
+            2, 3, ProfessionalEmail, segments.Count, 2, PatientEmail, 2);
     }
 
     /// <summary>A clinic wall-clock time on a date, as the instant a block stores.</summary>
