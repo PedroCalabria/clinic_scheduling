@@ -285,7 +285,7 @@
     "appointmentType": "Tipo de consulta",
     "professional": "Profissional",
     "professionalHint": "Deixe em qualquer profissional para ver todos os habilitados.",
-    "anyProfessional": "Qualquer profissional",
+    "anyProfessional": "Qualquer profissional da especialidade",
     "from": "De",
     "to": "Até",
     "searching": "Buscando horários livres…",
@@ -295,7 +295,6 @@
     "emptyHint": "Tente um período posterior, outro tipo de consulta ou qualquer profissional.",
     "tryNextWindow": "Ver as próximas duas semanas",
     "noServices": "Esta clínica ainda não publicou nada disponível para agendamento.",
-    "takenTitle": "Esse horário não está mais livre.",
     "confirmTitle": "Confirme sua consulta",
     "confirmDescription": "Nada é agendado até você confirmar.",
     "confirmMissing": "Não há consulta para confirmar. Escolha um horário novamente.",
@@ -317,7 +316,23 @@
     "whatNextTitle": "Próximos passos",
     "whatNextBody": "Chegue alguns minutos antes. Se precisar alterar ou cancelar, entre em contato com a recepção.",
     "bookAnother": "Agendar outra consulta",
-    "viewAppointments": "Ver minhas consultas"
+    "viewAppointments": "Ver minhas consultas",
+    "specificProfessional": "Um profissional específico",
+    "checkedTitle": "Verificado para cada horário",
+    "checkedHours": "Os horários de trabalho do profissional",
+    "checkedCalendar": "Bloqueios da agenda externa dele",
+    "checkedRoom": "Uma sala livre do tipo necessário",
+    "freeTimes_one": "{{count}} horário livre",
+    "freeTimes_other": "{{count}} horários livres",
+    "resultContext": "{{from}} – {{to}} · {{what}} · {{who}}",
+    "dayFree_one": "{{count}} LIVRE",
+    "dayFree_other": "{{count}} LIVRES",
+    "slotBook": "Reservar",
+    "slotChosen": "Escolhido",
+    "selectedLabel": "Escolhido",
+    "continue": "Continuar",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min"
   },
   "appointments": {
     "title": "Minhas consultas",
@@ -346,6 +361,7 @@
       "Rescheduled": "Remarcada para outro horário",
       "Completed": "Realizada",
       "NoShow": "Não compareceu"
-    }
+    },
+    "confirmMove": "Confirmar este horário"
   }
 }

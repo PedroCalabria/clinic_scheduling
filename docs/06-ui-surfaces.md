@@ -51,7 +51,9 @@ flowchart TB
 Purpose: public entry; explain the clinic and start booking. Key elements: brief value line, "Sign in with Google" (patient), language switch (pt-BR/en). Clean, trustworthy, minimal.
 
 **P2 — Booking search ★** · route `/book` · UC-1 · capabilities `availability`, `booking`
-Purpose: the crown jewel — make the tri-constraint availability visible. Key elements: pick specialty; choose "specific professional" or "any professional of the specialty"; pick a date window; results show **only genuinely free slots** computed in real time (against professional working hours + external calendar + resource availability). Loading/empty/erro states matter here (real-time feel). This screen is the one to design with the most care.
+Purpose: the crown jewel — make the tri-constraint availability visible. Key elements: pick specialty; choose "specific professional" or "any professional of the specialty" (an explicit choice of two, not one entry in a list of names); pick a date window; results show **only genuinely free slots** computed in real time (against professional working hours + external calendar + resource availability). Loading/empty/erro states matter here (real-time feel). This screen is the one to design with the most care.
+
+The search sits **beside** the results rather than above them, because availability is a read a patient adjusts and a stacked search pushes the answer off screen. A **trust panel** under the search names the three things checked for every offered time — the tri-constraint promise, stated where it can be read. **Choosing a slot selects it in place**: exactly one at a time, choosing another moves the selection, and a summary restates the choice before a separate, explicit act proceeds to P3. No room is ever named (`booking-core`'s decision, kept). Delivered by `booking-surface`, from the design canvas artboard that predated the first build of this screen.
 
 **P3 — Slot select & confirm** · route `/book/confirm` · UC-1 · capability `booking`
 Purpose: confirm the chosen slot and commit atomically. Key elements: slot summary (professional, time, type); first-time patients capture minimal data + **data-processing consent (LGPD)**; confirm button; graceful "slot just taken" message (optimistic booking → DB rejects the loser).
@@ -63,7 +65,7 @@ Purpose: reassure the booking is done. Key elements: appointment summary, what t
 Purpose: the patient sees and manages **only their own** appointments (ownership authorization). Key elements: upcoming/past lists; per-appointment reschedule/cancel — **disabled inside the 24h cutoff** with a message to call reception.
 
 **P6 — Reschedule / cancel** · route `/appointments/:id/reschedule` · UC-3 · capability `booking`
-Purpose: change an existing appointment. Reuses P2's search scoped to the **same professional** and appointment type (a different professional is a cancel + new booking); cancel releases slot + resource. External-calendar propagation is `calendar-outbound` (change 6) — recorded here as a seam, so `booking-lifecycle` delivers the internal release now and the propagation later.
+Purpose: change an existing appointment. Reuses P2's search — and, since `booking-surface`, P2's selection step: the new time is chosen in place, one at a time, shown beside the time being moved, and committed from the summary rather than on click. Scoped to the **same professional** and appointment type (a different professional is a cancel + new booking); cancel releases slot + resource. External-calendar propagation is `calendar-outbound` (change 6) — recorded here as a seam, so `booking-lifecycle` delivers the internal release now and the propagation later.
 
 **P7 — Profile & consents** · route `/profile` · capability `identity-session`
 Purpose: manage minimal personal data and consents (LGPD). Key elements: minimal PII, consent status/version, view-only note about data handling. Utilitarian even within the portal.

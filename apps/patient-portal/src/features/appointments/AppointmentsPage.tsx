@@ -233,7 +233,7 @@ function Row({
     <li className="rounded-xl border border-line bg-surface p-5">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-1">
-          <p className="font-semibold text-heading">
+          <p className="font-mono font-semibold tabular-nums text-heading">
             {day}, {slotTime(appointment.startsAt, timezone)}–{slotTime(appointment.endsAt, timezone)}
           </p>
           <p className="text-sm text-meta">

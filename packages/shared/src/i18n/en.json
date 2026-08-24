@@ -285,7 +285,7 @@
     "appointmentType": "Kind of visit",
     "professional": "Professional",
     "professionalHint": "Leave as any professional to see everyone qualified.",
-    "anyProfessional": "Any professional",
+    "anyProfessional": "Any professional of the specialty",
     "from": "From",
     "to": "To",
     "searching": "Looking for free times…",
@@ -295,7 +295,6 @@
     "emptyHint": "Try a later window, another kind of visit, or any professional.",
     "tryNextWindow": "Try the next two weeks",
     "noServices": "This clinic has not published anything bookable yet.",
-    "takenTitle": "That time is no longer free.",
     "confirmTitle": "Confirm your appointment",
     "confirmDescription": "Nothing is booked until you confirm.",
     "confirmMissing": "There is no appointment to confirm. Please choose a time again.",
@@ -317,7 +316,23 @@
     "whatNextTitle": "What happens next",
     "whatNextBody": "Please arrive a few minutes early. If you need to change or cancel, contact reception.",
     "bookAnother": "Book another appointment",
-    "viewAppointments": "See my appointments"
+    "viewAppointments": "See my appointments",
+    "specificProfessional": "A specific professional",
+    "checkedTitle": "Checked for every time",
+    "checkedHours": "The professional's working hours",
+    "checkedCalendar": "Blocks from their external calendar",
+    "checkedRoom": "A free room of the required type",
+    "freeTimes_one": "{{count}} free time",
+    "freeTimes_other": "{{count}} free times",
+    "resultContext": "{{from}} – {{to}} · {{what}} · {{who}}",
+    "dayFree_one": "{{count}} FREE",
+    "dayFree_other": "{{count}} FREE",
+    "slotBook": "Book",
+    "slotChosen": "Chosen",
+    "selectedLabel": "Selected",
+    "continue": "Continue",
+    "minutes_one": "{{count}} min",
+    "minutes_other": "{{count}} min"
   },
   "appointments": {
     "title": "My appointments",
@@ -346,6 +361,7 @@
       "Rescheduled": "Moved to another time",
       "Completed": "Attended",
       "NoShow": "Missed"
-    }
+    },
+    "confirmMove": "Confirm this time"
   }
 }

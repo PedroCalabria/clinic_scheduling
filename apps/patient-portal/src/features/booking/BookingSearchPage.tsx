@@ -3,6 +3,7 @@ import {
   Button,
   Field,
   Input,
+  RadioGroup,
   Select,
   getAvailability,
   getBookingOptions,
@@ -10,10 +11,11 @@ import {
   useApiErrorMessage,
 } from '@clinic/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useSearchParams } from 'react-router';
-import { SlotGrid, SlotSkeleton } from './SlotGrid';
+import { SelectionBar } from './SelectionBar';
+import { SlotGrid, SlotSkeleton, slotKey } from './SlotGrid';
 import { addDays, clinicToday, groupByDay } from './slots';
 
 /** How wide a window the date pickers default to. A fortnight fills the screen without flooding it. */
@@ -122,8 +124,28 @@ export function BookingSearchPage() {
     [slots, timezone, i18n.language],
   );
 
+  /**
+   * The chosen slot, and it lives here rather than in the URL (design D8).
+   *
+   * A chosen-but-uncommitted slot is not worth restoring across a reload, and putting it in the
+   * address would make the back button from P3 ambiguous — is this a fresh search, or a return to
+   * a choice already made? The search itself stays in the URL, which is the part that is worth
+   * restoring and the part a patient might share.
+   */
+  const [chosen, setChosen] = useState<string | null>(null);
+
+  const chosenSlot = useMemo(
+    () => slots.find((slot) => slotKey(slot) === chosen) ?? null,
+    [slots, chosen],
+  );
+
   /** Writes the search back to the URL, clearing any refusal the previous search carried. */
   function update(changes: Record<string, string>) {
+    // A search that changed is a list that changed, so a choice made against the old one is
+    // meaningless. Cleared here rather than reconciled, because "your slot is still selected but
+    // is no longer offered" is not a state worth building.
+    setChosen(null);
+
     const next = new URLSearchParams(params);
 
     for (const [key, value] of Object.entries(changes)) {
@@ -140,12 +162,34 @@ export function BookingSearchPage() {
     setParams(next, { replace: true });
   }
 
+  /**
+   * Choosing a slot selects it. Choosing another moves the selection (design D8).
+   *
+   * Single selection, and the deselect behaviour is the point: multi-select would imply booking
+   * several, which no endpoint accepts, and requiring an explicit clear before choosing again is a
+   * mode a patient has to learn. This is the behaviour of a radio group, which is what it is.
+   */
   function chooseSlot(slot: { start: string; end: string; professionalId: string }) {
+    setChosen(slotKey(slot));
+  }
+
+  /**
+   * The separate, explicit act that leaves the page.
+   *
+   * **The URL contract handed to P3 is unchanged** — same five parameters, in the same shape 5a
+   * built. This change moved when navigation happens, not what it carries, which is why a reload,
+   * a bookmark and the back button from P3 all still behave.
+   */
+  function continueToConfirm() {
+    if (!chosenSlot) {
+      return;
+    }
+
     const confirm = new URLSearchParams({
       type: appointmentType!.appointmentTypeId,
-      professional: slot.professionalId,
-      start: slot.start,
-      end: slot.end,
+      professional: chosenSlot.professionalId,
+      start: chosenSlot.start,
+      end: chosenSlot.end,
       // Carried so P3 can offer "back to these results" without re-deriving the search.
       search: params.toString(),
     });
@@ -165,12 +209,21 @@ export function BookingSearchPage() {
         already gone from the list below. Not a toast: the message has to survive the refetch that
         follows it.
       */}
-      {takenCode ? (
-        <Alert tone="error">
-          <span className="font-medium">{t('booking.takenTitle')}</span>{' '}
-          {describeCode(takenCode)}
-        </Alert>
-      ) : null}
+      {/*
+        The refusal, in the code's OWN words and nothing else.
+
+        This used to prepend a fixed "that time is no longer free". That sentence is true for
+        `slot_taken` and false for most of the others — and it was reached in ordinary use with
+        `booking.patient_busy`, where the slot IS free and the patient simply cannot be in two
+        places at once. A generic title asserting a race in front of a message explaining something
+        else is exactly the confusion `booking-core` split `slot_blocked` away from `slot_taken` to
+        prevent; re-adding it above every one of them undid that work.
+
+        Every `booking.*` message in the catalogue is already a complete sentence stating the fact
+        and its consequence, which is what the design system asks copy to do — so the honest fix is
+        to let the code speak and delete the preamble.
+      */}
+      {takenCode ? <Alert tone="error">{describeCode(takenCode)}</Alert> : null}
 
       {options.isError ? <Alert tone="error">{describeError(options.error)}</Alert> : null}
 
@@ -184,8 +237,19 @@ export function BookingSearchPage() {
         <Alert tone="info">{t('booking.noServices')}</Alert>
       ) : (
         <>
+          {/*
+            The search beside the results, not above them (design D1).
+
+            Availability is a read you ADJUST — widen the window, switch to any professional, try
+            the next fortnight. Stacked, each of those pushed the answer down the page, so the loop
+            was change -> scroll -> read -> scroll back. Beside it, the loop is change -> read.
+
+            Below `lg` the columns stack with the search first: the design system mandates a single
+            column under 768px, and on a phone the search genuinely is the first decision.
+          */}
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start">
           <form
-            className="grid gap-5 rounded-xl border border-line bg-surface-raised p-6 sm:grid-cols-2"
+            className="grid gap-5 rounded-md border border-line bg-surface-raised p-5 lg:sticky lg:top-6"
             onSubmit={(event) => event.preventDefault()}
           >
             <Field label={t('booking.specialty')}>
@@ -226,24 +290,44 @@ export function BookingSearchPage() {
               )}
             </Field>
 
-            <Field label={t('booking.professional')} hint={t('booking.professionalHint')}>
-              {({ id, describedBy }) => (
+            {/*
+              An explicit choice of two, not one entry at the top of a dropdown (design D4).
+
+              Searching ANY qualified professional is the mode 02 §4 calls primary — the union
+              across everyone, the thing that makes this a scheduler rather than a directory. As
+              the first <option> of a select it read as an escape hatch. Here the two ways to
+              search are peers, and the list of names belongs to the first of them.
+            */}
+            <div className="space-y-2">
+              <RadioGroup
+                label={t('booking.professional')}
+                value={professionalId ? 'specific' : 'any'}
+                onChange={(mode) =>
+                  update({
+                    professional:
+                      mode === 'any' ? '' : (appointmentType?.professionals[0]?.professionalId ?? ''),
+                  })
+                }
+                options={[
+                  { value: 'specific', label: t('booking.specificProfessional') },
+                  { value: 'any', label: t('booking.anyProfessional') },
+                ]}
+              />
+
+              {professionalId ? (
                 <Select
-                  id={id}
-                  aria-describedby={describedBy}
+                  aria-label={t('booking.professional')}
                   value={professionalId}
                   onChange={(event) => update({ professional: event.target.value })}
                 >
-                  {/* First, and the default: the union across everyone qualified. */}
-                  <option value="">{t('booking.anyProfessional')}</option>
                   {(appointmentType?.professionals ?? []).map((entry) => (
                     <option key={entry.professionalId} value={entry.professionalId}>
                       {entry.displayName}
                     </option>
                   ))}
                 </Select>
-              )}
-            </Field>
+              ) : null}
+            </div>
 
             <div className="grid grid-cols-2 gap-4">
               <Field label={t('booking.from')}>
@@ -270,6 +354,35 @@ export function BookingSearchPage() {
                 )}
               </Field>
             </div>
+
+            {/*
+              The tri-constraint promise, stated where a patient can see it (design D5).
+
+              The middle line is a FORWARD-CLAIM and is kept deliberately: external blocks arrive
+              with calendar-inbound (change 7), and every block today is internal — a professional
+              blocking their own time on S3. The solver subtracts blocks without caring about their
+              source, so the sentence becomes true the moment change 7 lands, with no edit here.
+
+              What makes that acceptable rather than a lie: a professional's own blocks ARE
+              subtracted, so the line names a source that does not exist yet, not a check that does
+              not happen. It stops being acceptable the day a real clinic is told their
+              professionals' Google calendars are consulted. See design D5 for the revisit trigger.
+            */}
+            <div className="space-y-2 border-t border-line pt-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-meta">
+                {t('booking.checkedTitle')}
+              </p>
+              <ul className="space-y-1.5 text-sm text-meta">
+                {['checkedHours', 'checkedCalendar', 'checkedRoom'].map((key) => (
+                  <li key={key} className="flex gap-2">
+                    <span aria-hidden="true" className="text-primary">
+                      &#10003;
+                    </span>
+                    <span>{t(`booking.${key}`)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </form>
 
           <section aria-live="polite" className="space-y-6">
@@ -293,20 +406,54 @@ export function BookingSearchPage() {
               </div>
             ) : (
               <>
-                <p className="text-sm text-meta">
-                  {t('booking.resultSummary', { count: slots.length, timezone })}
-                </p>
+                {/*
+                  The count first and large, the context subordinate to it — the artboard's
+                  hierarchy. "18 free times" is the answer; the window, specialty and professional
+                  are what it is an answer to.
+                */}
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="font-mono text-lg tabular-nums text-heading">
+                    {t('booking.freeTimes', { count: slots.length })}
+                  </span>
+                  <span className="font-mono text-[13px] tabular-nums uppercase tracking-[0.02em] text-meta">
+                    {t('booking.resultContext', {
+                      from,
+                      to,
+                      what: appointmentType?.name ?? '',
+                      who: professionalId
+                        ? (appointmentType?.professionals.find(
+                            (entry) => entry.professionalId === professionalId,
+                          )?.displayName ?? '')
+                        : t('booking.anyProfessional'),
+                    })}
+                  </span>
+                </div>
 
                 <SlotGrid
                   days={days}
                   timezone={timezone!}
                   professionals={appointmentType?.professionals ?? []}
                   showProfessional={!professionalId}
+                  selected={chosen}
                   onChoose={chooseSlot}
+                />
+
+                <SelectionBar
+                  slot={chosenSlot}
+                  timezone={timezone!}
+                  professional={
+                    appointmentType?.professionals.find(
+                      (entry) => entry.professionalId === chosenSlot?.professionalId,
+                    )?.displayName
+                  }
+                  appointmentType={appointmentType?.name}
+                  actionLabel={t('booking.continue')}
+                  onContinue={continueToConfirm}
                 />
               </>
             )}
           </section>
+          </div>
         </>
       )}
     </div>
