@@ -19,11 +19,13 @@ written in a zone without daylight saving.
 
 An answer is built by subtracting one list of busy intervals from a professional's candidate hours
 and pairing what survives with a free resource of the required type. The busy list deliberately does
-not record *why* somebody is busy: this capability fills it from internal `TimeBlock`s, `booking`
-appends appointments, and `calendar-integration` appends externally-sourced blocks, all into the same
-subtraction. A resource's occupied period extends past the appointment by its type's turnaround
-buffer, so time reserved for cleaning is never offered — trailing only, and to resources rather than
-to professionals, because turnaround belongs to the room and not to the person leaving it.
+not record *why* somebody is busy: this capability fills it from internal `TimeBlock`s and from the
+live appointments `booking` writes, and `calendar-integration` will append externally-sourced blocks
+into the same subtraction. One loading step serves both this computation and booking's own check, so
+the read and the write cannot see different busy sets. A resource's occupied period extends past
+the appointment by its type's turnaround buffer, so time reserved for cleaning is never offered —
+trailing only, and to resources rather than to professionals, because turnaround belongs to the room
+and not to the person leaving it.
 
 A slot names the professional and the resource that satisfy it, and **naming them is not reserving
 them**. By the time a patient confirms, that room may be taken; the pairing explains the answer, and
@@ -32,11 +34,17 @@ them**. By the time a patient confirms, that room may be taken; the pairing expl
 This capability also owns **internal time blocks** — a professional declaring their own
 unavailability — because a block is only meaningful as something availability removes. Overlapping
 blocks are permitted, unlike overlapping working hours: two rules covering one moment leave real
-ambiguity about which applies, and two statements of being busy leave none.
+ambiguity about which applies, and two statements of being busy leave none. A block is refused,
+though, where it would cover one of that professional's live appointments: a patient is already
+expecting that time, and the appointment has to be dealt with first. That check spans two tables, so
+it runs — like booking's own — under a transaction-scoped lock keyed on the professional, shared
+between the two paths that mutate one professional's schedule.
 
 Established by change `availability-read` (change 4 of the build order), on top of
-`clinic-configuration` from changes 3a and 3b and the roles and session from change 2. The
-computation is deliberately uncached, since a cached slot may already be taken.
+`clinic-configuration` from changes 3a and 3b and the roles and session from change 2, and extended
+by `booking-core` (5a), which filled the appointment half of the busy set and closed the collision
+between a block and an appointment. The computation is deliberately uncached, since a cached slot may
+already be taken.
 
 ## Requirements
 ### Requirement: Availability is computed from configuration for a concrete date window
@@ -181,26 +189,46 @@ The system SHALL offer slot starts at a configured interval within the candidate
 
 ### Requirement: Busy intervals are subtracted from candidate slots
 
-The system SHALL remove from the offered slots any slot overlapping an interval in which the professional is busy. Busy intervals SHALL be taken from the professional's active internal time blocks. The computation SHALL treat busy intervals as one set regardless of origin, so that appointments and externally-sourced blocks can later contribute to the same subtraction without changing how it is performed. Touching endpoints SHALL NOT count as an overlap.
+The system SHALL remove from the offered slots any slot overlapping an interval in which the professional is busy. Busy intervals SHALL be taken from the professional's active internal time blocks AND from their live appointments, both contributing to one set through the same subtraction. The computation SHALL treat busy intervals as one set regardless of origin, so that externally-sourced blocks can later contribute to the same subtraction without changing how it is performed. The internal-block and appointment intervals for a window SHALL be read in one place serving both the availability computation and the booking check, so the two cannot see different busy sets. Touching endpoints SHALL NOT count as an overlap.
 
 #### Scenario: A block removes the slots it covers
 
 - **WHEN** a professional has an active internal block covering part of a date's working hours
 - **THEN** slots overlapping the block are absent from the response and slots elsewhere in those hours are present
 
+#### Scenario: An appointment removes the slots it covers
+
+- **WHEN** a professional has a live appointment covering part of a date's working hours
+- **THEN** slots overlapping the appointment are absent from the response and slots elsewhere in those hours are present
+
 #### Scenario: A slot merely abutting a block is still offered
 
 - **WHEN** a slot ends at the exact instant a block begins, or begins at the exact instant a block ends
 - **THEN** that slot is offered, because touching is not overlapping
+
+#### Scenario: A slot merely abutting an appointment is still offered
+
+- **WHEN** a slot begins at the exact instant one of the professional's appointments ends
+- **THEN** that slot is offered, the professional carrying no turnaround of their own
 
 #### Scenario: Overlapping blocks subtract their union
 
 - **WHEN** a professional has two active internal blocks that overlap each other
 - **THEN** every slot overlapping either block is absent, and the result is the same as it would be for one block spanning both
 
+#### Scenario: A block and an appointment subtract together
+
+- **WHEN** a professional has both an active internal block and a live appointment in one date's working hours
+- **THEN** slots overlapping either are absent, and the two are subtracted identically regardless of which caused it
+
 #### Scenario: A retired block subtracts nothing
 
 - **WHEN** an internal block is retired
+- **THEN** the slots it had removed are offered again
+
+#### Scenario: A terminally-stated appointment subtracts nothing
+
+- **WHEN** an appointment reaches a state that is no longer live
 - **THEN** the slots it had removed are offered again
 
 #### Scenario: A block outside working hours changes nothing
@@ -213,9 +241,14 @@ The system SHALL remove from the offered slots any slot overlapping an interval 
 - **WHEN** one professional has an active internal block and another has none over the same period
 - **THEN** only the first professional's slots are reduced
 
+#### Scenario: An appointment affects only its own professional's own time
+
+- **WHEN** one professional has a live appointment and another qualified professional is free over the same period
+- **THEN** only the first professional's slots are reduced for that reason, the room's occupancy being accounted for separately
+
 ### Requirement: A slot names a free resource of the appointment type's required resource type
 
-The system SHALL offer a slot only when a resource of the resource type that the appointment type requires is active and free for that slot, and SHALL name that resource on the slot alongside its professional. Where several qualify, the system SHALL choose deterministically. A resource's occupied period SHALL extend past the appointment by its resource type's turnaround buffer, so time reserved for cleaning is not offered. The named resource SHALL NOT constitute a reservation, and a later booking SHALL assign the resource itself rather than trusting a resource named by a caller.
+The system SHALL offer a slot only when a resource of the resource type that the appointment type requires is active and free for that slot, and SHALL name that resource on the slot alongside its professional. A resource SHALL be treated as occupied for the time of every live appointment assigned to it, whichever professional it belongs to. Where several qualify, the system SHALL choose deterministically. A resource's occupied period SHALL extend past the appointment by its resource type's turnaround buffer, so time reserved for cleaning is not offered. The named resource SHALL NOT constitute a reservation, and a booking SHALL assign the resource itself rather than trusting a resource named by a caller.
 
 #### Scenario: A slot names its professional, appointment type, and resource
 
@@ -239,13 +272,18 @@ The system SHALL offer a slot only when a resource of the resource type that the
 
 #### Scenario: A slot falls through to another resource when the first is occupied
 
-- **WHEN** one resource of the required type is occupied for a slot and another is free
+- **WHEN** one resource of the required type is occupied by a live appointment for a slot and another is free
 - **THEN** the slot is offered and names the free resource
 
 #### Scenario: A slot is withheld when every resource of the type is occupied
 
-- **WHEN** every active resource of the required type is occupied for a slot
+- **WHEN** every active resource of the required type is occupied by live appointments for a slot
 - **THEN** that slot is not offered, even though the professional is free
+
+#### Scenario: A room booked by one professional is unavailable to another
+
+- **WHEN** the only active resource of the required type is taken by one professional's live appointment, and availability is requested for a different qualified professional over the same time
+- **THEN** no slot is offered for that time
 
 #### Scenario: A resource's turnaround buffer is kept out of the bookable window
 
@@ -312,7 +350,7 @@ The system SHALL refuse a malformed or oversized date window with code `availabi
 
 ### Requirement: A professional declares their own unavailability as internal time blocks
 
-The system SHALL let a professional record intervals in which they are unavailable, stored as instants rather than as wall-clock rules, and marked as internally sourced so that externally-sourced unavailability can later be held in the same form. A block SHALL end after it begins, and any other range SHALL be refused with code `block.invalid_range`. Two blocks belonging to one professional MAY overlap. A block SHALL be retired rather than deleted.
+The system SHALL let a professional record intervals in which they are unavailable, stored as instants rather than as wall-clock rules, and marked as internally sourced so that externally-sourced unavailability can later be held in the same form. A block SHALL end after it begins, and any other range SHALL be refused with code `block.invalid_range`. A block overlapping one of that professional's live appointments SHALL be refused with code `booking.block_overlaps_appointment` (409), and nothing SHALL be stored; the message SHALL let the professional understand that an appointment must be dealt with first. This check SHALL be performed under the same per-professional transaction lock the booking path takes, so a block and an appointment cannot both be created into the same time by concurrent requests. Two blocks belonging to one professional MAY overlap. A block SHALL be retired rather than deleted.
 
 #### Scenario: A block is created
 
@@ -328,6 +366,31 @@ The system SHALL let a professional record intervals in which they are unavailab
 
 - **WHEN** a professional records a block whose end equals its start
 - **THEN** the API responds `422` with code `block.invalid_range` and nothing is stored
+
+#### Scenario: A block over one of the professional's appointments is refused
+
+- **WHEN** a professional records a block whose range overlaps one of their own live appointments
+- **THEN** the API responds `409` with code `booking.block_overlaps_appointment` and nothing is stored
+
+#### Scenario: A block over a terminally-stated appointment is accepted
+
+- **WHEN** a professional records a block over a time held only by an appointment that is no longer live
+- **THEN** the block is stored, because that appointment no longer occupies the time
+
+#### Scenario: A block merely abutting an appointment is accepted
+
+- **WHEN** a professional records a block beginning at the exact instant one of their appointments ends
+- **THEN** the block is stored, because touching is not overlapping
+
+#### Scenario: Moving a block onto an appointment is refused and changes nothing
+
+- **WHEN** a professional edits a block so that its new range would overlap one of their live appointments
+- **THEN** the API responds `409` with code `booking.block_overlaps_appointment` and the stored range is left untouched
+
+#### Scenario: A block over another professional's appointment is unaffected
+
+- **WHEN** a professional records a block over a time in which a different professional has an appointment
+- **THEN** the block is stored, the check being scoped to the block's own professional
 
 #### Scenario: Overlapping blocks are accepted
 
@@ -395,7 +458,7 @@ The system SHALL permit a professional to create, edit, retire and list only the
 
 ### Requirement: The staff surface lets a professional manage their own blocked time
 
-The staff console SHALL present a professional with their blocked time as a list they can add to, edit and retire, entering and reading times as clinic wall clock. A refusal SHALL be shown where the action was attempted rather than at the top of the page. The surface SHALL appear in navigation only for professionals, and SHALL be fully translated in pt-BR and en.
+The staff console SHALL present a professional with their blocked time as a list they can add to, edit and retire, entering and reading times as clinic wall clock. A refusal SHALL be shown where the action was attempted rather than at the top of the page, including the refusal of a block that collides with one of their appointments. The surface SHALL appear in navigation only for professionals, and SHALL be fully translated in pt-BR and en.
 
 #### Scenario: A professional manages blocked time end to end
 
@@ -411,6 +474,11 @@ The staff console SHALL present a professional with their blocked time as a list
 
 - **WHEN** a professional submits a block whose end does not follow its start
 - **THEN** the translated message for `block.invalid_range` appears within the form that was submitted, and the list is unchanged
+
+#### Scenario: A collision with an appointment is explained where it was entered
+
+- **WHEN** a professional submits a block overlapping one of their own live appointments
+- **THEN** the translated message for `booking.block_overlaps_appointment` appears within the form that was submitted, and the list is unchanged
 
 #### Scenario: Navigation reflects the professional role
 
