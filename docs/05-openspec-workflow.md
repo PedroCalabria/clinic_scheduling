@@ -37,13 +37,13 @@ Documents 01–04 are the **spec substrate**: they are the source of truth that 
 | **identity-session**     | Google OIDC + internal accounts, unified session, RBAC roles, ownership-authorization primitive                                                           | Hybrid auth        |
 | **clinic-configuration** | Admin CRUD: specialties, resource types, resources, appointment types, professional×type durations, working-hour templates, buffer                        | UC-4               |
 | **availability**         | Tri-constraint solver (Dapper read), specific + any-professional variations                                                                               | UC-1 (read)        |
-| **booking**              | Atomic booking, `EXCLUDE` constraint, invariants, state machine, automatic resource assignment, cancellation cutoff; reschedule/cancel (delivered by `booking-core` + `booking-lifecycle`)                    | UC-1 (write), UC-3 |
+| **booking**              | Atomic booking, `EXCLUDE` constraint, invariants, state machine, automatic resource assignment, cancellation cutoff; reschedule/cancel (delivered by `booking-core` + `booking-lifecycle` + `booking-desk`)                    | UC-1 (write), UC-3 |
 | **calendar-integration** | Professional OAuth connection, outbound sync (outbox), inbound sync (webhook + `syncToken`), reconciliation conflicts + resolution, watch-channel renewal | UC-2               |
 | **reminders**            | Scheduled reminder job + email via SMTP                                                                                                                   | UC-5               |
 
-## 3. Build order (10 changes, dependency-ordered)
+## 3. Build order (11 changes, dependency-ordered)
 
-Each change delivers a demonstrable increment. Three capabilities are split along their natural seam per the right-sized granularity rule: `clinic-configuration` (catalog, then professional config), `booking` (core, then lifecycle), and `calendar-integration` (outbound, then inbound).
+Each change delivers a demonstrable increment. Three capabilities are split along their natural seam per the right-sized granularity rule: `clinic-configuration` (catalog, then professional config), `booking` (core, lifecycle, then desk), and `calendar-integration` (outbound, then inbound).
 
 1. **walking-skeleton** _(done)_ — Compose (Caddy/api/db), solution structure (slices + protected core), one end-to-end vertical slice, health check. De-risks the infrastructure first.
 2. **identity-session** _(done)_ — hybrid auth, unified session, roles, ownership primitive. Also delivered the two seams every later change's tests depend on: acting as a role, and validating a Google token offline. Google's calendar scope was deferred to change 6 via incremental authorization; see `08-google-setup.md`.
@@ -51,7 +51,8 @@ Each change delivers a demonstrable increment. Three capabilities are split alon
    3b. **professional-configuration** — what a professional does and when: `Professional` row, specialties, per-type durations, working-hour templates + exceptions (S7). Introduces the clinic timezone (Decision H) and the dev seed. Depends on 3a.
 3. **availability-read** — the availability engine (interval arithmetic in the Domain core; wall-clock→UTC via NodaTime with a DST-observing test zone; duration slicing; per-slot pairing with a free resource of the required type, buffer included; specific + any-professional union; respects working-hour **effective-date** ranges). Also brings **internal `TimeBlock` (source=Internal) + S3 Block time** (option C) so the subtraction has a real, producer-backed subtrahend and a browser surface — internal blocks were mis-filed under the Google capability. Appointment-based subtraction and the `EXCLUDE`/GiST machinery stay in change 5 (their producer). Availability output is API/test-verified until P2 lands in change 5.
 5a. **booking-core** — the `Appointment` aggregate + state machine; the three enforcement floors (DB `EXCLUDE`/I4–I6; domain I1–I3, I8; **and the I7 refusal + G1 professional-scoped lock retrofitted into the availability blocks write path** — 5a creates the racer, so this is a **Modified Capability** on `availability`, not just new code); automatic server-side resource assignment (F2 — never trust a caller-supplied resource id); a lead-time/horizon agreement test with the read path; Dapper on the write path (`tstzrange`/GiST exist now). Screens P2, P3, P4. Demonstrable: a patient searches (P2) and books (P3→P4), and double-booking is impossible by construction.
-5b. **booking-lifecycle** — reschedule/cancel (UC-3, F3 cutoff); screens P5, P6, S1 (professional schedule), S4 (day view), S5 (book on behalf). **Also adds `Professional.fullName`** (P-5) — the field the ERD has always shown and 3b never implemented, entered on S7. It lands here rather than in a `clinic-configuration` change of its own because 5b is the first change that genuinely needs it three times over: S4 runs the day across professionals, S5 books on their behalf, and S1 is a professional's own schedule. Until it exists, `booking-core` shows patients a label derived from the account address, which is recorded as a seam rather than a fix. Depends on 5a.
+5b. **booking-lifecycle** — "an appointment can change": Cancelled/Rescheduled transitions + guards, `rescheduled_from_id`, the **reschedule statement ordering** (UPDATE old→`Rescheduled` *before* INSERT new — the partial `EXCLUDE` indexes are non-deferrable; see `02-domain-model.md` §5), the F3 cutoff parameter + the patient-facing rule + the transition method parameterized to accept an **authority** (`cutoffApplies`; the patient path always passes "applies"), ownership authorization on an appointment. Reschedule is scoped to the **same professional** and appointment type (a different professional is a cancel + new booking — dissolves the two-lock deadlock). Screens P5, P6. Cancel releases the slot/resource; external-calendar propagation is change 6, recorded as a seam here, not silently deferred. Demonstrable: a patient cancels and the slot comes back. Depends on 5a.
+5c. **booking-desk** — "staff see and run the day": `Professional.fullName` (P-5, entered on S7 — lands here because S1/S4/S5 are the three surfaces that need it), **book-on-behalf** as a **Modified Capability** on `booking` (the role-gated explicit `patientId` per 5a's task 8.2 — the shipped scenario "staff cannot book through the patient path" becomes false), `AppointmentSource.FrontDesk`, the front-desk cutoff **override** (exercises the authority path 5b built), and `AccessLog` rows when staff read patient PII (S1/S4 are the first screens that need the trail — the primitive already exists). Screens S1, S4, S5. Demonstrable: reception books a walk-in inside the cutoff. Depends on 5b.
 5. **calendar-outbound** — OAuth connection, outbox, dispatcher, idempotent event create, cancel/reschedule propagation.
 6. **calendar-inbound** — **external** `TimeBlock`s only (source=External): webhook, incremental sync, reconcile job (widened to the internal↔appointment catch-all, G2), `ReconciliationConflict` + front-desk resolution (S6), watch-channel renewal. Internal blocks + S3 moved to change 4.
 7. **reminders** — scheduled job, email via SMTP (Mailpit in dev).
@@ -67,11 +68,12 @@ flowchart TB
   c4["4. availability-read"]
   c5a["5a. booking-core"]
   c5b["5b. booking-lifecycle"]
+  c5c["5c. booking-desk"]
   c6["6. calendar-outbound"]
   c7["7. calendar-inbound"]
   c8["8. reminders"]
-  c1 --> c2 --> c3a --> c3b --> c4 --> c5a --> c5b
-  c5b --> c6 --> c7
+  c1 --> c2 --> c3a --> c3b --> c4 --> c5a --> c5b --> c5c
+  c5c --> c6 --> c7
   c5b --> c8
   c7 -.->|external blocks feed availability| c4
 ```
@@ -112,11 +114,16 @@ A community skill can enforce this git discipline automatically (clean tree befo
 
 ## 7. Next action
 
-Changes 1–4 are done (walking-skeleton, identity-session, clinic-catalog, professional-configuration, availability-read). **Before change 5**, a one-time enablement step: configure the Google OAuth client locally and clear the deferred validation debt — see `08-google-setup.md` §"Do this now". This unblocks the Google-only screens that change 5 introduces (P2–P6, S1), so the flagship P2 can actually be validated by a human.
+Done and on `main`: walking-skeleton, identity-session, clinic-catalog, professional-configuration, availability-read, `staff-google-guard`, and **booking-core (5a)**. The Google OAuth client is configured (`08-google-setup.md` §"Do this now"), so the Google-only screens are human-validatable.
 
-Change 5 is split (see §3), but a small correction lands **first**, surfaced during that validation — **`staff-google-guard`** (a Modified Capability on `identity-session`): the S0 staff Google entry must be **claim-only** and must not create a patient for an unknown email; it also confirms the deactivate-and-reinvite recovery path (email uniqueness over active records). See `00-context.md` §5. Landing it now fixes the sign-in door before 5a stacks more Google screens on it.
+Change 5 is split three ways (see §3): **5a — booking-core** *(done)*, **5b — booking-lifecycle** *(done)*; next is **5c — booking-desk** (`Professional.fullName`, book-on-behalf as a Modified Capability, the front-desk cutoff override, AccessLog on staff PII reads; S1, S4, S5).
 
-Then **5a — booking-core** (the `Appointment` aggregate + the three enforcement floors + the I7/G1 retrofit; P2, P3, P4), and **5b — booking-lifecycle** (reschedule/cancel; P5, P6, S1, S4, S5).
+**Two debts are open and have now been carried twice.** They were written as a precondition for 5b and 5b shipped without closing them, which is recorded plainly in its validation Outcome rather than quietly:
+
+- the **F8 availability response-size number**. When it was first asked for, P2 was the only consumer; P6 has since become the second, so a figure captured now can no longer be attributed to one screen. `booking-desk` adds S4 and S5 and makes that worse again. One number, one browser, one network panel.
+- whether **`availability-read`'s validation guide** was ever run against the configured Google client. Two later guides have now opened by assuming S3 works.
+
+Both belong in `booking-desk` as its own group 0, on the same terms 5b gave them. A third deferral should be an explicit decision to drop them, not another carry.
 
 Per change: branch, `/opsx:explore` (optional), `/opsx:propose <change-id>`, review the
 proposal, `/opsx:apply`, review the diff, `/opsx:archive`, merge to `main`.

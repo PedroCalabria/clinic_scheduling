@@ -18,6 +18,15 @@ namespace Clinic.Domain.Scheduling;
 /// that offers a slot the write will refuse is a lying read and SC-1 is the product's whole
 /// claim.
 /// </para>
+/// <para>
+/// <b>The cancellation cutoff is deliberately not a fourth number here</b>, and this note is where
+/// a reader looking for it should find out why. Everything in this record is handed to the solver,
+/// which is the point — the read and the write cannot apply different rules if there is one value.
+/// The cutoff does not decide what may be offered, only who may undo, so a solver holding it would
+/// be a solver eventually applying it, at which point availability withholds slots for a reason
+/// that has nothing to do with whether they are free. It lives on
+/// <see cref="CancellationCutoffPolicy"/> instead.
+/// </para>
 /// </remarks>
 public sealed record SchedulingParameters
 {

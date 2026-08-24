@@ -118,8 +118,18 @@ public sealed record AppointmentBooking(
 /// two sources of truth for "is this row live" is how a constraint becomes decorative.
 /// </para>
 /// <para>
-/// <b>No <c>rescheduledFromId</c> and no <c>externalEventId</c></b>: they belong to 5b and to
-/// change 6, and this project does not add a column for a producer that does not exist.
+/// <b><c>rescheduledFromId</c> exists as of <c>booking-lifecycle</c>; <c>externalEventId</c> still
+/// does not.</b> The rule 5a stated has not changed — no column for a producer that does not
+/// exist — it is that the producer now exists. <see cref="RescheduleTo"/> writes the link;
+/// nothing writes an external event id, because change 6 is where a calendar first appears.
+/// </para>
+/// <para>
+/// <b>Two of the four terminal transitions are reachable.</b> <see cref="Cancel"/> and
+/// <see cref="RescheduleTo"/> are here; there is no <c>Complete()</c> and no <c>MarkNoShow()</c>,
+/// so <see cref="AppointmentStatus.Completed"/> and <see cref="AppointmentStatus.NoShow"/> remain
+/// unreachable <em>by inspection</em> rather than by reading a transition table. They are
+/// front-desk observations about a visit that has already happened, and the screen that records
+/// them is <c>booking-desk</c>'s.
 /// </para>
 /// </remarks>
 public sealed class Appointment
@@ -167,6 +177,27 @@ public sealed class Appointment
     public AppointmentStatus Status { get; private set; }
 
     public AppointmentSource Source { get; private set; }
+
+    /// <summary>
+    /// The appointment this one replaced, or null if it was booked outright (02 §3).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Written only by <see cref="RescheduleTo"/>, on the <em>new</em> appointment. The original
+    /// keeps its own range and becomes <see cref="AppointmentStatus.Rescheduled"/>, so "this
+    /// appointment was moved from 09:00 to 14:00" is reconstructible — which is the whole reason
+    /// a reschedule creates a row instead of editing one. Audit and LGPD both want the 09:00 row
+    /// to still say 09:00.
+    /// </para>
+    /// <para>
+    /// <b>The chain is allowed to grow.</b> A moved twice is A → B → C, each link naming the
+    /// appointment it directly replaced, and nothing collapses it. No query in
+    /// <c>booking-lifecycle</c> walks the chain; it is written so that it is there when something
+    /// needs it, which is the opposite of the bet 5a declined to make when the producer did not
+    /// exist yet.
+    /// </para>
+    /// </remarks>
+    public Guid? RescheduledFromId { get; private set; }
 
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
@@ -287,6 +318,148 @@ public sealed class Appointment
         };
 
         return appointment;
+    }
+
+    /// <summary>
+    /// Calls the appointment off, freeing the time it held (02 §3).
+    /// </summary>
+    /// <param name="cutoffApplies">
+    /// Whether the cancellation cutoff binds this caller. A fact, not a role — see
+    /// <see cref="CancellationCutoffPolicy"/> for why the aggregate is told rather than asked.
+    /// </param>
+    /// <remarks>
+    /// <para>
+    /// <b>Two preconditions, and no third.</b> The appointment must be live, and the cutoff must
+    /// permit it. Nothing else: cancelling needs no qualification, no room, no duration and no
+    /// scheduling parameters, because it takes nothing and gives everything back. That asymmetry
+    /// with <see cref="RescheduleTo"/> is the reason these are two named methods rather than one
+    /// generic mover taking the union of both parameter lists and ignoring half of it.
+    /// </para>
+    /// <para>
+    /// The row is <b>not</b> deleted and its range is not touched (I10). The status is the entire
+    /// mechanism: <see cref="IsLive"/> goes false, and the same instant the three exclusion
+    /// constraints stop seeing this row, because their predicate names the one value this leaves.
+    /// One notion of "live", two floors, no migration.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="BookingRuleViolationException">
+    /// Already terminal, or inside the cutoff.
+    /// </exception>
+    public void Cancel(CancellationCutoffPolicy cutoff, Instant now, bool cutoffApplies)
+    {
+        RequireChangeable(cutoff, now, cutoffApplies);
+
+        Status = AppointmentStatus.Cancelled;
+    }
+
+    /// <summary>
+    /// Moves the appointment to a new time by replacing it (02 §3).
+    /// </summary>
+    /// <param name="booking">
+    /// The replacement's facts. Its patient, professional and appointment type MUST match this
+    /// appointment's — a reschedule keeps all three, and a request cannot express otherwise
+    /// because the wire contract carries none of them.
+    /// </param>
+    /// <returns>The new, live appointment. This one is now terminal.</returns>
+    /// <remarks>
+    /// <para>
+    /// <b>The replacement is built before this appointment is touched</b>, and the ordering is
+    /// deliberate: <see cref="Book"/> can refuse, and a refusal must leave the original exactly as
+    /// it was. Building second would mean every rule violation had to be undone rather than simply
+    /// not applied.
+    /// </para>
+    /// <para>
+    /// <b>Every rule is enforced against the NEW time by the code that already enforces it.</b>
+    /// The replacement goes through <see cref="Book"/>, so I1, I2, I3 and I8 hold for it exactly
+    /// as they would for an outright booking — including the one that distinguishes the two
+    /// readings of I1: the duration baked in is the duration in force *now*, so a professional who
+    /// changed their duration for this type between the booking and the reschedule moves the
+    /// replacement and can never reach the original.
+    /// </para>
+    /// <para>
+    /// <b>Same professional and same appointment type, refused structurally.</b> Moving to a
+    /// different professional is a cancellation followed by a new booking, not a reschedule — an
+    /// appointment is a commitment with a particular person. The useful side effect is that the
+    /// caller needs only one professional's lock, so the deadlock a two-professional reschedule
+    /// would introduce does not exist to be solved.
+    /// </para>
+    /// </remarks>
+    /// <exception cref="BookingRuleViolationException">
+    /// Already terminal, inside the cutoff, or a rule <see cref="Book"/> refuses.
+    /// </exception>
+    /// <exception cref="DomainRuleViolationException">
+    /// The replacement names a different patient, professional or appointment type — which no
+    /// request can express, so it is a bug and not an answer.
+    /// </exception>
+    public Appointment RescheduleTo(
+        AppointmentBooking booking,
+        SchedulingParameters parameters,
+        CancellationCutoffPolicy cutoff,
+        Instant now,
+        DateTimeOffset createdAtUtc,
+        bool cutoffApplies)
+    {
+        RequireChangeable(cutoff, now, cutoffApplies);
+
+        RequireSame(booking.PatientId, PatientId, "patient");
+        RequireSame(booking.ProfessionalId, ProfessionalId, "professional");
+        RequireSame(booking.AppointmentTypeId, AppointmentTypeId, "appointment type");
+
+        var replacement = Book(booking, parameters, now, createdAtUtc);
+
+        // Written on the new row, naming the appointment it DIRECTLY replaced. A appointment moved
+        // twice is a chain of two links rather than two rows both pointing at the original, so the
+        // history reads in the order it happened.
+        replacement.RescheduledFromId = Id;
+
+        // Last, and only once nothing else can throw. Note that this is the statement whose
+        // ORDER relative to the replacement's INSERT is load-bearing at the persistence layer —
+        // the exclusion indexes are partial and non-deferrable, so the row must leave them before
+        // the replacement joins. That ordering is the caller's to get right; see the reschedule
+        // handler, which says so at the two statements.
+        Status = AppointmentStatus.Rescheduled;
+
+        return replacement;
+    }
+
+    /// <summary>
+    /// The two preconditions both transitions share.
+    /// </summary>
+    /// <remarks>
+    /// Terminal is checked before the cutoff so that a patient cancelling an already-cancelled
+    /// appointment is told what is actually true, rather than being told about a deadline for a
+    /// change that has already happened.
+    /// </remarks>
+    private void RequireChangeable(CancellationCutoffPolicy cutoff, Instant now, bool cutoffApplies)
+    {
+        if (!IsLive)
+        {
+            throw new BookingRuleViolationException(
+                BookingRefusal.AppointmentNotChangeable,
+                $"Appointment {Id} is {Status} and only a scheduled appointment can be changed.");
+        }
+
+        if (!cutoff.Permits(StartsAt, now, cutoffApplies))
+        {
+            throw new BookingRuleViolationException(
+                BookingRefusal.CutoffPassed,
+                $"Appointment {Id} starts at {StartsAt}, sooner than the {cutoff.Notice} notice "
+                + $"required from {now}.");
+        }
+    }
+
+    private static void RequireSame(Guid replacement, Guid original, string name)
+    {
+        if (replacement != original)
+        {
+            // Not a BookingRefusal: the reschedule contract carries only an instant, so a caller
+            // cannot ask for this and there is no message a patient could act on. A guard against
+            // a future caller assembling the replacement wrongly.
+            throw new DomainRuleViolationException(
+                $"A reschedule keeps the same {name}; got {replacement} for an appointment whose "
+                + $"{name} is {original}. Moving to a different {name} is a cancellation followed "
+                + "by a new booking.");
+        }
     }
 
     /// <summary>

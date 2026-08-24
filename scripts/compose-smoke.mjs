@@ -736,11 +736,22 @@ async function main() {
   });
 
   await check('the booking screens resolve as portal deep links', async () => {
-    // The client half of the SPA fallback, for the three routes booking-core adds. It matters more
-    // here than for any earlier screen: P2 and P3 keep their entire state in the query string
-    // precisely so a reload or a shared link restores the search, and that promise is void if a
-    // full page load of the URL 404s. A deep link must return the PORTAL index, not the staff one.
-    for (const path of ['/book', '/book/confirm', '/book/success']) {
+    // The client half of the SPA fallback, for the three routes booking-core adds and the two
+    // booking-lifecycle adds. It matters more here than for any earlier screen: P2 and P3 keep
+    // their entire state in the query string precisely so a reload or a shared link restores the
+    // search, and that promise is void if a full page load of the URL 404s. A deep link must
+    // return the PORTAL index, not the staff one.
+    //
+    // P6 carries an id in its PATH rather than in a query string, which is the one shape none of
+    // the earlier routes exercised: a fallback rule matching only known literal prefixes would
+    // serve it and 404 on the segment after it.
+    for (const path of [
+      '/book',
+      '/book/confirm',
+      '/book/success',
+      '/appointments',
+      `/appointments/${'00000000-0000-0000-0000-000000000000'}/reschedule`,
+    ]) {
       const response = await fetch(`${base}${path}`);
 
       assert(response.status === 200, `${path} returned ${response.status}`);
@@ -770,6 +781,9 @@ async function main() {
     for (const [path, method] of [
       ['/api/booking/options', 'GET'],
       ['/api/appointments', 'POST'],
+      ['/api/appointments', 'GET'],
+      [`/api/appointments/${'00000000-0000-0000-0000-000000000000'}/cancel`, 'POST'],
+      [`/api/appointments/${'00000000-0000-0000-0000-000000000000'}/reschedule`, 'POST'],
     ]) {
       const response = await fetch(`${base}${path}`, { method });
 

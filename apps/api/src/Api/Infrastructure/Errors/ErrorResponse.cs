@@ -284,6 +284,68 @@ internal static class ErrorCodes
     /// </remarks>
     internal const string BookingBlockOverlapsAppointment = "booking.block_overlaps_appointment";
 
+    /// <summary>
+    /// The appointment starts sooner than the cancellation cutoff, and the cutoff applies to this
+    /// caller — 422 (domain-model F3, added in <c>booking-lifecycle</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The rule is stated in terms of an <em>authority</em> rather than a role: the domain is told
+    /// whether the cutoff applies and never asks who is calling. So this code names a refusal that
+    /// a caller with the authority to act inside the cutoff simply does not receive, rather than a
+    /// refusal that some later change has to special-case around.
+    /// </para>
+    /// <para>
+    /// Only the patient path passes "the cutoff applies" today, because it is the only path there
+    /// is. The front desk acting inside the cutoff is <c>booking-desk</c>'s, and it arrives by
+    /// passing the other value — not by relaxing this rule.
+    /// </para>
+    /// </remarks>
+    internal const string BookingCutoffPassed = "booking.cutoff_passed";
+
+    /// <summary>
+    /// An appointment that does not exist — 404, on a path whose caller is entitled to know that.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Deliberately unused by every path in <c>booking-lifecycle</c>, which is why it is
+    /// documented rather than omitted.</b> On a patient path, an appointment belonging to somebody
+    /// else and an id that was never real both answer <see cref="OwnershipDenied"/>, so the
+    /// endpoint cannot be used to enumerate appointment ids. The catalogue already settled that
+    /// shape for <see cref="PatientNotFound"/> and the reasoning is the same one, not a new one.
+    /// </para>
+    /// <para>
+    /// Its caller is <c>booking-desk</c>, where the actor is staff and absence is information they
+    /// are entitled to. The constant exists now so that the answer to "why is there no 404 here?"
+    /// is written where somebody would look for it.
+    /// </para>
+    /// </remarks>
+    internal const string BookingAppointmentNotFound = "booking.appointment_not_found";
+
+    /// <summary>
+    /// The appointment is already in a terminal state — 409 (added in
+    /// <c>booking-lifecycle</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Beyond this change's stated brief, and flagged rather than absorbed</b> — the same
+    /// treatment <see cref="BookingPatientBusy"/> got in 5a, and for the same reason: the
+    /// catalogue had nothing that answers this honestly.
+    /// <see cref="BookingAppointmentNotFound"/> would deny the existence of a row the patient is
+    /// looking at on P5; <see cref="OwnershipDenied"/> is about who is asking rather than about
+    /// what state the thing is in, and the patient does own it; and
+    /// <see cref="BookingCutoffPassed"/> would give a time-based reason for a state-based refusal,
+    /// which is precisely the confusion <see cref="BookingSlotBlocked"/> was split away from
+    /// <see cref="BookingSlotTaken"/> to prevent.
+    /// </para>
+    /// <para>
+    /// Ordinary rather than exotic: P5 open in two tabs, or a cancel followed by the back button.
+    /// If a reviewer prefers to overload an existing code, the change is one mapping line and one
+    /// i18n pair.
+    /// </para>
+    /// </remarks>
+    internal const string BookingAppointmentNotChangeable = "booking.appointment_not_changeable";
+
     /// <summary>Unhandled error — 500. Never leaks internals.</summary>
     internal const string ServerUnexpected = "server.unexpected";
 }

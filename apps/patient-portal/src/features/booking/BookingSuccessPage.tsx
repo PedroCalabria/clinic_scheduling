@@ -11,9 +11,10 @@ import { slotTime } from './slots';
  * the appointment was just created and the response described it, so a second request would only
  * add a way for this screen to fail after the thing it reports has already succeeded.
  *
- * **The onward link is temporary and says so.** "My appointments" (P5) is `booking-lifecycle`'s
- * screen, so this points at the profile for now. Named here and in the validation guide, because a
- * dangling link found during a demo is worse than one a reader was told about.
+ * **The onward link now goes where it always meant to.** `booking-core` shipped it pointing at the
+ * profile because "My appointments" (P5) did not exist yet, and named that in its validation guide
+ * as a known temporary destination. `booking-lifecycle` builds P5, so the temporary destination is
+ * closed rather than left for somebody to find during a demo.
  */
 export function BookingSuccessPage() {
   const { t, i18n } = useTranslation();
@@ -96,11 +97,9 @@ export function BookingSuccessPage() {
       </section>
 
       <div className="flex flex-wrap gap-3">
-        {/*
-          Points at the profile, not at "my appointments": P5 arrives with booking-lifecycle. A
-          working link to a real screen beats a link to a route that does not exist.
-        */}
-        <Button onClick={() => void navigate('/profile')}>{t('booking.viewProfile')}</Button>
+        <Button onClick={() => void navigate('/appointments')}>
+          {t('booking.viewAppointments')}
+        </Button>
         <Button variant="secondary" onClick={() => void navigate('/book')}>
           {t('booking.bookAnother')}
         </Button>

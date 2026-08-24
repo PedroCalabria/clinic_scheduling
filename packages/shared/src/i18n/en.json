@@ -27,7 +27,8 @@
     "signInNote": "We use your Google account so you do not need another password.",
     "myProfile": "My profile",
     "signedInAs": "Signed in as {{email}}",
-    "bookAppointment": "Book an appointment"
+    "bookAppointment": "Book an appointment",
+    "myAppointments": "My appointments"
   },
   "profile": {
     "title": "Profile and consents",
@@ -149,7 +150,9 @@
     "booking_horizon_exceeded": "That date is further ahead than the clinic takes bookings.",
     "booking_specialty_mismatch": "That professional no longer offers this kind of visit.",
     "booking_block_overlaps_appointment": "You have an appointment in that period. Cancel it first, or block a different time.",
-    "availability_unavailable": "Free times cannot be worked out right now. Please try again shortly."
+    "availability_unavailable": "Free times cannot be worked out right now. Please try again shortly.",
+    "booking_cutoff_passed": "This appointment is too close to change online. Please call reception.",
+    "booking_appointment_not_changeable": "This appointment has already been cancelled or moved."
   },
   "catalog": {
     "specialtiesTitle": "Specialties",
@@ -313,7 +316,36 @@
     "timezoneNote": "Times are the clinic's local time ({{timezone}}).",
     "whatNextTitle": "What happens next",
     "whatNextBody": "Please arrive a few minutes early. If you need to change or cancel, contact reception.",
-    "viewProfile": "Go to my profile",
-    "bookAnother": "Book another appointment"
+    "bookAnother": "Book another appointment",
+    "viewAppointments": "See my appointments"
+  },
+  "appointments": {
+    "title": "My appointments",
+    "subtitle": "Everything you have booked, and everything you have had.",
+    "loading": "Loading your appointments…",
+    "upcomingTitle": "Coming up",
+    "upcomingEmpty": "Nothing booked yet.",
+    "pastTitle": "Past",
+    "pastEmpty": "Nothing here yet.",
+    "reschedule": "Change time",
+    "cancel": "Cancel",
+    "cancelConfirm": "Cancel this appointment?",
+    "cancelYes": "Yes, cancel it",
+    "cancelNo": "Keep it",
+    "locked": "This appointment is too close to change online. Please call reception.",
+    "notFound": "That appointment is not on your list.",
+    "backToList": "Back to my appointments",
+    "bookAnother": "Book another appointment",
+    "rescheduleTitle": "Choose a new time",
+    "rescheduleSubtitle": "Pick any free time below. Nothing changes until you choose one.",
+    "movingFrom": "Currently booked for",
+    "movingTo": "New times available, shown in the clinic's timezone ({{timezone}}).",
+    "sameProfessionalNote": "The professional and the kind of visit stay the same. To see someone else, cancel this appointment and book a new one.",
+    "status": {
+      "Cancelled": "Cancelled",
+      "Rescheduled": "Moved to another time",
+      "Completed": "Attended",
+      "NoShow": "Missed"
+    }
   }
 }

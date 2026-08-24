@@ -272,19 +272,24 @@ public sealed class AppointmentTests
     }
 
     [Fact]
-    public void The_aggregate_offers_no_transition_and_no_way_to_move_the_range()
+    public void The_aggregate_offers_exactly_two_transitions_and_no_way_to_move_a_range()
     {
-        // 5b's guards do not exist yet, so this change must not be able to reach a terminal
-        // state or move an appointment. Asserted structurally rather than by trying to call
-        // something: a public mutator appearing here is the regression to catch.
+        // `booking-core` asserted this list was EMPTY. `booking-lifecycle` adds two members to it
+        // and no more — so `Completed` and `NoShow` stay unreachable by inspection rather than by
+        // reading a transition table, and `booking-desk` adding a third has to come here and say
+        // so. Asserted structurally rather than by trying to call something: an unplanned public
+        // mutator appearing is the regression to catch.
         var mutators = typeof(Appointment)
             .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
             .Where(method => !method.IsSpecialName && method.DeclaringType == typeof(Appointment))
             .Select(method => method.Name)
+            .OrderBy(name => name)
             .ToArray();
 
-        Assert.Empty(mutators);
+        Assert.Equal([nameof(Appointment.Cancel), nameof(Appointment.RescheduleTo)], mutators);
 
+        // Still empty, and this half has not moved: a reschedule CREATES. Nothing may edit an
+        // existing appointment's range, which is what keeps the audit trail honest (design C5).
         var settable = typeof(Appointment)
             .GetProperties()
             .Where(property => property.SetMethod?.IsPublic == true)
@@ -318,8 +323,21 @@ public sealed class AppointmentTests
 
         Assert.Single(Appointment.BusyIntervalsOf([live]));
 
-        // The terminal cases are asserted at the integration tier, where a row can actually be
-        // put into one — there is deliberately no way to do it from here until 5b.
+        // 5a could only say this at the integration tier, by writing a terminal row directly.
+        // The transitions exist now, so the claim is reachable from here — which is the same
+        // shift the whole change is about.
+        var cancelled = Book(Booking());
+        cancelled.Cancel(Cutoff(), Now, cutoffApplies: true);
+
+        var rescheduled = Book(Booking());
+        rescheduled.RescheduleTo(Booking(Tomorrow + Duration.FromHours(2)), Parameters(), Cutoff(), Now, Recorded, cutoffApplies: true);
+
+        Assert.Empty(Appointment.BusyIntervalsOf([cancelled, rescheduled]));
+        Assert.Single(Appointment.BusyIntervalsOf([live, cancelled, rescheduled]));
+
         Assert.Empty(Appointment.BusyIntervalsOf([]));
     }
+
+    /// <summary>The configured default — 24 hours (domain-model F3).</summary>
+    private static CancellationCutoffPolicy Cutoff(int hours = 24) => CancellationCutoffPolicy.Of(hours);
 }

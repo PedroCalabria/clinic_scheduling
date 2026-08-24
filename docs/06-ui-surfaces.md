@@ -63,7 +63,7 @@ Purpose: reassure the booking is done. Key elements: appointment summary, what t
 Purpose: the patient sees and manages **only their own** appointments (ownership authorization). Key elements: upcoming/past lists; per-appointment reschedule/cancel — **disabled inside the 24h cutoff** with a message to call reception.
 
 **P6 — Reschedule / cancel** · route `/appointments/:id/reschedule` · UC-3 · capability `booking`
-Purpose: change an existing appointment. Reuses P2's search scoped to the same appointment type; cancel releases slot + resource and propagates to the external calendar.
+Purpose: change an existing appointment. Reuses P2's search scoped to the **same professional** and appointment type (a different professional is a cancel + new booking); cancel releases slot + resource. External-calendar propagation is `calendar-outbound` (change 6) — recorded here as a seam, so `booking-lifecycle` delivers the internal release now and the propagation later.
 
 **P7 — Profile & consents** · route `/profile` · capability `identity-session`
 Purpose: manage minimal personal data and consents (LGPD). Key elements: minimal PII, consent status/version, view-only note about data handling. Utilitarian even within the portal.
@@ -116,7 +116,8 @@ So each frontend change knows exactly which screens it delivers:
 | 3b · professional-configuration | S7 |
 | 4 · availability-read | S3 (internal block time — the producer of a real subtrahend); availability itself feeds P2/S5 and is API/test-verified until P2 lands in change 5 |
 | 5a · booking-core | P2, P3, P4 |
-| 5b · booking-lifecycle | P5, P6, S1, S4, S5 |
+| 5b · booking-lifecycle | P5, P6 |
+| 5c · booking-desk | S1, S4, S5 |
 | 6 · calendar-outbound | S2 |
 | 7 · calendar-inbound | S6 (S3 moved to change 4 — internal blocks are not a Google concern) |
 | 8 · reminders | (no screen; email) |
