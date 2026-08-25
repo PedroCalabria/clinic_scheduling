@@ -349,14 +349,31 @@ persists at all.
 
 ## Open Questions
 
+*Answered by the validation run of 2026-08-25 where marked; see `validation.md`'s Outcome for the
+wording the answers were given in.*
+
 1. **Does the trust panel belong under the search on mobile, where it lands between the controls and the
-   results?** It may be exactly right — the promise stated before the answer — or it may be an obstacle
-   a thumb has to scroll past every time. Named for the validation run rather than guessed at.
+   results?** — **STILL OPEN.** The validation run answered check 9's width question and did not reach
+   this one. It is now the more interesting half: the column collapses at `lg` (1024 px), so the stacked
+   layout with the trust panel between the controls and the results is what a large share of *laptop*
+   users see, not only phones. It may be exactly right — the promise stated before the answer — or an
+   obstacle a thumb scrolls past every search.
 
-2. **Should the selection bar be sticky?** The artboard shows it pinned at the bottom of the results.
-   With a long day list, a selection made at the top scrolls out of reach; sticky solves that and costs
-   vertical space on a phone. The working answer is sticky on desktop, inline on mobile — worth a human
-   opinion.
+2. **Should the selection bar be sticky?** — **CLOSED: yes, as shipped.** Sticky on desktop, inline on
+   mobile, confirmed against a long day list; the run's verdict was that the implemented version is good
+   enough. D10 had already argued the desktop half from the clipped `shadow-float`; the phone half — where
+   the bar costs vertical space that matters more — has now been looked at and the trade accepted.
 
-3. **Is `COMPUTED` worth its own small change?** (D6.) One field, and it makes the never-cached posture
-   visible. If the answer is yes, it should be argued on its own, not appended here.
+3. **Is `COMPUTED` worth its own small change?** (D6.) — **STILL OPEN.** One field, and it makes the
+   never-cached posture visible. Untouched by the run. If the answer is yes, it should be argued on its
+   own, not appended here.
+
+4. **Does the keyboard path actually work?** — **CLOSED 2026-08-25: yes.** Opened when the validation run
+   did not reach check 12 and task 8.4 archived unchecked; closed shortly after by the browser session it
+   asked for. The keyboard path through P2 was walked end to end and the accessibility audit came back
+   clean. What the code was written to earn on this surface — `aria-pressed` on a chosen slot, a real
+   `<fieldset>` for the radio group, native radios so arrow-key movement comes from the platform — has
+   now been seen rather than only argued, and task 3.2's *"Verified in the browser at 8.4"* is discharged
+   with it. The question is kept here rather than deleted: it was a real gap for the length of an
+   archive, and the design system's rule that state is never carried by colour alone (cited in D2) is the
+   one this change was most at risk of breaking while restoring two others.

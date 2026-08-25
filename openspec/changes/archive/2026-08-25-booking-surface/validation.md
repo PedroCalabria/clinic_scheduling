@@ -266,27 +266,93 @@ a false claim rather than a forward one, and it is the first thing that should b
 
 ## Outcome
 
-- **Run on:** _(date)_
-- **Run by:** _(who, and against what)_
-- **Result:** _(pass / pass with findings / fail)_
-- **Notes:**
+- **Run on:** 2026-08-25
+- **Run by:** the maintainer, in a browser against the running app
+- **Result:** **passed** — all five judgement checks came back with opinions, and all five were
+  favourable. The question `booking-core` left unanswered is now answered.
+- **Notes:** one design Open Question is closed by this run and one is left open. The accessibility
+  check was outstanding when this record was first written and **was closed shortly after, on the same
+  day** — see the head of the gaps section. Everything is recorded below rather than left to be inferred.
 
-### Opinions, not ticks — this section is the deliverable
+### The opinions, which are the deliverable
 
-A presentation change validated with ticks has not been validated. The five that need words:
+**Check 1 — showcase, or a form with a list under it? → the showcase.** With the corrections it is
+*"more intuitive and organized."* **This is the answer `booking-core`'s check 2 asked for and did not
+get**, and getting it is why this change existed. The two records can now be set side by side: 5a asked
+and recorded silence; this change asked the same question, unchanged in wording, and recorded yes.
 
-- **Check 1** — showcase, or a form with a list under it? (the question `booking-core` left unanswered)
-- **Check 3** — does the selection step earn its extra click?
-- **Check 6** — does seeing both ends of a reschedule help, or crowd?
-- **Check 9** — at what width does the two-column layout stop being comfortable?
-- **Check 10** — sticky or inline? (design Open Question 2)
+The answer also credits something this guide did not think to ask about. Because selection happens in
+place, a patient who mis-clicks *"can change their selection easier than having to go back to the screen
+multiple times."* The design argued the selection step as **restatement before committing** (D8, and the
+extra-click trade in Risks); the run says recovery from a wrong click is worth as much. That is a benefit
+the change delivers and never claimed.
+
+**Check 3 — does the selection step earn its extra click? → yes.** *"It's better now."* Brief, and it
+settles the trade `design.md` listed as accepted but unverified: booking now costs two actions where it
+cost one, and the summary is judged worth it. That Risks entry stands as a finding rather than a bet.
+
+**Check 6 — do both ends of a reschedule help, or crowd? → they help.** The visibility *"helps the user
+know what happened with a previous appointment."* Worth recording that **this question was asked twice**:
+`booking-lifecycle`'s check 4 put it first and its Outcome records that no opinion came back, naming it
+*"the one that matters most, because `02 §5` rests an argument on it."* That debt is paid one change
+later, against a screen that had meanwhile gained P2's selection model.
+
+**Check 9 — at what width does the two-column layout stop being comfortable? → it does not.** Observed:
+by roughly **966 px** the layout has already collapsed to a single column, and it is comfortable there.
+
+**D1's stated risk did not materialise, and the reason deserves naming.** The risk was that a persistent
+search column squeezes the slot grid to two tiles per row on a narrow laptop — *worse than the full-width
+layout it replaced*. It cannot happen, because the column collapses at Tailwind's `lg` (1024 px). The
+grid is never asked to be narrow and two-column at the same time.
+
+**A discrepancy, recorded rather than smoothed over.** Task 4.2 describes stacking *"below the `sm`
+breakpoint"* and cites the design system's mandate of one column under 768 px. The shipped code stacks at
+`lg` — `BookingSearchPage.tsx:250`, `lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]`. That is **more
+conservative than the task text and still satisfies the DS rule** (under 768 px is single column, as
+mandated), so nothing is violated. But the number a reader would carry away from task 4.2 is not the
+number in the code, and the gap between them is precisely what made this check pass. The observed ~966 px
+sits just under the 1024 px query, consistent with a window width read including its scrollbar.
+
+**Check 10 — sticky or inline? → the implemented version is good enough.** Sticky on desktop, inline on
+mobile, seen against a long day list. **Design Open Question 2 is closed.** The half D10 had already
+argued from the clipped `shadow-float` now has its other half: the phone, where the bar costs vertical
+space that matters more, was looked at and the trade was accepted.
 
 ### What was NOT examined, stated plainly
 
-_(A blank or vague Outcome is indistinguishable from an overlooked one.)_
+A blank or vague Outcome is indistinguishable from an overlooked one, so the gaps are named.
 
-- Whether the P2 artboard was actually opened beside the running app, or only remembered.
-- The three deliberately-absent artboard elements — confirm they were checked as absent rather than
-  simply unnoticed.
-- Anything below the API line: unchanged by this change, and the automated tiers should be green in
-  exactly the numbers they were before. **State those numbers here**, because "unchanged" is a claim.
+**Check 12 was closed on 2026-08-25, after the archive commit.** The keyboard path through P2 was walked
+end to end and the browser's accessibility audit came back clean. **Task 8.4 is done and design Open
+Question 4 is closed.** So the largest hole in this record is filled, and what filled it was the browser
+session the bullet below said it needed.
+
+*The bullet is left exactly as it was recorded*, on `booking-lifecycle`'s precedent for a debt closed
+after its Outcome was written: what it says about **this change** stays true. It did archive with 8.4
+open — commit `ce999d4` folded the delta into the living spec at 46 of 47 tasks — and a reader comparing
+the archive against the spec should find that, not a tidied version of it.
+
+- **Check 12 was not run. The keyboard path and the accessibility audit are unexamined, task 8.4 stays
+  unchecked, and this change archives with it open.** This is the largest hole in the record. `06 §2`
+  names elderly users as part of this audience and sets AA for this surface specifically — and this
+  change introduced a new state, a chosen slot, whose most obvious expression is a colour, on a surface
+  whose design system forbids state carried by colour alone. The code was written to answer that:
+  `aria-pressed` (task 5.3), a real `<fieldset>` rather than a `Field`-wrapped fake (task 3.1), and
+  native radios so arrow-key movement comes from the platform (task 3.2). But **written to answer it is
+  not the same as seen to answer it**, and no screen reader has been near this screen. Task 3.2 says in
+  as many words *"Verified in the browser at 8.4"*; 8.4 did not happen, so that verification is
+  outstanding too. It is a browser session, not a code change, and it does not need a change to carry it.
+- **Design Open Question 1 is still open, and this run made it more pressing rather than less.** Check 9
+  carried a second question: once stacked, the trust panel sits between the controls and the results — is
+  that the promise stated before the answer, or an obstacle a thumb scrolls past on every search? The
+  width half was answered and this half was not. It matters more now that the stack point is known to be
+  1024 px: the stacked layout is what a large share of laptop users see, not only phones.
+- **The automated tiers were not re-run for this record.** Task 8.1 asserts 248 domain unit and 292
+  integration, unchanged. Those numbers are **not confirmed here.** What was re-run green on 2026-08-25
+  is `openspec validate booking-surface --strict`, `pnpm typecheck` (3 of 3 projects), `pnpm check:i18n`
+  (337 keys consistent, 380 references resolving) and `pnpm check:readme`. The .NET suites were not run.
+  The claim rests on this change touching nothing below the API line — structurally true, and not the
+  same thing as measured.
+- **Not stated either way:** whether the P2 artboard was opened beside the running app or worked from
+  memory, and whether the three deliberately-absent artboard elements (D6, D7) were confirmed absent
+  rather than simply unnoticed.
