@@ -145,6 +145,7 @@ internal static class AvailabilityEndpoints
                 .Select(slot => new AvailabilitySlotResponse(
                     slot.ProfessionalId,
                     slot.ResourceId,
+                    loaded.ResourceNames.TryGetValue(slot.ResourceId, out var room) ? room : string.Empty,
                     InstantPattern.ExtendedIso.Format(slot.Start),
                     InstantPattern.ExtendedIso.Format(slot.End)))
                 .ToList()));

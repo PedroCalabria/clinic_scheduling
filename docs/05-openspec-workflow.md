@@ -114,9 +114,9 @@ A community skill can enforce this git discipline automatically (clean tree befo
 
 ## 7. Next action
 
-Done and on `main`: walking-skeleton, identity-session, clinic-catalog, professional-configuration, availability-read, `staff-google-guard`, and **booking-core (5a)**. The Google OAuth client is configured (`08-google-setup.md` §"Do this now"), so the Google-only screens are human-validatable.
+Done and on `main`: walking-skeleton, identity-session, clinic-catalog, professional-configuration, availability-read, `staff-google-guard`, **booking-core (5a)**, **booking-lifecycle (5b)** and **booking-desk (5c)** — plus two refinement changes outside the numbered increments, `staff-google-guard` and `booking-surface` (UI adjustments to the patient booking screens). The Google OAuth client is configured (`08-google-setup.md` §"Do this now"), so the Google-only screens are human-validatable.
 
-Change 5 is split three ways (see §3): **5a — booking-core** *(done)*, **5b — booking-lifecycle** *(done)*; next is **5c — booking-desk** (`Professional.fullName`, book-on-behalf as a Modified Capability, the front-desk cutoff override, AccessLog on staff PII reads; S1, S4, S5).
+Change 5 is split three ways (see §3) and **all three are done**: **5a — booking-core**, **5b — booking-lifecycle**, **5c — booking-desk** (`Professional.fullName` closing P-5, book-on-behalf as a Modified Capability on `booking`, the front-desk cutoff override finally called, `AccessLog` on staff PII reads; S1, S4, S5). Next is **6 — calendar-outbound**, which inherits the propagation seam 5b and 5c both declared rather than silently deferred.
 
 **Both debts that 5b carried are now closed** (2026-08-24), in the artifacts that own them rather
 than here:

@@ -53,7 +53,7 @@ Purpose: public entry; explain the clinic and start booking. Key elements: brief
 **P2 — Booking search ★** · route `/book` · UC-1 · capabilities `availability`, `booking`
 Purpose: the crown jewel — make the tri-constraint availability visible. Key elements: pick specialty; choose "specific professional" or "any professional of the specialty" (an explicit choice of two, not one entry in a list of names); pick a date window; results show **only genuinely free slots** computed in real time (against professional working hours + external calendar + resource availability). Loading/empty/erro states matter here (real-time feel). This screen is the one to design with the most care.
 
-The search sits **beside** the results rather than above them, because availability is a read a patient adjusts and a stacked search pushes the answer off screen. A **trust panel** under the search names the three things checked for every offered time — the tri-constraint promise, stated where it can be read. **Choosing a slot selects it in place**: exactly one at a time, choosing another moves the selection, and a summary restates the choice before a separate, explicit act proceeds to P3. No room is ever named (`booking-core`'s decision, kept). Delivered by `booking-surface`, from the design canvas artboard that predated the first build of this screen.
+The search sits **beside** the results rather than above them, because availability is a read a patient adjusts and a stacked search pushes the answer off screen. A **trust panel** under the search names the three things checked for every offered time — the tri-constraint promise, stated where it can be read. **Choosing a slot selects it in place**: exactly one at a time, choosing another moves the selection, and a summary restates the choice before a separate, explicit act proceeds to P3. No room is ever named on patient surfaces (`booking-core`'s **D7**, patient-facing only — **staff surfaces (S4/S5) do show the room**, because reception and the day view need it). Delivered by `booking-surface`, from the design canvas artboard that predated the first build of this screen.
 
 **P3 — Slot select & confirm** · route `/book/confirm` · UC-1 · capability `booking`
 Purpose: confirm the chosen slot and commit atomically. Key elements: slot summary (professional, time, type); first-time patients capture minimal data + **data-processing consent (LGPD)**; confirm button; graceful "slot just taken" message (optimistic booking → DB rejects the loser).
@@ -83,7 +83,7 @@ Professional signs in via Google OIDC; Reception/Admin via internal account.
 
 | Screen | Route | Purpose | Key elements | UC | Capability |
 |---|---|---|---|---|---|
-| **S1 — My schedule** | `/staff/schedule` | See own agenda | day/week view of appointments + blocks | UC-2 | booking |
+| **S1 — My schedule** | `/staff/schedule` | See own agenda | **a day** of appointments with patient, kind of visit and **room**, plus that day's blocks; built by `booking-desk`. A *day* rather than a week: a week grid has nowhere to put a block spanning days, and the day read is one endpoint shared with S4. Reading it records an `AccessLog` row per patient named | UC-2 | booking |
 | **S2 — Calendar connection** | `/staff/calendar` | Connect Google Calendar (the integration) | connect (OAuth consent), status, reconnect on revoke, last-sync info | UC-2 | calendar-integration |
 | **S3 — Block time** | `/staff/blocks` | Create internal unavailability | create/edit internal `TimeBlock` (source=Internal) | UC-2 | availability |
 
@@ -91,8 +91,8 @@ Professional signs in via Google OIDC; Reception/Admin via internal account.
 
 | Screen | Route | Purpose | Key elements | UC | Capability |
 |---|---|---|---|---|---|
-| **S4 — Day view** | `/staff/day` | Run the day across professionals | today's appointments, quick actions | UC-3 | booking |
-| **S5 — Book on behalf** | `/staff/book` | Phone/walk-in booking for a patient | booking flow (reuses availability); can act inside cutoff | UC-1, UC-3 | availability, booking |
+| **S4 — Day view** | `/staff/day` | Run the day across professionals | a chosen day's appointments across professionals **with room shown**, narrowable to one professional, each row saying how it was booked; quick actions **cancel** and **move** — move opens S5 scoped to that appointment. Where the patient is inside the cutoff the row says so *while the desk's actions stay available*, which is the sentence the whole RBAC-plus-ownership demonstration turns on. Reading it writes an `AccessLog` row per patient named | UC-3 | booking |
+| **S5 — Book on behalf** | `/staff/book` | Phone/walk-in booking for a patient, and moving one | **utilitarian staff availability view** — reuses the availability **API** (not the patient `SlotGrid`), **room shown** and labelled as the room a time *would* use, no external-calendar trust-claim (a receptionist would notice it isn't real until change 7). Resolves the patient by **exact contact email** first, reporting a missing consent before a slot is chosen; books via the role-gated explicit `patientId`, recorded as `FrontDesk`. One click books — no selection step, unlike P2, because the time has already been agreed out loud. With `?move=<id>` the same surface **moves** an appointment, scoped to its professional and kind of visit, which is where the front-desk cutoff **override** is exercised | UC-1, UC-3 | availability, booking |
 | **S6 — Reconciliation queue** | `/staff/reconciliation` | Resolve external-block vs appointment conflicts (human-in-the-loop) | list of open `ReconciliationConflict`; resolve via cancel/reschedule | UC-2 | calendar-integration |
 
 ### Administrator (clinic configuration — UC-4)
@@ -119,7 +119,7 @@ So each frontend change knows exactly which screens it delivers:
 | 4 · availability-read | S3 (internal block time — the producer of a real subtrahend); availability itself feeds P2/S5 and is API/test-verified until P2 lands in change 5 |
 | 5a · booking-core | P2, P3, P4 |
 | 5b · booking-lifecycle | P5, P6 |
-| 5c · booking-desk | S1, S4, S5 |
+| 5c · booking-desk | S1, S4, S5 (+ the name field on S7) |
 | 6 · calendar-outbound | S2 |
 | 7 · calendar-inbound | S6 (S3 moved to change 4 — internal blocks are not a Google concern) |
 | 8 · reminders | (no screen; email) |

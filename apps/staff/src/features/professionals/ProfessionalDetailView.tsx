@@ -9,6 +9,7 @@ import {
   DialogContent,
   DialogFooter,
   Field,
+  renameProfessional,
   Input,
   Select,
   Table,
@@ -105,13 +106,28 @@ export function ProfessionalDetailView({
         <Button variant="ghost" size="sm" onClick={onBack}>
           {t('professionals.backToList')}
         </Button>
-        <h1 className="mt-2 text-2xl font-semibold text-heading">{detail.email}</h1>
+        <h1 className="mt-2 text-2xl font-semibold text-heading">
+          {detail.fullName ?? detail.email}
+        </h1>
+        {/*
+          The address stays visible under the name once there is one — it is how an administrator
+          tells two people apart, and it is what a professional signs in with.
+        */}
+        {detail.fullName ? <p className="text-sm text-meta">{detail.email}</p> : null}
         {detail.awaitsClaim ? (
           <p className="mt-1 text-sm text-meta">{t('professionals.awaitsClaim')}</p>
         ) : null}
       </div>
 
       {notice ? <Alert tone="success">{notice}</Alert> : null}
+
+      <NameSection
+        detail={detail}
+        onDone={(message) => {
+          setNotice(message);
+          refresh();
+        }}
+      />
 
       <SpecialtiesSection
         detail={detail}
@@ -147,6 +163,71 @@ export function ProfessionalDetailView({
         }}
       />
     </div>
+  );
+}
+
+// --- The name (P-5) ----------------------------------------------------------------
+
+/**
+ * How this professional is named to a person (P-5, open since 3b; design N10).
+ *
+ * First in the screen because it is what a patient sees. Until this change the server derived a
+ * label from the account address behind a `displayName` field, deliberately, so that entering a
+ * real name here would cost no client a change — and it did not.
+ *
+ * Saving a name on a professional who has never been configured **creates** their configuration
+ * record: it is a first save like any other, through the same seam (design E1). Clearing the field
+ * removes the name and the derived label applies again, which is what makes removing one safe
+ * rather than destructive.
+ */
+function NameSection({
+  detail,
+  onDone,
+}: {
+  detail: ProfessionalDetail;
+  onDone: (message: string) => void;
+}) {
+  const { t } = useTranslation();
+  const describeError = useApiErrorMessage();
+
+  const [fullName, setFullName] = useState(detail.fullName ?? '');
+
+  const save = useMutation({
+    mutationFn: () => renameProfessional(detail.userId, fullName),
+    onSuccess: () => onDone(t('professionals.nameSaved')),
+  });
+
+  return (
+    <section className="space-y-3">
+      <h2 className="text-lg font-semibold text-heading">{t('professionals.fullName')}</h2>
+
+      {save.isError ? <Alert tone="error">{describeError(save.error)}</Alert> : null}
+
+      <form
+        className="flex flex-wrap items-center gap-3"
+        onSubmit={(event) => {
+          event.preventDefault();
+          save.mutate();
+        }}
+      >
+        <Field label={t('professionals.fullName')} hint={t('professionals.fullNameHint')}>
+          {({ id, describedBy, invalid }) => (
+            <Input
+              id={id}
+              aria-describedby={describedBy}
+              aria-invalid={invalid}
+              value={fullName}
+              onChange={(event) => setFullName(event.target.value)}
+              placeholder={t('professionals.fullNameMissing')}
+            />
+          )}
+        </Field>
+
+        <Button type="submit" className="mb-1" disabled={save.isPending}>
+          {t('professionals.saveName')}
+        </Button>
+      </form>
+    </section>
   );
 }
 

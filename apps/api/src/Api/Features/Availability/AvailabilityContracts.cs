@@ -14,15 +14,24 @@ namespace Clinic.Api.Features.Availability;
 /// resource because the pair is what actually satisfies the slot (design F6).
 /// </para>
 /// <para>
-/// <b>The resource id is an explanation, not a reservation.</b> By the time a patient confirms,
-/// that room may be taken. Change 5's booking path assigns the room itself (domain-model F2) and
-/// must not accept this value back as authority — a client that echoes it is telling the server
-/// something the server already knows better.
+/// <b>The resource is an explanation, not a reservation.</b> By the time a caller confirms, that
+/// room may be taken. The booking path assigns the room itself (domain-model F2) and does not
+/// accept this value back as authority — a client that echoes it is telling the server something
+/// the server already knows better. A staff surface showing the room must therefore say it is the
+/// room that WOULD be used; the assigned one comes back on the booking response.
+/// </para>
+/// <para>
+/// <b><see cref="ResourceName"/> was added by <c>booking-desk</c>, and D7 is unchanged</b>
+/// (design N5). D7 says no room is named on a PATIENT SURFACE — a statement about what a screen
+/// renders, and the patient portal renders none. The wire has carried the room identity since
+/// change 4; this adds its label so that S4 and S5, which are required to show a room, need no
+/// second request against a catalogue endpoint reception may not reach.
 /// </para>
 /// </remarks>
 internal sealed record AvailabilitySlotResponse(
     Guid ProfessionalId,
     Guid ResourceId,
+    string ResourceName,
     string Start,
     string End);
 

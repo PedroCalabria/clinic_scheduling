@@ -41,9 +41,11 @@ internal sealed class PatientDataGuard(ClinicDbContext database, TimeProvider cl
         ClaimsPrincipal actor,
         Patient patient,
         PatientDataAction action,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool actorIsThisPatientsProfessional = false)
     {
-        var decision = PatientDataAccess.Evaluate(actor.Role(), actor.UserId(), patient.UserId);
+        var decision = PatientDataAccess.Evaluate(
+            actor.Role(), actor.UserId(), patient.UserId, actorIsThisPatientsProfessional);
 
         if (decision.RequiresAccessRecord())
         {
@@ -56,5 +58,76 @@ internal sealed class PatientDataGuard(ClinicDbContext database, TimeProvider cl
         }
 
         return decision;
+    }
+
+    /// <summary>
+    /// The same decision over a set of patients, recording every access it permits in one save.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Added by <c>booking-desk</c> for the reads that disclose a whole day</b> (design N7). A
+    /// day view naming thirty patients through the single-patient method above would open thirty
+    /// transactions to write thirty rows — so the shape changes and the rule does not. Each patient
+    /// is evaluated by the same domain rule, and the records are added together and saved once.
+    /// </para>
+    /// <para>
+    /// <paramref name="patients"/> is expected to be distinct: one disclosure of one patient is one
+    /// row, whether they appear on the day once or four times. The caller owns that de-duplication
+    /// because the caller knows what its list means.
+    /// </para>
+    /// <para>
+    /// Returns the patients the actor may reach. A partial answer is the honest one for a set —
+    /// a professional's day contains only their own patients by construction, and for staff the
+    /// set is never partial, so in practice this either returns everything or (for a role with no
+    /// business here) nothing. The refusal of the <em>request</em> is the endpoint's policy; this
+    /// is the second layer, and it filters rather than throws.
+    /// </para>
+    /// <para>
+    /// <b>The save happens before the caller renders anything</b>, for the same reason as above.
+    /// A read that failed after disclosing is still a read that disclosed.
+    /// </para>
+    /// </remarks>
+    public async Task<IReadOnlyList<Patient>> AuthorizeManyAsync(
+        ClaimsPrincipal actor,
+        IReadOnlyCollection<Patient> patients,
+        PatientDataAction action,
+        CancellationToken cancellationToken,
+        Func<Patient, bool>? isActorsOwnPatient = null)
+    {
+        var permitted = new List<Patient>(patients.Count);
+        var recorded = false;
+
+        foreach (var patient in patients)
+        {
+            var decision = PatientDataAccess.Evaluate(
+                actor.Role(),
+                actor.UserId(),
+                patient.UserId,
+                isActorsOwnPatient?.Invoke(patient) ?? false);
+
+            if (!decision.IsAllowed())
+            {
+                continue;
+            }
+
+            permitted.Add(patient);
+
+            if (decision.RequiresAccessRecord())
+            {
+                database.AccessLog.Add(
+                    AccessLog.Record(actor.UserId(), patient.Id, action, clock.GetUtcNow()));
+
+                recorded = true;
+            }
+        }
+
+        // One save for the whole set, and none at all when nothing had to be recorded — an empty
+        // day writes no rows, and neither does a patient reading their own.
+        if (recorded)
+        {
+            await database.SaveChangesAsync(cancellationToken);
+        }
+
+        return permitted;
     }
 }

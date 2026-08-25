@@ -48,11 +48,48 @@ public sealed class PatientDataAccessTests
     [Fact]
     public void A_professional_has_no_blanket_access_to_patient_data()
     {
-        // Least privilege until a requirement says otherwise: change 5 grants this with the
-        // scoping that makes it defensible ("patients I have appointments with").
+        // Least privilege, and still true after booking-desk: the professional arm is reached
+        // only by a caller that has established the relationship, and the default is closed.
         var decision = PatientDataAccess.Evaluate(Role.Professional, Staff, PatientA);
 
         Assert.Equal(PatientDataAccessDecision.Denied, decision);
+    }
+
+    [Fact]
+    public void A_professional_reaches_a_patient_on_their_own_schedule_and_the_access_is_recorded()
+    {
+        var decision = PatientDataAccess.Evaluate(
+            Role.Professional, Staff, PatientA, actorIsThisPatientsProfessional: true);
+
+        Assert.Equal(PatientDataAccessDecision.AllowedAsStaff, decision);
+        Assert.True(decision.IsAllowed());
+
+        // Recorded, not exempt. It is somebody else's data, and that a clinician is entitled to
+        // see it is the reason for the record rather than a reason to skip it.
+        Assert.True(decision.RequiresAccessRecord());
+    }
+
+    [Fact]
+    public void A_professional_is_refused_a_patient_who_is_not_theirs()
+    {
+        var decision = PatientDataAccess.Evaluate(
+            Role.Professional, Staff, PatientB, actorIsThisPatientsProfessional: false);
+
+        Assert.Equal(PatientDataAccessDecision.Denied, decision);
+        Assert.False(decision.IsAllowed());
+    }
+
+    [Theory]
+    [InlineData(Role.Patient)]
+    [InlineData(Role.FrontDesk)]
+    [InlineData(Role.Administrator)]
+    public void The_relationship_fact_widens_nothing_for_any_other_role(Role role)
+    {
+        // The parameter bears on the professional arm alone. If asserting it here ever fails,
+        // somebody has made a schedule relationship into a general-purpose override.
+        Assert.Equal(
+            PatientDataAccess.Evaluate(role, Staff, PatientA),
+            PatientDataAccess.Evaluate(role, Staff, PatientA, actorIsThisPatientsProfessional: true));
     }
 
     [Fact]

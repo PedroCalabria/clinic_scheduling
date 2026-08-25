@@ -34,6 +34,10 @@ internal static class ProfessionalEndpoints
         group.MapGet("/", ListAsync).WithName("ListProfessionals");
         group.MapGet("/{userId:guid}", DetailAsync).WithName("GetProfessional");
 
+        // P-5, open since 3b. Through the same E1 seam as every other write, so setting a name is
+        // one of the saves that can create the record.
+        group.MapPut("/{userId:guid}/name", RenameAsync).WithName("RenameProfessional");
+
         group.MapPost("/{userId:guid}/specialties", GrantSpecialtyAsync).WithName("GrantSpecialty");
         group.MapPost("/{userId:guid}/specialties/{specialtyId:guid}/revoke", RevokeSpecialtyAsync)
             .WithName("RevokeSpecialty");
@@ -78,6 +82,10 @@ internal static class ProfessionalEndpoints
                     .Where(record => record.UserId == user.Id && record.DeactivatedAtUtc == null)
                     .Select(record => (Guid?)record.Id)
                     .FirstOrDefault(),
+                FullName = database.Professionals
+                    .Where(record => record.UserId == user.Id && record.DeactivatedAtUtc == null)
+                    .Select(record => record.FullName)
+                    .FirstOrDefault(),
             })
             .ToListAsync(cancellationToken);
 
@@ -102,6 +110,7 @@ internal static class ProfessionalEndpoints
         var entries = professionals.Select(p => new ProfessionalListEntry(
             p.Id,
             p.Email,
+            p.FullName,
             IsConfigured: p.Record != null,
             AwaitsClaim: p.ExternalSubjectId == null,
             IsActive: true,
@@ -133,7 +142,8 @@ internal static class ProfessionalEndpoints
             // Not an error: an invited professional nobody has configured yet is an ordinary
             // state, and the screen needs to render it rather than a 404.
             return Results.Ok(new ProfessionalDetail(
-                userId, user.Email, IsConfigured: false, AwaitsClaim: user.ExternalSubjectId is null,
+                userId, user.Email, FullName: null, IsConfigured: false,
+                AwaitsClaim: user.ExternalSubjectId is null,
                 Specialties: [], Durations: [], WorkingHours: [], Exceptions: []));
         }
 
@@ -169,6 +179,7 @@ internal static class ProfessionalEndpoints
         return Results.Ok(new ProfessionalDetail(
             userId,
             user.Email,
+            record.FullName,
             IsConfigured: true,
             AwaitsClaim: user.ExternalSubjectId is null,
             specialties,
@@ -185,6 +196,44 @@ internal static class ProfessionalEndpoints
                 WallClockText.Format(x.Date),
                 x.StartTime is { } start ? WallClockText.Format(start) : null,
                 x.EndTime is { } end ? WallClockText.Format(end) : null)).ToList()));
+    }
+
+    // --- The name (P-5) --------------------------------------------------------------
+
+    /// <summary>
+    /// Sets or clears how this professional is named to a person.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The one write in this slice that a professional may have nothing else configured for, and
+    /// it goes through <see cref="ResolveAsync"/> like the rest: naming somebody is a first save,
+    /// so it creates the record for an invited professional who has none. That is the E1 seam
+    /// doing what it was built for rather than a special case added beside it.
+    /// </para>
+    /// <para>
+    /// No refusal of its own. A blank name is a cleared name (the domain decides that), and the
+    /// only other outcome is the <c>config.not_found</c> every route here shares.
+    /// </para>
+    /// </remarks>
+    private static async Task<IResult> RenameAsync(
+        Guid userId,
+        RenameProfessionalRequest request,
+        ClinicDbContext database,
+        TimeProvider clock,
+        CancellationToken cancellationToken)
+    {
+        var record = await ResolveAsync(database, userId, clock, cancellationToken);
+
+        if (record is null)
+        {
+            return CatalogRefusals.NotFound();
+        }
+
+        record.Rename(request.FullName);
+
+        await database.SaveChangesAsync(cancellationToken);
+
+        return Results.NoContent();
     }
 
     // --- Qualifications --------------------------------------------------------------

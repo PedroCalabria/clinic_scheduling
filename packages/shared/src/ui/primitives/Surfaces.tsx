@@ -24,13 +24,25 @@ export function CardDescription({ className, ...props }: ComponentProps<'p'>) {
   return <p className={cn('text-sm text-meta', className)} {...props} />;
 }
 
+/**
+ * `success` no longer fills with `primary-subtle`, and that is the point.
+ *
+ * The design system reserves `#DEF4F0` for one thing — a bookable slot — and `booking-surface`
+ * found it filling this alert, the `active` badge below, and no slot at all. It fixed the slots and
+ * left these two, recording the revisit trigger as "they serve the staff console too": re-pigmenting
+ * a shared primitive to satisfy a rule about the patient portal would have been a larger change
+ * wearing a smaller one's clothes.
+ *
+ * `booking-desk` brought three staff screens, so the trigger fired and this is the answer. The
+ * border already carried the semantic; the fill was the borrowed part, so only the fill changed.
+ */
 const alertVariants = cva('rounded-md border p-4 text-sm', {
   variants: {
     tone: {
       error: 'border-error bg-tertiary-subtle/40 text-error',
       warning: 'border-tertiary bg-tertiary-subtle text-body',
       info: 'border-line bg-surface-raised text-body',
-      success: 'border-primary bg-primary-subtle text-primary-strong',
+      success: 'border-primary bg-surface-raised text-primary-strong',
     },
   },
   defaultVariants: { tone: 'info' },
@@ -82,17 +94,28 @@ export function TableCell({ className, ...props }: ComponentProps<'td'>) {
   return <td className={cn('px-3 py-2 align-middle', className)} {...props} />;
 }
 
-const badgeVariants = cva('inline-flex items-center rounded-sm px-2 py-0.5 text-xs font-semibold', {
-  variants: {
-    tone: {
-      neutral: 'bg-surface-raised text-meta',
-      active: 'bg-primary-subtle text-primary-strong',
-      pending: 'bg-tertiary-subtle text-body',
-      off: 'bg-surface-raised text-error',
+/**
+ * `active` becomes an outline rather than a fill, for the reason above — and it is an outline
+ * rather than a paler fill for a second reason.
+ *
+ * `bg-surface-raised` would have made `active` and `neutral` differ by text colour alone, which is
+ * exactly what the note on {@link Badge} forbids. A border is a second channel, so the state
+ * survives being read by somebody who cannot distinguish the two greens.
+ */
+const badgeVariants = cva(
+  'inline-flex items-center rounded-sm border border-transparent px-2 py-0.5 text-xs font-semibold',
+  {
+    variants: {
+      tone: {
+        neutral: 'bg-surface-raised text-meta',
+        active: 'border-primary text-primary-strong',
+        pending: 'bg-tertiary-subtle text-body',
+        off: 'bg-surface-raised text-error',
+      },
     },
+    defaultVariants: { tone: 'neutral' },
   },
-  defaultVariants: { tone: 'neutral' },
-});
+);
 
 export type BadgeProps = ComponentProps<'span'> & VariantProps<typeof badgeVariants>;
 

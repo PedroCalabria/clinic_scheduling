@@ -95,7 +95,11 @@ function ProfessionalRow({
   return (
     <TableRow>
       <TableCell>
-        <span className="font-medium">{professional.email}</span>
+        <span className="font-medium">{professional.fullName ?? professional.email}</span>
+        {/* The address stays beside the name: it is what tells two people apart, and what they sign in with. */}
+        {professional.fullName ? (
+          <span className="ml-2 text-xs text-meta">{professional.email}</span>
+        ) : null}
         {/*
           An unclaimed invitation is worth showing but is NOT a blocker: an administrator can
           and should be able to prepare a schedule before the first sign-in (design E1).

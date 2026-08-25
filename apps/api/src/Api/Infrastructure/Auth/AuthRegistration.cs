@@ -89,6 +89,14 @@ internal static class AuthRegistration
         builder.AddPolicy(AuthorizationPolicies.Patient,
             policy => policy.RequireRole(nameof(Role.Patient)));
 
+        builder.AddPolicy(AuthorizationPolicies.PatientOrClinicStaff,
+            policy => policy.RequireRole(
+                nameof(Role.Patient), nameof(Role.FrontDesk), nameof(Role.Administrator)));
+
+        builder.AddPolicy(AuthorizationPolicies.ScheduleReaders,
+            policy => policy.RequireRole(
+                nameof(Role.Professional), nameof(Role.FrontDesk), nameof(Role.Administrator)));
+
         return builder;
     }
 }

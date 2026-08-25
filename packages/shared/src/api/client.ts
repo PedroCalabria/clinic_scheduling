@@ -517,6 +517,8 @@ export async function updateAppointmentType(
 export interface ProfessionalListEntry {
   userId: string;
   email: string;
+  /** The stored name, or null while nobody has entered one. Null is ordinary, not an error. */
+  fullName: string | null;
   /** False for an invited professional nobody has configured yet. */
   isConfigured: boolean;
   /** True while the invitation has not been claimed by a first Google sign-in. */
@@ -561,6 +563,7 @@ export interface WorkingHoursOverride {
 export interface ProfessionalDetail {
   userId: string;
   email: string;
+  fullName: string | null;
   isConfigured: boolean;
   awaitsClaim: boolean;
   specialties: HeldSpecialty[];
@@ -588,6 +591,20 @@ export async function listProfessionals(): Promise<ProfessionalListEntry[]> {
 
 export async function getProfessional(userId: string): Promise<ProfessionalDetail> {
   return (await apiFetch<ProfessionalDetail>(`/config/professionals/${userId}`))!;
+}
+
+/**
+ * Sets or clears how a professional is named to a person (S7).
+ *
+ * An empty name clears it and the derived label applies again, so removing a name is a safe act
+ * rather than leaving a blank where a name should be. Setting one on a professional who has never
+ * been configured **creates** their configuration record — it is a first save like any other.
+ */
+export function renameProfessional(userId: string, fullName: string): Promise<undefined> {
+  return apiFetch<undefined>(`/config/professionals/${userId}/name`, {
+    method: 'PUT',
+    body: JSON.stringify({ fullName }),
+  }) as Promise<undefined>;
 }
 
 export function grantSpecialty(userId: string, specialtyId: string): Promise<undefined> {
@@ -734,6 +751,17 @@ export interface AvailabilitySlotResponse {
    * assigns the resource server-side, so do NOT send this back expecting it to be honoured.
    */
   resourceId: string;
+  /**
+   * What that room is called.
+   *
+   * **Show it on a staff surface, never on a patient one.** D7 says a patient is not told which
+   * room, and that is a rule about what a screen renders — the wire has carried `resourceId` since
+   * change 4. S4 and S5 are required to show a room; P2, P3, P4 and P6 must not.
+   *
+   * Like `resourceId`, this is the room that WOULD be used. The assigned one comes back on the
+   * booking response.
+   */
+  resourceName: string;
   start: string;
   end: string;
 }
@@ -777,10 +805,10 @@ export async function getAvailability(input: {
 /**
  * A professional a patient may choose on P2.
  *
- * `displayName` is derived server-side from the account address today, because the
- * `Professional` record carries no name yet — a seam, not a finished feature. The field is named
- * for what it IS rather than where it comes from, so the day a real name lands in S7 no client
- * changes.
+ * `displayName` is the professional's stored name, entered on S7 — or, while nobody has entered
+ * one, a label the server derives from the account address. `booking-desk` closed that seam (P-5)
+ * and **no client changed**, which is exactly what naming the field for what it IS rather than for
+ * where it came from was for.
  */
 export interface BookableProfessional {
   professionalId: string;
@@ -844,12 +872,15 @@ export interface AppointmentResponse {
 /**
  * Books a slot.
  *
- * **Carries no resource and no patient, on purpose.** The server assigns the room itself and
- * reads the patient from the session, so neither is a value a client could get wrong or abuse —
- * `resourceId` on an availability slot explains the answer and is never authority. `startsAt`
- * is the slot's UTC instant exactly as the availability response gave it: sending wall clock is
- * refused rather than coerced, because a coerced local time is an appointment an hour out on a
- * clock-change date.
+ * **Carries no resource, on purpose.** The server assigns the room itself, so it is not a value a
+ * client could get wrong or abuse — `resourceId` on an availability slot explains the answer and is
+ * never authority. `startsAt` is the slot's UTC instant exactly as the availability response gave
+ * it: sending wall clock is refused rather than coerced, because a coerced local time is an
+ * appointment an hour out on a clock-change date.
+ *
+ * **It carries no patient either, and a patient must not add one.** Use
+ * {@link bookAppointmentForPatient} from the staff console instead; a patient sending `patientId`
+ * is refused with `auth.forbidden`, including when the value is their own.
  */
 export async function bookAppointment(input: {
   appointmentTypeId: string;
@@ -857,6 +888,38 @@ export async function bookAppointment(input: {
   startsAt: string;
 }): Promise<AppointmentResponse> {
   return (await apiFetch<AppointmentResponse>('/appointments', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }))!;
+}
+
+/** The appointment reception just made, including the room to send the patient to. */
+export interface StaffAppointmentResponse extends AppointmentResponse {
+  patientId: string;
+  /** The room **assigned**, read back from the created appointment. */
+  resourceId: string;
+  resourceName: string;
+}
+
+/**
+ * Books on a patient's behalf (S5) — the same endpoint, with the patient named explicitly.
+ *
+ * The identifier is **role-gated**: honoured for front desk and administrators, refused with
+ * `auth.forbidden` from anyone else. Omitting it as staff is `validation.required`, and naming a
+ * patient who does not exist is `patient.not_found`.
+ *
+ * Every booking rule still applies unchanged — the cutoff is about *changing* an appointment and
+ * has never governed creating one, so a time too close to now is still refused with
+ * `booking.lead_time_violation`. The patient's data-processing consent is still required, and it
+ * is the **patient's** rather than the caller's.
+ */
+export async function bookAppointmentForPatient(input: {
+  appointmentTypeId: string;
+  professionalId: string;
+  startsAt: string;
+  patientId: string;
+}): Promise<StaffAppointmentResponse> {
+  return (await apiFetch<StaffAppointmentResponse>('/appointments', {
     method: 'POST',
     body: JSON.stringify(input),
   }))!;
@@ -958,4 +1021,102 @@ export async function grantConsent(type: string): Promise<ConsentResponse> {
   return (await apiFetch<ConsentResponse>(`/patients/me/consents/${type}/grant`, {
     method: 'POST',
   }))!;
+}
+
+// --- The staff console (change 5c) --------------------------------------------------
+
+/** One appointment as S1 and S4 read it. */
+export interface ScheduledAppointment {
+  id: string;
+  professionalId: string;
+  professionalName: string;
+  patientId: string;
+  /** Personal data. Reading this screen wrote an `AccessLog` row; treat it accordingly. */
+  patientName: string;
+  appointmentTypeId: string;
+  appointmentTypeName: string;
+  resourceId: string;
+  /** The room, shown on staff surfaces (D7 is patient-facing only). */
+  resourceName: string;
+  startsAt: string;
+  endsAt: string;
+  status: string;
+  /** `SelfService` or `FrontDesk` — how the appointment came to exist. */
+  source: string;
+  /**
+   * Whether **the patient** may still change it — not whether the reader may.
+   *
+   * The server's decision, for the reason `canChange` on P5 is: a browser's clock is not the
+   * clinic's. Named for the patient because S4's whole point is the sentence "the patient can no
+   * longer change this, and you can" — reception's own actions are never gated by it.
+   */
+  patientCanChange: boolean;
+}
+
+/** A period a professional has declared themselves unavailable for. */
+export interface ScheduledBlock {
+  id: string;
+  professionalId: string;
+  professionalName: string;
+  startsAt: string;
+  endsAt: string;
+}
+
+export interface ScheduleDayResponse {
+  date: string;
+  /** The zone to render every instant above in, so the browser never guesses. */
+  timezone: string;
+  appointments: ScheduledAppointment[];
+  blocks: ScheduledBlock[];
+}
+
+/**
+ * A clinic day — a professional's own (S1), or reception's across professionals (S4).
+ *
+ * `professionalId` narrows the day for reception and is **disregarded** for a professional, whose
+ * scope is always their own. That is structural rather than a refusal, so a professional cannot use
+ * it to learn whether another professional exists.
+ *
+ * Terminal appointments are absent: a cancelled appointment is not part of the day being run.
+ */
+export async function getScheduleDay(input: {
+  date: string;
+  professionalId?: string;
+}): Promise<ScheduleDayResponse> {
+  const query = new URLSearchParams({ date: input.date });
+
+  if (input.professionalId) {
+    query.set('professionalId', input.professionalId);
+  }
+
+  return (await apiFetch<ScheduleDayResponse>(`/schedule?${query.toString()}`))!;
+}
+
+/** A patient reception has resolved for a booking. */
+export interface ResolvedPatient {
+  patientId: string;
+  fullName: string;
+  contactEmail: string;
+  /**
+   * Whether they currently hold an active data-processing consent at the version in force.
+   *
+   * Surfaced so a receptionist learns it **before** taking a walk-in's time rather than as an
+   * `auth.consent_required` refusal after choosing a slot. The gate itself is not relaxed for
+   * staff, and must not be: the patient grants consent in the portal.
+   */
+  hasDataProcessingConsent: boolean;
+}
+
+/**
+ * Finds a patient by their **exact** contact email (S5).
+ *
+ * Exact, and deliberately not a search: a name or prefix search over patients is an enumeration
+ * surface, and every result would have to be recorded, which would bury the entries that matter.
+ * Half an address is `validation.invalid_format`; a whole one belonging to nobody is
+ * `patient.not_found`. A successful lookup writes one `AccessLog` row.
+ */
+export async function resolvePatientByEmail(email: string): Promise<ResolvedPatient> {
+  return (await apiFetch<ResolvedPatient>(
+    `/patients/by-email?email=${encodeURIComponent(email)}`,
+  ))!;
 }

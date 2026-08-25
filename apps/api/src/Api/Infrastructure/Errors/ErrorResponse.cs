@@ -297,8 +297,16 @@ internal static class ErrorCodes
     /// </para>
     /// <para>
     /// Only the patient path passes "the cutoff applies" today, because it is the only path there
-    /// is. The front desk acting inside the cutoff is <c>booking-desk</c>'s, and it arrives by
-    /// passing the other value — not by relaxing this rule.
+    /// is. The front desk acting inside the cutoff arrived in <c>booking-desk</c>, and it did so by
+    /// passing the other value — not by relaxing this rule. <c>BookingActor.CutoffApplies</c> is
+    /// where the fact is established, and it is the only place in the system that produces
+    /// <c>false</c>.
+    /// </para>
+    /// <para>
+    /// <b>This code is about changing an appointment and never about creating one.</b> A booking
+    /// too close to now is <see cref="BookingLeadTimeViolation"/>, which no role overrides — the
+    /// lead time is the number the read and the write share so that availability cannot offer what
+    /// booking refuses (design N1).
     /// </para>
     /// </remarks>
     internal const string BookingCutoffPassed = "booking.cutoff_passed";
@@ -308,16 +316,18 @@ internal static class ErrorCodes
     /// </summary>
     /// <remarks>
     /// <para>
-    /// <b>Deliberately unused by every path in <c>booking-lifecycle</c>, which is why it is
-    /// documented rather than omitted.</b> On a patient path, an appointment belonging to somebody
-    /// else and an id that was never real both answer <see cref="OwnershipDenied"/>, so the
-    /// endpoint cannot be used to enumerate appointment ids. The catalogue already settled that
-    /// shape for <see cref="PatientNotFound"/> and the reasoning is the same one, not a new one.
+    /// <b>Still unreachable by a patient, and that half has not changed.</b> On a patient path, an
+    /// appointment belonging to somebody else and an id that was never real both answer
+    /// <see cref="OwnershipDenied"/>, so the endpoint cannot be used to enumerate appointment ids.
+    /// The catalogue already settled that shape for <see cref="PatientNotFound"/> and the reasoning
+    /// is the same one, not a new one.
     /// </para>
     /// <para>
-    /// Its caller is <c>booking-desk</c>, where the actor is staff and absence is information they
-    /// are entitled to. The constant exists now so that the answer to "why is there no 404 here?"
-    /// is written where somebody would look for it.
+    /// <b>Its caller arrived in <c>booking-desk</c>.</b> The cancel and reschedule routes admit
+    /// staff as well as patients, and the branch between the two answers is
+    /// <c>BookingActor.CannotReach</c> — one place, shared by both routes. A receptionist who
+    /// mistypes an id is entitled to know they mistyped it; there is no appointment they are not
+    /// entitled to reach, so absence carries no information they could misuse.
     /// </para>
     /// </remarks>
     internal const string BookingAppointmentNotFound = "booking.appointment_not_found";

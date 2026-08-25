@@ -16,10 +16,13 @@ namespace Clinic.Api.Features.Booking;
 /// carrying no professional.
 /// </para>
 /// <para>
-/// There is no <c>patientId</c>. The appointment belongs to the caller's own patient record, read
-/// from the session. <c>booking-lifecycle</c> widens this path for the front desk booking on
-/// somebody's behalf, and it will do so by adding an explicit, role-gated field — never by
-/// starting to trust a body value this change ignores.
+/// <b><see cref="PatientId"/> is role-gated, not optional.</b> <c>booking-desk</c> added it for
+/// reception booking on somebody's behalf, exactly as 5a said it would: an explicit field the
+/// server honours for a front-desk or administrator caller and <em>refuses</em> from a patient —
+/// never a body value that is quietly trusted. A patient who sends it gets <c>auth.forbidden</c>,
+/// including when the value is their own id, because the field is refused by role rather than
+/// validated by value. Staff must send it, having no patient record of their own.
+/// <c>BookingActor</c> is where that branch lives, shared with the two lifecycle routes.
 /// </para>
 /// <para>
 /// <see cref="StartsAt"/> is a <b>UTC instant</b>, ISO-8601, never a wall-clock label (Q4). A date
@@ -32,7 +35,8 @@ namespace Clinic.Api.Features.Booking;
 internal sealed record BookAppointmentRequest(
     Guid? AppointmentTypeId,
     Guid? ProfessionalId,
-    string? StartsAt);
+    string? StartsAt,
+    Guid? PatientId = null);
 
 /// <summary>
 /// The appointment that now exists.
@@ -46,13 +50,43 @@ internal sealed record BookAppointmentRequest(
 /// <para>
 /// <b>No room.</b> The server assigned one and the appointment holds it, but a patient does not
 /// need to know which — and putting it here would invite a client to send it back on some future
-/// call. What a patient needs is when, with whom, and for what.
+/// call. What a patient needs is when, with whom, and for what. A receptionist genuinely does need
+/// the room, and gets it on <see cref="StaffAppointmentResponse"/> rather than by widening this.
 /// </para>
 /// </remarks>
 internal sealed record AppointmentResponse(
     Guid Id,
     Guid ProfessionalId,
     Guid AppointmentTypeId,
+    string StartsAt,
+    string EndsAt,
+    string Status,
+    string Timezone);
+
+/// <summary>
+/// The appointment that now exists, as reception is told about it (design N5).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>A separate shape rather than nullable fields on the patient's one.</b> D7 says a patient is
+/// never told which room; reception has to tell the patient where to go. Both are true, and a
+/// single response with a room that is sometimes present would make the rule a runtime condition
+/// that no generated type can describe — and would put the room on the patient's wire, which is
+/// the thing D7 exists to prevent.
+/// </para>
+/// <para>
+/// The room here is the one <em>assigned</em>, read back from the created appointment — not the
+/// candidate a slot named. Availability's room is "an explanation, not a reservation"; this one
+/// is the reservation.
+/// </para>
+/// </remarks>
+internal sealed record StaffAppointmentResponse(
+    Guid Id,
+    Guid PatientId,
+    Guid ProfessionalId,
+    Guid AppointmentTypeId,
+    Guid ResourceId,
+    string ResourceName,
     string StartsAt,
     string EndsAt,
     string Status,

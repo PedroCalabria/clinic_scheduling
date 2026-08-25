@@ -40,26 +40,40 @@ namespace Clinic.Api.Features.Booking;
 /// <b>What a patient is told about an appointment that is not theirs</b> (design C6): the same
 /// thing they are told about one that never existed — <c>auth.ownership_denied</c>. The catalogue
 /// settled that shape for patient records and the reasoning is unchanged: a 404 here would be an
-/// oracle for which appointment ids are real. <c>booking.appointment_not_found</c> exists for the
-/// staff paths <c>booking-desk</c> adds, and is deliberately unreachable from this file.
+/// oracle for which appointment ids are real.
+/// </para>
+/// <para>
+/// <b><c>booking-desk</c> widened the two write paths to admit reception, and changed nothing
+/// else</b> (design N2). Staff share these handlers rather than getting mirrors of them, because
+/// the statement ordering below is a correctness property with a silent failure mode and a second
+/// implementation is a second place to get it wrong. Everything that differs between the two
+/// callers — whose appointment, whether the cutoff binds, and whether an unknown id is a 404 or a
+/// 403 — comes from <see cref="BookingActor"/>, one branch shared with the booking path.
+/// </para>
+/// <para>
+/// So <c>booking.appointment_not_found</c> is now reachable, and only from the staff branch. A
+/// patient still cannot tell absence from denial.
 /// </para>
 /// </remarks>
 internal static class AppointmentLifecycleEndpoints
 {
     internal static IEndpointRouteBuilder MapAppointmentLifecycleEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        // All three are the patient's own. Reception acting on somebody's behalf is booking-desk's,
-        // and it arrives as an explicit role-gated surface rather than by relaxing these.
+        // P5's list stays the patient's own: "my appointments" has no staff reading, and the
+        // day view (S1/S4) is a different question with a different shape and its own access log.
         endpoints.MapGet("/api/appointments", ListAsync)
             .RequireAuthorization(AuthorizationPolicies.Patient)
             .WithName("ListMyAppointments");
 
+        // The two writes admit reception as well (design N2). A professional is refused: changing
+        // an appointment is reception's work, and a clinician who could would be a second route to
+        // the same transition with nothing here expecting them.
         endpoints.MapPost("/api/appointments/{id:guid}/cancel", CancelAsync)
-            .RequireAuthorization(AuthorizationPolicies.Patient)
+            .RequireAuthorization(AuthorizationPolicies.PatientOrClinicStaff)
             .WithName("CancelAppointment");
 
         endpoints.MapPost("/api/appointments/{id:guid}/reschedule", RescheduleAsync)
-            .RequireAuthorization(AuthorizationPolicies.Patient)
+            .RequireAuthorization(AuthorizationPolicies.PatientOrClinicStaff)
             .WithName("RescheduleAppointment");
 
         return endpoints;
@@ -143,22 +157,22 @@ internal static class AppointmentLifecycleEndpoints
         TimeProvider clock,
         CancellationToken cancellationToken)
     {
-        var patient = await CallerAsync(actor, database, cancellationToken);
+        var resolved = await BookingActor.ForLifecycleAsync(actor, database, cancellationToken);
 
-        if (patient is null)
+        if (resolved.Actor is not { } bookingActor)
         {
-            return ApiError.Result(ErrorCodes.PatientNotFound, StatusCodes.Status404NotFound);
+            return resolved.Refusal!;
         }
 
         database.ChangeTracker.Clear();
 
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
 
-        var appointment = await LockAsync(database, id, patient.Id, cancellationToken);
+        var appointment = await LockAsync(database, id, bookingActor, cancellationToken);
 
         if (appointment is null)
         {
-            return OwnershipDenied();
+            return bookingActor.CannotReach();
         }
 
         try
@@ -167,9 +181,12 @@ internal static class AppointmentLifecycleEndpoints
                 scheduling.CancellationCutoff,
                 Instant.FromDateTimeOffset(clock.GetUtcNow()),
 
-                // Always true on the patient path — the only path there is. booking-desk passes
-                // false for the front desk; this line is what it will change, and nothing else.
-                cutoffApplies: true);
+                // THE FRONT-DESK OVERRIDE, and it is this one argument (design N1, N4.2). True for
+                // a patient, false for reception — the second caller of the authority parameter 5b
+                // built and the first ever to pass false. AppointmentLifecycleTests.cs:258 wrote
+                // down what happens on that side before any caller existed; nothing in the domain
+                // or in that test changed to make this work.
+                bookingActor.CutoffApplies);
         }
         catch (BookingRuleViolationException refusal)
         {
@@ -218,18 +235,30 @@ internal static class AppointmentLifecycleEndpoints
             return CatalogRefusals.Invalid(nameof(request.StartsAt));
         }
 
-        var patient = await CallerAsync(actor, database, cancellationToken);
+        var resolved = await BookingActor.ForLifecycleAsync(actor, database, cancellationToken);
 
-        if (patient is null)
+        if (resolved.Actor is not { } bookingActor)
         {
-            return ApiError.Result(ErrorCodes.PatientNotFound, StatusCodes.Status404NotFound);
+            return resolved.Refusal!;
         }
+
+        // Whose appointment this is decides whose consent is read — for a staff caller that is the
+        // patient's, resolved from the appointment below rather than from the session. Loaded here
+        // for the patient path, where the two are the same.
+        var patientUserId = await database.Appointments
+            .AsNoTracking()
+            .Where(candidate => candidate.Id == id)
+            .Join(database.Patients, candidate => candidate.PatientId, p => p.Id, (_, p) => (Guid?)p.UserId)
+            .FirstOrDefaultAsync(cancellationToken) ?? actor.UserId();
 
         // The LGPD gate, and the one asymmetry with cancel (design C11). A reschedule CREATES an
         // appointment, so it passes through the same gate a booking does; a cancel does not,
         // because withdrawing from a service must not be blocked by having withdrawn consent.
+        //
+        // It reads the PATIENT'S consent on both paths. Exempting reception would let the clinic
+        // move a patient who has withdrawn consent to processing, which is the wrong way round.
         var consented = await database.Consents.AnyAsync(
-            consent => consent.UserId == actor.UserId()
+            consent => consent.UserId == patientUserId
                 && consent.Type == ConsentType.DataProcessing
                 && consent.RevokedAtUtc == null
                 && consent.Version == auth.Value.ConsentVersion,
@@ -248,7 +277,7 @@ internal static class AppointmentLifecycleEndpoints
             try
             {
                 return await CommitRescheduleAsync(
-                    database, reader, timezone, scheduling, clock, patient.Id, id, startsAt, cancellationToken);
+                    database, reader, timezone, scheduling, clock, bookingActor, id, startsAt, cancellationToken);
             }
             catch (BookingRuleViolationException refusal)
             {
@@ -280,7 +309,7 @@ internal static class AppointmentLifecycleEndpoints
         ClinicTimezone timezone,
         ClinicScheduling scheduling,
         TimeProvider clock,
-        Guid patientId,
+        BookingActor bookingActor,
         Guid appointmentId,
         Instant startsAt,
         CancellationToken cancellationToken)
@@ -289,18 +318,22 @@ internal static class AppointmentLifecycleEndpoints
 
         await using var transaction = await database.Database.BeginTransactionAsync(cancellationToken);
 
-        // Ownership before anything expensive, and without the lock — a caller who does not own
-        // this appointment learns nothing about it, including how long it took to say no.
-        var owned = await database.Appointments
-            .AsNoTracking()
-            .Where(candidate => candidate.Id == appointmentId && candidate.PatientId == patientId)
-            .Select(candidate => new { candidate.ProfessionalId })
+        // Reachability before anything expensive, and without the lock — a caller who cannot reach
+        // this appointment learns nothing about it, including how long it took to say no. For a
+        // patient that means ownership; for reception it means existence, which is the whole of
+        // the difference between the two roles on this path.
+        var owned = await Reachable(database.Appointments.AsNoTracking(), appointmentId, bookingActor)
+            .Select(candidate => new { candidate.ProfessionalId, candidate.PatientId })
             .FirstOrDefaultAsync(cancellationToken);
 
         if (owned is null)
         {
-            return OwnershipDenied();
+            return bookingActor.CannotReach();
         }
+
+        // The appointment's own patient, not the actor's. On the patient path these are the same
+        // value; on the staff path the actor has no patient record at all.
+        var patientId = owned.PatientId;
 
         // FIRST, before the read it protects. This path INSERTS, so it races the block-creation
         // path exactly as a booking does, and a lock taken after the load serializes nothing
@@ -311,11 +344,11 @@ internal static class AppointmentLifecycleEndpoints
         // cancel and reschedule from both passing the aggregate's guard against the same
         // snapshot — the race no exclusion constraint can see, because it is about one row's
         // lifecycle rather than about overlap between rows.
-        var appointment = await LockAsync(database, appointmentId, patientId, cancellationToken);
+        var appointment = await LockAsync(database, appointmentId, bookingActor, cancellationToken);
 
         if (appointment is null)
         {
-            return OwnershipDenied();
+            return bookingActor.CannotReach();
         }
 
         var appointmentType = await database.AppointmentTypes
@@ -388,12 +421,18 @@ internal static class AppointmentLifecycleEndpoints
                 ProfessionalHoldsDurationForType: true,
                 resourceTypeId,
                 appointmentType.RequiredResourceTypeId,
+
+                // The ORIGINAL appointment's source, carried onto its replacement. A reschedule
+                // does not change where an appointment came from: one booked at the desk that
+                // reception then moves is still an appointment the clinic made.
                 appointment.Source),
             scheduling.Parameters,
             scheduling.CancellationCutoff,
             now,
             clock.GetUtcNow(),
-            cutoffApplies: true);
+
+            // The override again, on the other transition it applies to (design N1).
+            bookingActor.CutoffApplies);
 
         // ─────────────────────────────────────────────────────────────────────────────────────
         //  THE STATEMENT ORDER BELOW IS A CORRECTNESS PROPERTY, NOT A STYLE CHOICE (design C2).
@@ -436,23 +475,31 @@ internal static class AppointmentLifecycleEndpoints
     /// the exclusion constraints police overlap <em>between</em> rows, not the lifecycle of one.
     /// </para>
     /// <para>
-    /// The ownership filter is in the same statement rather than checked afterwards, so a caller
-    /// cannot take a lock on a row they do not own.
+    /// The reachability filter is in the same statement rather than checked afterwards, so a
+    /// caller cannot take a lock on a row they may not reach. For a patient that filter is their
+    /// own patient id; for reception there is none, because there is no appointment reception may
+    /// not act on — which is why the parameter is bound rather than interpolated either way.
     /// </para>
     /// </remarks>
     private static async Task<Appointment?> LockAsync(
         ClinicDbContext database,
         Guid appointmentId,
-        Guid patientId,
+        BookingActor bookingActor,
         CancellationToken cancellationToken)
     {
         var (connection, dbTransaction) = await ScheduleMutation.EnlistAsync(database, cancellationToken);
+
+        // One statement with a parameterised predicate rather than two SQL strings: @patientId is
+        // null for reception, and `(@patientId is null or patient_id = @patientId)` is the same
+        // filter the LINQ path above expresses. Two literals would be two places to forget one.
+        var patientId = bookingActor.IsClinic ? (Guid?)null : bookingActor.PatientId;
 
         var locked = await connection.ExecuteScalarAsync<Guid?>(new CommandDefinition(
             """
             select id
             from appointments
-            where id = @appointmentId and patient_id = @patientId
+            where id = @appointmentId
+              and (@patientId::uuid is null or patient_id = @patientId)
             for update
             """,
             new { appointmentId, patientId },
@@ -480,15 +527,22 @@ internal static class AppointmentLifecycleEndpoints
             cancellationToken);
 
     /// <summary>
-    /// The one answer a patient gets for "not yours" and for "never existed" (design C6).
+    /// Narrows a query to the appointments this actor may act on.
     /// </summary>
     /// <remarks>
-    /// Not <c>booking.appointment_not_found</c>, and the difference is the point: two distinct
-    /// answers would let a patient enumerate appointment ids and learn which are real. The
-    /// catalogue already made this call for <c>patient.not_found</c>, in the same words.
+    /// A patient reaches their own and nothing else; reception reaches any, there being no
+    /// appointment the desk may not run. Expressed once so that the two write paths cannot come to
+    /// disagree about it, and so that "reception is unfiltered" is a visible decision rather than
+    /// a missing <c>Where</c> somewhere.
     /// </remarks>
-    private static IResult OwnershipDenied() =>
-        ApiError.Result(ErrorCodes.OwnershipDenied, StatusCodes.Status403Forbidden);
+    private static IQueryable<Appointment> Reachable(
+        IQueryable<Appointment> appointments,
+        Guid appointmentId,
+        BookingActor bookingActor) =>
+        bookingActor.IsClinic
+            ? appointments.Where(candidate => candidate.Id == appointmentId)
+            : appointments.Where(candidate =>
+                candidate.Id == appointmentId && candidate.PatientId == bookingActor.PatientId);
 
     private static MyAppointment Describe(
         Appointment appointment,

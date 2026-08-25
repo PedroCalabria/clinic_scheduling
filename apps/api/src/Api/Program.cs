@@ -4,6 +4,7 @@ using Clinic.Api.Features.Availability;
 using Clinic.Api.Features.Booking;
 using Clinic.Api.Features.Health;
 using Clinic.Api.Features.Patients;
+using Clinic.Api.Features.Schedule;
 using Clinic.Api.Features.StaffAccounts;
 using Clinic.Api.Infrastructure.Auth;
 using Clinic.Api.Infrastructure.Errors;
@@ -146,5 +147,11 @@ app.MapTimeBlockEndpoints();
 app.MapBookingOptionsEndpoints();
 app.MapBookingEndpoints();
 app.MapAppointmentLifecycleEndpoints();
+
+// The staff console (change 5c). One read behind S1 and S4, and the lookup S5 starts from. These
+// are the first screens that show a patient to somebody who is not that patient, which is why both
+// write an AccessLog row and why neither is reachable by a patient.
+app.MapScheduleEndpoints();
+app.MapResolvePatientEndpoint();
 
 app.Run();

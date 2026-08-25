@@ -22,10 +22,18 @@ namespace Clinic.Api.Infrastructure.Scheduling;
 /// from the query that selected them. I3 is a comparison, and comparing a value against itself
 /// would make the invariant vacuous.
 /// </param>
+/// <param name="ResourceNames">
+/// What each candidate room is called. Added by <c>booking-desk</c> so the surfaces entitled to
+/// show a room can do so from the read that already selected it, rather than from a second request
+/// against a catalogue endpoint reception is not allowed to reach (design N5). The rooms query has
+/// ordered by this name since change 4 — the ordering IS the assignment policy — so this costs
+/// nothing but carrying it.
+/// </param>
 internal sealed record ScheduleInputs(
     AvailabilityInputs Inputs,
     IReadOnlyDictionary<Guid, int> DurationsByProfessional,
-    IReadOnlyDictionary<Guid, Guid> ResourceTypeByResource);
+    IReadOnlyDictionary<Guid, Guid> ResourceTypeByResource,
+    IReadOnlyDictionary<Guid, string> ResourceNames);
 
 /// <summary>
 /// The one bounded read that feeds both the availability answer and the booking check
@@ -218,7 +226,8 @@ internal sealed class ScheduleReader(
         return new ScheduleInputs(
             inputs,
             eligible.ToDictionary(entry => entry.Id, entry => entry.DurationMinutes),
-            rooms.ToDictionary(room => room.Id, room => room.ResourceTypeId));
+            rooms.ToDictionary(room => room.Id, room => room.ResourceTypeId),
+            rooms.ToDictionary(room => room.Id, room => room.Name));
     }
 
     /// <summary>
