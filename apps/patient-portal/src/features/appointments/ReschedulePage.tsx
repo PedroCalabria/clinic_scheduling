@@ -13,7 +13,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
-import { SlotGrid, SlotSkeleton } from '../booking/SlotGrid';
+import { SelectionBar } from '../booking/SelectionBar';
+import { SlotGrid, SlotSkeleton, slotKey } from '../booking/SlotGrid';
 import { addDays, clinicToday, groupByDay, slotTime } from '../booking/slots';
 
 /** The same fortnight P2 defaults to, for the same reason. */
@@ -45,6 +46,11 @@ export function ReschedulePage() {
 
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
+
+  // The same selection model as P2 (design D8), because SlotGrid is shared and a selection in only
+  // one of them would fork it after all. It also matters more here: a patient rescheduling is by
+  // definition dissatisfied with a time, which is exactly when comparing before committing helps.
+  const [chosen, setChosen] = useState<string | null>(null);
 
   const appointments = useQuery({
     queryKey: ['my-appointments'],
@@ -99,6 +105,11 @@ export function ReschedulePage() {
   });
 
   const slots = availability.data?.slots ?? [];
+
+  const chosenSlot = useMemo(
+    () => slots.find((slot) => slotKey(slot) === chosen) ?? null,
+    [slots, chosen],
+  );
 
   const days = useMemo(
     () => (timezone ? groupByDay(slots, timezone, i18n.language) : []),
@@ -168,7 +179,7 @@ export function ReschedulePage() {
         <p className="text-sm font-medium uppercase tracking-wide text-meta">
           {t('appointments.movingFrom')}
         </p>
-        <p className="mt-1 font-semibold text-heading">
+        <p className="mt-1 font-mono font-semibold tabular-nums text-heading">
           {currentDay}, {slotTime(appointment.startsAt, timezone!)}–
           {slotTime(appointment.endsAt, timezone!)}
         </p>
@@ -192,7 +203,10 @@ export function ReschedulePage() {
               type="date"
               aria-describedby={describedBy}
               value={windowFrom}
-              onChange={(event) => setFrom(event.target.value)}
+              onChange={(event) => {
+                setChosen(null);
+                setFrom(event.target.value);
+              }}
             />
           )}
         </Field>
@@ -204,7 +218,10 @@ export function ReschedulePage() {
               type="date"
               aria-describedby={describedBy}
               value={windowTo}
-              onChange={(event) => setTo(event.target.value)}
+              onChange={(event) => {
+                setChosen(null);
+                setTo(event.target.value);
+              }}
             />
           )}
         </Field>
@@ -223,6 +240,7 @@ export function ReschedulePage() {
               variant="secondary"
               className="mt-5"
               onClick={() => {
+                setChosen(null);
                 setFrom(addDays(windowTo, 1));
                 setTo(addDays(windowTo, 1 + DEFAULT_WINDOW_DAYS));
               }}
@@ -243,7 +261,18 @@ export function ReschedulePage() {
               // Never: there is only one professional here, and repeating their name on every
               // button would be noise about the one thing that cannot change.
               showProfessional={false}
-              onChoose={(slot) => reschedule.mutate(slot.start)}
+              selected={chosen}
+              onChoose={(slot) => setChosen(slotKey(slot))}
+            />
+
+            <SelectionBar
+              slot={chosenSlot}
+              timezone={timezone!}
+              professional={professional?.displayName}
+              appointmentType={appointmentType?.name}
+              actionLabel={t('appointments.confirmMove')}
+              pending={reschedule.isPending}
+              onContinue={() => chosenSlot && reschedule.mutate(chosenSlot.start)}
             />
           </>
         )}

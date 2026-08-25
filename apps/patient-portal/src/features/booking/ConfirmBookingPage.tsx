@@ -301,7 +301,7 @@ function SlotSummary({
       </div>
       <div>
         <dt className="text-xs uppercase tracking-wide text-meta">{t('booking.when')}</dt>
-        <dd className="mt-1 font-medium text-heading">
+        <dd className="mt-1 font-mono font-medium tabular-nums text-heading">
           {timezone ? (
             <>
               {new Intl.DateTimeFormat(language, {

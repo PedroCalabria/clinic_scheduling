@@ -70,7 +70,7 @@ export function BookingSuccessPage() {
         <dl className="mt-6 space-y-3">
           <div className="flex flex-wrap gap-x-3">
             <dt className="text-meta">{t('booking.when')}</dt>
-            <dd className="font-medium text-heading">
+            <dd className="font-mono font-medium tabular-nums text-heading">
               {day}, {slotTime(start, timezone)}–{slotTime(end, timezone)}
             </dd>
           </div>
