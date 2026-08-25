@@ -20,10 +20,12 @@ export {
   getAvailability,
   getBookingOptions,
   bookAppointment,
+  bookAppointmentForPatient,
   cancelAppointment,
   grantConsent,
   getMyProfile,
   getProfessional,
+  getScheduleDay,
   getSession,
   googleSignInUrl,
   grantSpecialty,
@@ -36,10 +38,12 @@ export {
   listSpecialties,
   listStaffAccounts,
   onSessionEnded,
+  renameProfessional,
   renameSpecialty,
   retireException,
   retireWorkingHours,
   revokeConsent,
+  resolvePatientByEmail,
   revokeSpecialty,
   setCatalogEntityActive,
   setMyBlockActive,
@@ -71,13 +75,18 @@ export {
   type PatientProfileResponse,
   type ProfessionalDetail,
   type ProfessionalListEntry,
+  type ResolvedPatient,
   type ResourceResponse,
   type ResourceTypeResponse,
   type RoleName,
   type SessionResponse,
+  type ScheduleDayResponse,
+  type ScheduledAppointment,
+  type ScheduledBlock,
   type SpecialtyResponse,
   type SaveTimeBlockInput,
   type StaffAccountResponse,
+  type StaffAppointmentResponse,
   type TimeBlockListResponse,
   type TimeBlockResponse,
   type Weekday,
@@ -93,6 +102,17 @@ export {
 } from './i18n/index';
 
 export { createI18n } from './i18n/setup';
+
+export {
+  addDays,
+  clinicDate,
+  clinicDayLabel,
+  clinicOffset,
+  clinicShortDate,
+  clinicTime,
+  clinicToday,
+  minutesBetween,
+} from './time/clinicClock';
 
 export {
   RequireAuth,

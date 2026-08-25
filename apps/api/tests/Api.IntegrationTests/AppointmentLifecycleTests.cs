@@ -492,27 +492,41 @@ public sealed class AppointmentLifecycleTests(ApiFixture fixture)
         Assert.Equal(AppointmentStatus.Scheduled, (await AppointmentAsync(id)).Status);
     }
 
-    [Theory]
-    [InlineData(Role.Professional)]
-    [InlineData(Role.FrontDesk)]
-    [InlineData(Role.Administrator)]
-    public async Task Staff_cannot_change_an_appointment_through_the_patient_path(Role role)
+    [Fact]
+    public async Task A_professional_cannot_change_an_appointment()
     {
+        // booking-desk admitted reception to these two writes and left the professional refused.
+        // Changing an appointment is reception's work; a clinician who could would be a second
+        // route to the same transition with nothing on this path expecting them.
         var clinic = await Clinic.BuildAsync();
         var (patient, _) = await fixture.AsRoleAsync(Role.Patient);
         using var _patient = patient;
 
-        var (staff, _) = await fixture.AsRoleAsync(role);
-        using var _staff = staff;
+        var (professional, _) = await fixture.AsRoleAsync(Role.Professional);
+        using var _professional = professional;
 
         var id = await BookAsync(patient, clinic, ClinicBuilder.At(clinic.Date, 9));
 
-        var cancel = await staff.PostAsync($"/api/appointments/{id}/cancel", new { });
-        var list = await staff.GetAsync("/api/appointments");
+        var cancel = await professional.PostAsync($"/api/appointments/{id}/cancel", new { });
 
         Assert.Equal(HttpStatusCode.Forbidden, cancel.StatusCode);
         Assert.Equal("auth.forbidden", await ClinicBuilder.CodeOf(cancel));
-        Assert.Equal(HttpStatusCode.Forbidden, list.StatusCode);
+        Assert.Equal(AppointmentStatus.Scheduled, (await AppointmentAsync(id)).Status);
+    }
+
+    [Theory]
+    [InlineData(Role.Professional)]
+    [InlineData(Role.FrontDesk)]
+    [InlineData(Role.Administrator)]
+    public async Task Only_a_patient_reads_the_my_appointments_list(Role role)
+    {
+        // P5's list is "my appointments" and no staff role has one. The day view (S1/S4) is the
+        // staff reading of the same rows, with a different shape and its own access log — so this
+        // route stayed patient-only when the two writes beside it widened.
+        var (staff, _) = await fixture.AsRoleAsync(role);
+        using var _staff = staff;
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await staff.GetAsync("/api/appointments")).StatusCode);
     }
 
     [Fact]

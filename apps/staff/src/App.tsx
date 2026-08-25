@@ -8,6 +8,8 @@ import { ResourcesPage } from './features/catalog/ResourcesPage';
 import { SpecialtiesPage } from './features/catalog/SpecialtiesPage';
 import { ProfessionalsPage } from './features/professionals/ProfessionalsPage';
 import { ChangePasswordPage } from './features/password/ChangePasswordPage';
+import { DeskBookingPage } from './features/schedule/DeskBookingPage';
+import { DayViewPage, MySchedulePage } from './features/schedule/ScheduleDay';
 import { SignInPage } from './features/signin/SignInPage';
 import { UsersPage } from './features/users/UsersPage';
 
@@ -15,8 +17,8 @@ import { UsersPage } from './features/users/UsersPage';
  * The staff console: sign-in (S0), the app-shell, users (S11), and the clinic catalog
  * (S8-S10, added by `clinic-catalog`).
  *
- * S3 arrived with change 4; the rest of S1-S6 come from change 5 onward and mount into the
- * same shell. The catch-all route
+ * S3 arrived with change 4, and S1/S4/S5 with change 5c; S2 and S6 come with the calendar
+ * changes and mount into the same shell. The catch-all route
  * stays for the reason it existed in change 1: a full reload of `/staff/anything` must render
  * this app, which is the client half of Caddy's per-prefix SPA fallback (design D2).
  */
@@ -108,6 +110,38 @@ export function App() {
         element={
           <Guarded allow={['Professional']}>
             <BlockedTimePage />
+          </Guarded>
+        }
+      />
+
+      {/*
+        S1, S4 and S5 (change 5c) — the first staff screens that show an appointment, and the
+        first that show a patient's name to somebody who is not that patient. Role-scoped here AND
+        at the API: the guard is the courtesy, the API's policy is the boundary.
+      */}
+      <Route
+        path="/schedule"
+        element={
+          <Guarded allow={['Professional']}>
+            <MySchedulePage />
+          </Guarded>
+        }
+      />
+
+      <Route
+        path="/day"
+        element={
+          <Guarded allow={['FrontDesk', 'Administrator']}>
+            <DayViewPage />
+          </Guarded>
+        }
+      />
+
+      <Route
+        path="/book"
+        element={
+          <Guarded allow={['FrontDesk', 'Administrator']}>
+            <DeskBookingPage />
           </Guarded>
         }
       />

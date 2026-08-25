@@ -1,3 +1,5 @@
+import { clinicDate, clinicOffset, clinicTime } from '@clinic/shared';
+
 /**
  * Turning the API's instants into something a patient can read (design B14).
  *
@@ -23,52 +25,23 @@ export interface SlotDay {
 }
 
 /**
- * The clinic-local parts of an instant.
+ * Re-exported from `@clinic/shared` rather than defined here.
  *
- * **Never `new Date(value).getHours()`.** That reads the BROWSER's zone, and the browser's zone is
- * not the clinic's — a patient travelling, or simply a laptop set wrong, would be shown times that
- * are off by hours while everything else on the page looked fine. The server tells us which zone it
- * means and `Intl` is what applies it, so the conversion happens once, here, against a value the
- * response carries.
+ * `booking-desk` needed the same conversions for the staff console, and "which clock is this
+ * instant on" must not have two implementations — the failure mode is a screen that is wrong by
+ * hours while looking fine. The grid itself is deliberately NOT shared (design N4); the arithmetic
+ * under it is.
  */
-function inZone(instant: string, timeZone: string): { date: string; time: string } {
-  const value = new Date(instant);
-
-  const date = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(value);
-
-  const time = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(value);
-
-  return { date, time };
-}
+export { clinicToday, addDays } from '@clinic/shared';
 
 /** A slot's start on the clinic's clock, as `HH:mm`. */
 export function slotTime(instant: string, timeZone: string): string {
-  return inZone(instant, timeZone).time;
+  return clinicTime(instant, timeZone);
 }
 
-/**
- * The offset a slot's instant sits at, as `GMT-3`.
- *
- * Shown only when a day contains two slots reading the same local time, which happens on the date
- * a zone turns its clock back. Both are real, distinct times an hour apart; hiding one would lose
- * an hour of genuinely bookable capacity, and showing them identically would make the screen look
- * broken. This is change 4's open question 4, answered on the surface that created it.
- */
+/** The offset a slot's instant sits at, as `GMT-3` — shown only to tell two equal times apart. */
 export function slotOffset(instant: string, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone, timeZoneName: 'shortOffset' })
-    .formatToParts(new Date(instant));
-
-  return parts.find((part) => part.type === 'timeZoneName')?.value ?? '';
+  return clinicOffset(instant, timeZone);
 }
 
 /**
@@ -99,7 +72,7 @@ export function groupByDay(slots: Slot[], timeZone: string, language: string): S
   const days = new Map<string, Slot[]>();
 
   for (const slot of slots) {
-    const { date } = inZone(slot.start, timeZone);
+    const date = clinicDate(slot.start, timeZone);
     const existing = days.get(date);
 
     if (existing) {
@@ -128,16 +101,3 @@ export function groupByDay(slots: Slot[], timeZone: string, language: string): S
     }));
 }
 
-/** Today in the clinic's zone, as `yyyy-MM-dd` — the earliest date worth searching. */
-export function clinicToday(timeZone: string): string {
-  return inZone(new Date().toISOString(), timeZone).date;
-}
-
-/** `yyyy-MM-dd` a number of days after a date, without touching a zone. */
-export function addDays(date: string, days: number): string {
-  const value = new Date(`${date}T00:00:00Z`);
-
-  value.setUTCDate(value.getUTCDate() + days);
-
-  return value.toISOString().slice(0, 10);
-}

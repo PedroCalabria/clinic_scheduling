@@ -42,11 +42,19 @@ public enum PatientDataAccessDecision
 /// it (03-nfr.md: never trust a client-supplied id for ownership).
 /// </para>
 /// <para>
-/// Least privilege is the default for roles with no stated need. A professional is refused
-/// here even though they will legitimately see their own patients from change 5 onward —
-/// when that requirement exists, it arrives with the scoping ("patients this professional
-/// has appointments with") that makes the access defensible, rather than a blanket allow
-/// granted early just in case.
+/// Least privilege is the default for roles with no stated need. A professional was refused
+/// outright until <c>booking-desk</c>, under a note promising that the allowance would arrive
+/// "with the scoping ('patients this professional has appointments with') that makes the access
+/// defensible, rather than a blanket allow granted early just in case". That is what it did:
+/// the professional arm admits exactly one case and is told which case it is.
+/// </para>
+/// <para>
+/// <b>The relationship arrives as a fact, not as a lookup.</b> <c>Domain</c> has no database and
+/// the compiler guarantees it never will, so "is this patient on this professional's schedule"
+/// cannot be answered here. The caller establishes it and hands it over — the same bargain
+/// <c>ProfessionalHoldsDurationForType</c> and <c>cutoffApplies</c> struck. For the day read the
+/// fact is free: the appointments <em>are</em> the relationship, so the query that produced the
+/// list has already answered it.
 /// </para>
 /// </remarks>
 public static class PatientDataAccess
@@ -55,7 +63,18 @@ public static class PatientDataAccess
     /// <param name="actorRole">The acting user's role, from their session.</param>
     /// <param name="actorUserId">The acting user's id, from their session — never from the request.</param>
     /// <param name="patientUserId">The user the patient record belongs to.</param>
-    public static PatientDataAccessDecision Evaluate(Role actorRole, Guid actorUserId, Guid patientUserId) =>
+    /// <param name="actorIsThisPatientsProfessional">
+    /// Whether this patient appears on this actor's own schedule — established by the caller and
+    /// supplied as a fact, because this rule has no way to find out and must not acquire one. It
+    /// bears on the professional arm alone: no value of it widens what any other role may reach.
+    /// Defaulted to <c>false</c> so that every existing caller keeps its behaviour, and so that a
+    /// caller which forgets it fails closed.
+    /// </param>
+    public static PatientDataAccessDecision Evaluate(
+        Role actorRole,
+        Guid actorUserId,
+        Guid patientUserId,
+        bool actorIsThisPatientsProfessional = false) =>
         actorRole switch
         {
             // Owning the data is the only way a patient reaches any of it.
@@ -65,6 +84,13 @@ public static class PatientDataAccess
 
             // Operational staff act on behalf of patients, so the access is allowed and recorded.
             Role.FrontDesk or Role.Administrator => PatientDataAccessDecision.AllowedAsStaff,
+
+            // A professional reaches their own patients and no others. Recorded like any other
+            // access by role: it is somebody else's data, and that a clinician is entitled to see
+            // it is the reason for the record rather than an exemption from one.
+            Role.Professional => actorIsThisPatientsProfessional
+                ? PatientDataAccessDecision.AllowedAsStaff
+                : PatientDataAccessDecision.Denied,
 
             _ => PatientDataAccessDecision.Denied,
         };

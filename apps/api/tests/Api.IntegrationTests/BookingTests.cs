@@ -90,7 +90,6 @@ public sealed class BookingTests(ApiFixture fixture)
             // It is not in the contract, so it is not bound and cannot influence anything —
             // domain-model F2 held structurally rather than by a check.
             resourceId = clinic.Rooms[1],
-            patientId = Guid.NewGuid(),
         });
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -811,17 +810,46 @@ public sealed class BookingTests(ApiFixture fixture)
     // --- Authorization and the consent gate ------------------------------------------
 
     [Theory]
-    [InlineData(Role.Professional)]
     [InlineData(Role.FrontDesk)]
     [InlineData(Role.Administrator)]
-    public async Task Staff_cannot_book_through_the_patient_path(Role role)
+    public async Task Staff_must_name_the_patient_they_are_booking_for(Role role)
     {
+        // booking-desk replaced "staff cannot book here" with "staff cannot book here WITHOUT
+        // saying for whom". The refusal moved from 403 to 400 and that is the point: the caller
+        // is entitled to be on this path and left something out, rather than being turned away.
         var clinic = await Clinic.BuildAsync();
         var (staff, _) = await fixture.AsRoleAsync(role);
         using var _staff = staff;
 
         var refused = await staff.PostAsync(
             "/api/appointments", Booking(clinic, ClinicBuilder.At(clinic.Date, 9)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, refused.StatusCode);
+        Assert.Equal("validation.required", await ClinicBuilder.CodeOf(refused));
+    }
+
+    [Fact]
+    public async Task A_professional_cannot_book_on_anybody_s_behalf()
+    {
+        // The role the widened policy still refuses. Booking is reception's work, and a clinician
+        // who could book on behalf would be a second route to the same write with nothing on this
+        // path expecting them.
+        var clinic = await Clinic.BuildAsync();
+        var (patient, patientUser) = await fixture.AsRoleAsync(Role.Patient);
+        using var _patient = patient;
+
+        var (professional, _) = await fixture.AsRoleAsync(Role.Professional);
+        using var _professional = professional;
+
+        var patientId = await Clinic.PatientIdAsync(patientUser.Id);
+
+        var refused = await professional.PostAsync("/api/appointments", new
+        {
+            appointmentTypeId = clinic.AppointmentTypeId,
+            professionalId = clinic.ProfessionalId,
+            startsAt = ClinicBuilder.Utc(ClinicBuilder.At(clinic.Date, 9)),
+            patientId,
+        });
 
         Assert.Equal(HttpStatusCode.Forbidden, refused.StatusCode);
         Assert.Equal("auth.forbidden", await ClinicBuilder.CodeOf(refused));

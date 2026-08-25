@@ -20,7 +20,10 @@ interface NavigationEntry {
  */
 const NAVIGATION: readonly NavigationEntry[] = [
   { to: '/', labelKey: 'staff.navHealth' },
+  { to: '/schedule', labelKey: 'staff.navSchedule', roles: ['Professional'] },
   { to: '/blocks', labelKey: 'staff.navBlocks', roles: ['Professional'] },
+  { to: '/day', labelKey: 'staff.navDay', roles: ['FrontDesk', 'Administrator'] },
+  { to: '/book', labelKey: 'staff.navDeskBooking', roles: ['FrontDesk', 'Administrator'] },
   { to: '/users', labelKey: 'staff.navUsers', roles: ['Administrator'] },
   { to: '/admin/professionals', labelKey: 'staff.navProfessionals', roles: ['Administrator'] },
   { to: '/admin/specialties', labelKey: 'staff.navSpecialties', roles: ['Administrator'] },

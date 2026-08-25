@@ -46,10 +46,12 @@ internal static class BookingEndpoints
     internal static IEndpointRouteBuilder MapBookingEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapPost("/api/appointments", BookAsync)
-            // The patient's own booking only. Reception booking on somebody's behalf (S5) is
-            // booking-lifecycle's, and it arrives as an explicit role-gated field rather than by
-            // relaxing this policy.
-            .RequireAuthorization(AuthorizationPolicies.Patient)
+            // A patient booking for themselves, or reception booking on somebody's behalf (S5).
+            // Widened by booking-desk exactly as 5a promised: an explicit role-gated field, not a
+            // relaxed policy that starts trusting a body value. A professional is still refused —
+            // booking is reception's work, and a professional who could book on behalf would be a
+            // second route to the same write with nothing on this path expecting them.
+            .RequireAuthorization(AuthorizationPolicies.PatientOrClinicStaff)
             .WithName("BookAppointment");
 
         return endpoints;
@@ -84,24 +86,31 @@ internal static class BookingEndpoints
             return CatalogRefusals.Invalid(nameof(request.StartsAt));
         }
 
-        var userId = actor.UserId();
+        // Who is acting, and for whom (design N2, N3). The one place the role decides anything on
+        // this path — the patient, and through the actor the source recorded below.
+        var resolved = await BookingActor.ResolveAsync(actor, request.PatientId, database, cancellationToken);
 
-        var patient = await database.Patients
-            .FirstOrDefaultAsync(candidate => candidate.UserId == userId && candidate.DeletedAtUtc == null, cancellationToken);
-
-        if (patient is null)
+        if (resolved.Actor is not { } bookingActor)
         {
-            // A patient session with no patient record. Not reachable through provisioning, which
-            // creates both together — so this is a corrupt-state guard rather than a rule.
-            return ApiError.Result(ErrorCodes.PatientNotFound, StatusCodes.Status404NotFound);
+            return resolved.Refusal!;
         }
+
+        var patientUserId = await database.Patients
+            .Where(candidate => candidate.Id == bookingActor.PatientId)
+            .Select(candidate => candidate.UserId)
+            .FirstAsync(cancellationToken);
 
         // The LGPD gate (design B12). Change 2 grants this consent at just-in-time provisioning and
         // P7 lets a patient revoke it, so until now revocation was possible with nothing checking
         // it. The version comparison is included deliberately: it is the mechanism a versioned
         // consent exists for, and a gate that ignored it would make Consent.Version decoration.
+        //
+        // booking-desk: it reads the PATIENT'S consent, never the actor's, so it binds a staff
+        // booking exactly as it binds a patient's own. Exempting reception would let the clinic
+        // route around a patient's withdrawal by telephoning the desk, which is the wrong way
+        // round — the gate is about whose data is processed, not about who is typing.
         var consented = await database.Consents.AnyAsync(
-            consent => consent.UserId == userId
+            consent => consent.UserId == patientUserId
                 && consent.Type == ConsentType.DataProcessing
                 && consent.RevokedAtUtc == null
                 && consent.Version == auth.Value.ConsentVersion,
@@ -152,7 +161,7 @@ internal static class BookingEndpoints
                     timezone,
                     scheduling,
                     clock,
-                    patient.Id,
+                    bookingActor,
                     professionalId,
                     appointmentType,
                     startsAt,
@@ -217,13 +226,15 @@ internal static class BookingEndpoints
         ClinicTimezone timezone,
         ClinicScheduling scheduling,
         TimeProvider clock,
-        Guid patientId,
+        BookingActor bookingActor,
         Guid professionalId,
         AppointmentType appointmentType,
         Instant startsAt,
         LocalDate date,
         CancellationToken cancellationToken)
     {
+        var patientId = bookingActor.PatientId;
+
         // A fresh context state per attempt: a retry must not re-submit the entity the failed
         // attempt added, which would insert twice on success.
         database.ChangeTracker.Clear();
@@ -284,7 +295,11 @@ internal static class BookingEndpoints
                 ProfessionalHoldsDurationForType: true,
                 resourceTypeId,
                 appointmentType.RequiredResourceTypeId,
-                AppointmentSource.SelfService),
+
+                // FrontDesk for reception, SelfService for the patient — derived from the path
+                // rather than declared by the caller, which is why the request carries no such
+                // field. The first write of a value 5a shipped and left unused.
+                bookingActor.Source),
             scheduling.Parameters,
             Instant.FromDateTimeOffset(clock.GetUtcNow()),
             clock.GetUtcNow());
@@ -296,7 +311,11 @@ internal static class BookingEndpoints
         await database.SaveChangesAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
 
-        return Results.Ok(Describe(appointment, timezone));
+        // Reception is told the room; a patient is not (design N5, D7). Two shapes rather than one
+        // with a conditional field, so the rule lives in the type rather than in a branch.
+        return bookingActor.IsClinic
+            ? Results.Ok(DescribeForStaff(appointment, loaded.ResourceNames, timezone))
+            : Results.Ok(Describe(appointment, timezone));
     }
 
     /// <summary>
@@ -318,6 +337,22 @@ internal static class BookingEndpoints
 
         return parsed.Success ? parsed.Value : null;
     }
+
+    private static StaffAppointmentResponse DescribeForStaff(
+        Appointment appointment,
+        IReadOnlyDictionary<Guid, string> resourceNames,
+        ClinicTimezone timezone) =>
+        new(
+            appointment.Id,
+            appointment.PatientId,
+            appointment.ProfessionalId,
+            appointment.AppointmentTypeId,
+            appointment.ResourceId,
+            resourceNames.TryGetValue(appointment.ResourceId, out var name) ? name : string.Empty,
+            InstantPattern.ExtendedIso.Format(appointment.StartsAt),
+            InstantPattern.ExtendedIso.Format(appointment.EndsAt),
+            appointment.Status.ToString(),
+            timezone.Id);
 
     private static AppointmentResponse Describe(Appointment appointment, ClinicTimezone timezone) =>
         new(

@@ -30,4 +30,26 @@ internal static class AuthorizationPolicies
 
     /// <summary>A patient acting on their own data (P5-P7).</summary>
     internal const string Patient = "role:patient";
+
+    /// <summary>
+    /// A patient acting on their own appointment, or reception acting on somebody's behalf.
+    /// </summary>
+    /// <remarks>
+    /// The booking write paths (design N2). Deliberately <em>not</em> "any signed-in caller": a
+    /// professional is refused here, so the policy still says something. What it cannot say is
+    /// which of the two admitted roles is acting, and that difference decides the patient, the
+    /// source, the cutoff authority and the not-found code — so every one of these endpoints
+    /// branches on the role immediately, through one shared helper rather than three copies.
+    /// </remarks>
+    internal const string PatientOrClinicStaff = "role:patient-or-clinic-staff";
+
+    /// <summary>
+    /// A professional reading their own schedule, or reception reading the day (S1, S4).
+    /// </summary>
+    /// <remarks>
+    /// A patient is refused: this read names other people's appointments. The two admitted roles
+    /// get the same payload with a different scope, and the scope is structural rather than
+    /// filtered — see the schedule endpoint (design N9).
+    /// </remarks>
+    internal const string ScheduleReaders = "role:schedule-readers";
 }

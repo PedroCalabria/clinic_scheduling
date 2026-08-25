@@ -61,6 +61,14 @@ internal sealed class ProfessionalConfiguration : IEntityTypeConfiguration<Profe
         builder.Property(professional => professional.Id).HasColumnName("id");
 
         builder.Property(professional => professional.UserId).HasColumnName("user_id");
+
+        // Nullable by decision (design N10): the record is born on first configuration and an
+        // invited professional may have neither record nor name. `Patient.full_name` is required
+        // for the opposite reason — that record is born with a name from the identity provider.
+        builder.Property(professional => professional.FullName)
+            .HasColumnName("full_name")
+            .HasMaxLength(200);
+
         builder.Property(professional => professional.CreatedAtUtc).HasColumnName("created_at_utc");
         builder.Property(professional => professional.DeactivatedAtUtc).HasColumnName("deactivated_at_utc");
 

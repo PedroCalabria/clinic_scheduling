@@ -19,8 +19,12 @@ namespace Clinic.Domain.Configuration;
 /// it does, and lists them as unconfigured.
 /// </para>
 /// <para>
-/// It holds no name and no email. Those live on the <c>User</c>, and duplicating them here
-/// would create two answers to one question.
+/// <b>It holds a name and no email.</b> The email lives on the <c>User</c> and duplicating it
+/// here would create two answers to one question — a name is not the same case. An account
+/// address is how somebody signs in; a name is how a patient is told who they are seeing, and
+/// nothing on the <c>User</c> carries it. <c>booking-core</c> derived a label from the address
+/// local part as an interim and named this change as the one that would stop
+/// (<c>02-domain-model.md</c> §10, P-5).
 /// </para>
 /// </remarks>
 public sealed class Professional
@@ -34,6 +38,25 @@ public sealed class Professional
 
     /// <summary>The user this configuration belongs to. Immutable — it is the identity.</summary>
     public Guid UserId { get; private set; }
+
+    /// <summary>
+    /// How this professional is named to a person. Null until an administrator enters one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Nullable, and that is a decision rather than an omission (design N10).</b> This record
+    /// does not exist until first configuration, and S7 deliberately lists invited-but-unconfigured
+    /// professionals as a shipped requirement — so a name cannot be a precondition of the record
+    /// without making the record a precondition of the invitation. The consumer's fallback is the
+    /// derived label <c>booking-core</c> already ships, which is why the absence is survivable.
+    /// </para>
+    /// <para>
+    /// No backfill was written for it either. Filling the column with derived labels would leave an
+    /// administrator unable to tell an entered name from a placeholder, which is the whole problem
+    /// P-5 describes.
+    /// </para>
+    /// </remarks>
+    public string? FullName { get; private set; }
 
     public DateTimeOffset CreatedAtUtc { get; private set; }
 
@@ -63,6 +86,21 @@ public sealed class Professional
             UserId = userId,
             CreatedAtUtc = createdAtUtc,
         };
+    }
+
+    /// <summary>Sets or clears how this professional is named to a person.</summary>
+    /// <remarks>
+    /// Absent and blank are the same state deliberately: an administrator who empties the field is
+    /// removing a name, not storing whitespace, and the consumer's fallback then applies again
+    /// (the same shape <see cref="Identity.Patient.UpdateContactDetails"/> uses for a contact
+    /// phone). What is refused is a name made only of separators, which would render as an empty
+    /// label while reading as present in the database.
+    /// </remarks>
+    public void Rename(string? fullName)
+    {
+        var trimmed = fullName?.Trim();
+
+        FullName = string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
     /// <summary>Retires the professional from the schedule.</summary>

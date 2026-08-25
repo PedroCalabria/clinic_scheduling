@@ -15,6 +15,12 @@ namespace Clinic.Api.Features.AdminConfig;
 internal sealed record ProfessionalListEntry(
     Guid UserId,
     string Email,
+    /// <summary>
+    /// The stored name, or null while nobody has entered one (P-5, design N10). Null is an
+    /// ordinary state, not an error: an invited professional has no configuration record to hold
+    /// a name on, and S7 lists them regardless.
+    /// </summary>
+    string? FullName,
     /// <summary>False for an invited professional nobody has configured yet.</summary>
     bool IsConfigured,
     /// <summary>True while the invitation has not been claimed by a first sign-in.</summary>
@@ -52,12 +58,23 @@ internal sealed record WorkingHoursOverride(
 internal sealed record ProfessionalDetail(
     Guid UserId,
     string Email,
+    string? FullName,
     bool IsConfigured,
     bool AwaitsClaim,
     IReadOnlyList<HeldSpecialty> Specialties,
     IReadOnlyList<ConfiguredDuration> Durations,
     IReadOnlyList<WorkingHoursSegment> WorkingHours,
     IReadOnlyList<WorkingHoursOverride> Exceptions);
+
+/// <summary>
+/// Naming a professional (P-5).
+/// </summary>
+/// <remarks>
+/// Nullable, and an empty submission clears the name rather than storing whitespace — the same
+/// shape P7 uses for a patient's contact phone. Clearing it restores the derived label rather than
+/// leaving a blank where a name should be, which is why removing a name is a safe act.
+/// </remarks>
+internal sealed record RenameProfessionalRequest(string? FullName);
 
 internal sealed record GrantSpecialtyRequest(Guid SpecialtyId);
 

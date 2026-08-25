@@ -1,4 +1,4 @@
-using System.Globalization;
+using Clinic.Api.Infrastructure;
 using Clinic.Api.Infrastructure.Persistence;
 using Clinic.Api.Infrastructure.Time;
 using Clinic.Domain.Configuration;
@@ -10,20 +10,20 @@ namespace Clinic.Api.Features.Booking;
 /// What a patient may choose from on P2 — specialties, kinds of visit, and who offers them.
 /// </summary>
 /// <param name="DisplayName">
-/// <b>A seam, not a finished feature.</b> <c>Professional</c> carries no name: 3b created the
-/// record with only a user reference, and S7 lists professionals by email because an administrator
-/// already knows their own staff. A patient does not, and showing them an internal email address
-/// would both read badly and hand out staff addresses for no reason — so the server derives a label
-/// from the account's local part here.
+/// <b>The stored name, or a label derived from the account address when there is none.</b>
+/// <c>booking-desk</c> (5c) closed P-5 and put <c>full_name</c> on the <c>Professional</c> record,
+/// entered on S7 — so this is the professional's actual name in every case where an administrator
+/// has entered one.
 /// <para>
-/// The contract says <c>displayName</c> rather than <c>email</c> precisely so that when a real name
-/// belongs on the <c>Professional</c> record, only the server changes and no client has to.
+/// The derivation stays as the fallback rather than being deleted, because the column is nullable
+/// by decision (design N10): the configuration record is born on first save, and S7 deliberately
+/// lists invited-but-unconfigured professionals. Showing a patient a staff email address would read
+/// badly and hand out addresses for no reason, so the local-part label remains the answer for a
+/// professional nobody has named yet.
 /// </para>
 /// <para>
-/// <b>That change has an owner:</b> <c>booking-lifecycle</c> (5b) adds <c>Professional.fullName</c>
-/// with a field on S7 — recorded as P-5 in <c>02-domain-model.md</c> §10 and in the build order. It
-/// lands there because 5b needs it three times over (S1, S4, S5) rather than because booking asked
-/// for it. When it does, the only edit here is where the label comes from.
+/// The contract says <c>displayName</c> rather than <c>email</c> precisely so that this switch cost
+/// no client a change, and it did not: <b>the wire is identical</b>.
 /// </para>
 /// </param>
 internal sealed record BookableProfessional(Guid ProfessionalId, string DisplayName);
@@ -111,17 +111,29 @@ internal static class BookingOptionsEndpoints
                 database.Professionals.Where(professional => professional.DeactivatedAtUtc == null),
                 duration => duration.ProfessionalId,
                 professional => professional.Id,
-                (duration, professional) => new { duration.AppointmentTypeId, professional.Id, professional.UserId })
+                (duration, professional) => new
+                {
+                    duration.AppointmentTypeId,
+                    professional.Id,
+                    professional.UserId,
+                    professional.FullName,
+                })
             .Join(
                 database.Users,
                 entry => entry.UserId,
                 user => user.Id,
-                (entry, user) => new { entry.AppointmentTypeId, ProfessionalId = entry.Id, user.Email })
+                (entry, user) => new
+                {
+                    entry.AppointmentTypeId,
+                    ProfessionalId = entry.Id,
+                    entry.FullName,
+                    user.Email,
+                })
             .Join(
                 database.AppointmentTypes.Where(type => type.DeactivatedAtUtc == null),
                 entry => entry.AppointmentTypeId,
                 type => type.Id,
-                (entry, type) => new { entry.ProfessionalId, entry.Email, Type = type })
+                (entry, type) => new { entry.ProfessionalId, entry.FullName, entry.Email, Type = type })
             .Join(
                 database.Specialties.Where(specialty => specialty.DeactivatedAtUtc == null),
                 entry => entry.Type.SpecialtyId,
@@ -129,6 +141,7 @@ internal static class BookingOptionsEndpoints
                 (entry, specialty) => new
                 {
                     entry.ProfessionalId,
+                    entry.FullName,
                     entry.Email,
                     TypeId = entry.Type.Id,
                     TypeName = entry.Type.Name,
@@ -151,7 +164,9 @@ internal static class BookingOptionsEndpoints
                         types.Key.TypeName,
                         group.Key.SpecialtyId,
                         types
-                            .Select(row => new BookableProfessional(row.ProfessionalId, DisplayName(row.Email)))
+                            .Select(row => new BookableProfessional(
+                                row.ProfessionalId,
+                                ProfessionalLabel.For(row.FullName, row.Email)))
                             .DistinctBy(professional => professional.ProfessionalId)
                             .OrderBy(professional => professional.DisplayName)
                             .ToList()))
@@ -159,36 +174,5 @@ internal static class BookingOptionsEndpoints
             .ToList();
 
         return Results.Ok(new BookingOptionsResponse(timezone.Id, specialties));
-    }
-
-    /// <summary>
-    /// A patient-facing label for a professional, derived from their account address.
-    /// </summary>
-    /// <remarks>
-    /// <para>
-    /// <b>Interim, and the shape of the interim matters.</b> <c>dra.helena@clinic.local</c> becomes
-    /// "Dra Helena", which reads correctly for the way clinics actually issue addresses and oddly
-    /// for a generated one. The alternative was showing the address itself, which reads worse and
-    /// hands staff email addresses to patients for no reason at all — a small thing, but this
-    /// project stores the minimum patient data it can and the courtesy runs both ways.
-    /// </para>
-    /// <para>
-    /// The real fix is a name on the <c>Professional</c> record, entered in S7, and it is scheduled:
-    /// <c>booking-lifecycle</c> (5b) owns it as P-5. This stays a derivation rather than a column
-    /// added in passing by a booking change, and it is accepted as good enough <em>because</em> the
-    /// replacement is on the board — not because deriving a name from an address is right.
-    /// </para>
-    /// </remarks>
-    private static string DisplayName(string email)
-    {
-        var localPart = email.Split('@')[0];
-
-        var words = localPart
-            .Split(['.', '-', '_'], StringSplitOptions.RemoveEmptyEntries)
-            .Select(word => CultureInfo.InvariantCulture.TextInfo.ToTitleCase(word));
-
-        var label = string.Join(' ', words);
-
-        return string.IsNullOrWhiteSpace(label) ? email : label;
     }
 }

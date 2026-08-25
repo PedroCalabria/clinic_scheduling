@@ -346,15 +346,43 @@ public sealed class ProfessionalConfigurationTests
     }
 
     [Fact]
-    public void A_configuration_record_holds_no_name_or_email()
+    public void A_configuration_record_holds_a_name_but_never_an_email()
     {
-        // Those live on the User. Duplicating them here would create two answers to one
-        // question, and the stale copy would be the one on screen.
+        // The email lives on the User, and duplicating it here would create two answers to one
+        // question with the stale copy on screen. A name is not the same case: nothing on the
+        // User carries one, so booking-desk put it here and closed P-5. This assertion is
+        // narrowed rather than deleted — the email half is the part that was load-bearing.
         var properties = typeof(Professional).GetProperties().Select(p => p.Name).ToArray();
 
         Assert.DoesNotContain("Email", properties);
-        Assert.DoesNotContain("FullName", properties);
-        Assert.DoesNotContain("Name", properties);
+        Assert.Contains("FullName", properties);
+    }
+
+    [Fact]
+    public void A_configuration_record_is_born_without_a_name()
+    {
+        // Nullable by decision (design N10): the record appears on first configuration and S7
+        // lists invited professionals who have none. The consumer's fallback is what makes the
+        // absence survivable, so the absence has to be a real state.
+        Assert.Null(Professional.ForUser(Guid.NewGuid(), Now).FullName);
+    }
+
+    [Fact]
+    public void A_name_is_trimmed_and_an_empty_one_clears_it()
+    {
+        var professional = Professional.ForUser(Guid.NewGuid(), Now);
+
+        professional.Rename("  Dra. Helena Souza  ");
+        Assert.Equal("Dra. Helena Souza", professional.FullName);
+
+        // Clearing restores the derived label rather than leaving a blank where a name should
+        // be, which is what makes removing a name a safe act rather than a destructive one.
+        professional.Rename("   ");
+        Assert.Null(professional.FullName);
+
+        professional.Rename("Dra. Helena Souza");
+        professional.Rename(null);
+        Assert.Null(professional.FullName);
     }
 
     private static WorkingHoursTemplate Segment(

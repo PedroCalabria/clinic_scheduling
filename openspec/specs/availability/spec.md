@@ -47,6 +47,7 @@ between a block and an appointment. The computation is deliberately uncached, si
 already be taken.
 
 ## Requirements
+
 ### Requirement: Availability is computed from configuration for a concrete date window
 
 The system SHALL compute, for a requested appointment type and date window, the intervals in which an appointment could actually be placed. The computation SHALL derive candidate hours from the professional's recurring working hours and exceptions, convert them against each concrete date in the clinic's configured timezone, slice them by the duration that appointment type takes that professional, remove intervals in which the professional is busy, and offer a slot only where a resource of the required type is free for it. The computation SHALL be a function of stored configuration and SHALL NOT be cached.
@@ -248,12 +249,19 @@ The system SHALL remove from the offered slots any slot overlapping an interval 
 
 ### Requirement: A slot names a free resource of the appointment type's required resource type
 
-The system SHALL offer a slot only when a resource of the resource type that the appointment type requires is active and free for that slot, and SHALL name that resource on the slot alongside its professional. A resource SHALL be treated as occupied for the time of every live appointment assigned to it, whichever professional it belongs to. Where several qualify, the system SHALL choose deterministically. A resource's occupied period SHALL extend past the appointment by its resource type's turnaround buffer, so time reserved for cleaning is not offered. The named resource SHALL NOT constitute a reservation, and a booking SHALL assign the resource itself rather than trusting a resource named by a caller.
+The system SHALL offer a slot only when a resource of the resource type that the appointment type requires is active and free for that slot, and SHALL name that resource on the slot — by its identifier **and by its name** — alongside its professional, so that a surface entitled to show the room can do so without a second request. A resource SHALL be treated as occupied for the time of every live appointment assigned to it, whichever professional it belongs to. Where several qualify, the system SHALL choose deterministically. A resource's occupied period SHALL extend past the appointment by its resource type's turnaround buffer, so time reserved for cleaning is not offered. The named resource SHALL NOT constitute a reservation, and a booking SHALL assign the resource itself rather than trusting a resource named by a caller.
+
+Naming the resource on the response SHALL NOT entitle every surface to display it: whether a room is shown to the person reading a screen remains a decision of that surface.
 
 #### Scenario: A slot names its professional, appointment type, and resource
 
 - **WHEN** any slot is returned
-- **THEN** it identifies the professional, the appointment type requested, and the concrete resource that satisfies it
+- **THEN** it identifies the professional, the appointment type requested, and the concrete resource that satisfies it, by identifier and by name
+
+#### Scenario: The named resource carries the room's name as configured
+
+- **WHEN** a resource is renamed and availability is requested again
+- **THEN** the slots name the resource by its new name
 
 #### Scenario: No resource of the required type means no slots
 
@@ -294,6 +302,11 @@ The system SHALL offer a slot only when a resource of the resource type that the
 
 - **WHEN** a professional is busy until a given time
 - **THEN** a slot beginning exactly at that time is offered, because turnaround belongs to the resource rather than to the professional
+
+#### Scenario: The patient portal still names no room
+
+- **WHEN** a patient views availability results
+- **THEN** no room is displayed anywhere on the surface, the response naming one notwithstanding
 
 ### Requirement: Availability can be asked of one professional or of any qualified professional
 
@@ -490,4 +503,3 @@ The staff console SHALL present a professional with their blocked time as a list
 
 - **WHEN** the language is switched between pt-BR and en on the blocked-time list and with the form open, including with a refusal displayed
 - **THEN** every string changes and no raw translation key is shown
-
