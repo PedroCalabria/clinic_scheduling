@@ -270,9 +270,9 @@ a false claim rather than a forward one, and it is the first thing that should b
 - **Run by:** the maintainer, in a browser against the running app
 - **Result:** **passed** — all five judgement checks came back with opinions, and all five were
   favourable. The question `booking-core` left unanswered is now answered.
-- **Notes:** one design Open Question is closed by this run and one is left open; the accessibility
-  check was not run and task 8.4 archives open. All three are recorded below rather than left to be
-  inferred.
+- **Notes:** one design Open Question is closed by this run and one is left open. The accessibility
+  check was outstanding when this record was first written and **was closed shortly after, on the same
+  day** — see the head of the gaps section. Everything is recorded below rather than left to be inferred.
 
 ### The opinions, which are the deliverable
 
@@ -320,8 +320,17 @@ space that matters more, was looked at and the trade was accepted.
 
 ### What was NOT examined, stated plainly
 
-A blank or vague Outcome is indistinguishable from an overlooked one, so the gaps are named. The first is
-the one that matters.
+A blank or vague Outcome is indistinguishable from an overlooked one, so the gaps are named.
+
+**Check 12 was closed on 2026-08-25, after the archive commit.** The keyboard path through P2 was walked
+end to end and the browser's accessibility audit came back clean. **Task 8.4 is done and design Open
+Question 4 is closed.** So the largest hole in this record is filled, and what filled it was the browser
+session the bullet below said it needed.
+
+*The bullet is left exactly as it was recorded*, on `booking-lifecycle`'s precedent for a debt closed
+after its Outcome was written: what it says about **this change** stays true. It did archive with 8.4
+open — commit `ce999d4` folded the delta into the living spec at 46 of 47 tasks — and a reader comparing
+the archive against the spec should find that, not a tidied version of it.
 
 - **Check 12 was not run. The keyboard path and the accessibility audit are unexamined, task 8.4 stays
   unchecked, and this change archives with it open.** This is the largest hole in the record. `06 §2`

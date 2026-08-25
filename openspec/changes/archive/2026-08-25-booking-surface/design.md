@@ -368,8 +368,12 @@ wording the answers were given in.*
    never-cached posture visible. Untouched by the run. If the answer is yes, it should be argued on its
    own, not appended here.
 
-4. **Does the keyboard path actually work?** — **OPEN, and it is a gap rather than a question.** Added
-   here because the validation run did not reach check 12 and task 8.4 archives unchecked. The code was
-   written to earn AA on this surface — `aria-pressed` on a chosen slot, a real `<fieldset>` for the
-   radio group, native radios for arrow-key movement — and none of it has been seen in a browser or heard
-   in a screen reader. It needs a session, not a change.
+4. **Does the keyboard path actually work?** — **CLOSED 2026-08-25: yes.** Opened when the validation run
+   did not reach check 12 and task 8.4 archived unchecked; closed shortly after by the browser session it
+   asked for. The keyboard path through P2 was walked end to end and the accessibility audit came back
+   clean. What the code was written to earn on this surface — `aria-pressed` on a chosen slot, a real
+   `<fieldset>` for the radio group, native radios so arrow-key movement comes from the platform — has
+   now been seen rather than only argued, and task 3.2's *"Verified in the browser at 8.4"* is discharged
+   with it. The question is kept here rather than deleted: it was a real gap for the length of an
+   archive, and the design system's rule that state is never carried by colour alone (cited in D2) is the
+   one this change was most at risk of breaking while restoring two others.
