@@ -52,6 +52,28 @@ internal sealed class SchedulingOptions
     public int MaxWindowDays { get; set; } = 31;
 
     /// <summary>
+    /// How much notice a patient must give to cancel or reschedule (02-domain-model.md §5, F3).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>Configured here and deliberately not carried in <see cref="ClinicScheduling.Parameters"/>.</b>
+    /// The three numbers above decide what availability may <em>offer</em>, and they are handed to
+    /// the solver on the read and the write alike so the two cannot apply different rules. This one
+    /// decides who may <em>undo</em>. The solver has no use for it, and a solver holding it would
+    /// eventually have it applied — at which point availability starts hiding slots for a reason
+    /// that has nothing to do with whether they are free.
+    /// </para>
+    /// <para>
+    /// A default, like its neighbours: a clinic that has not said otherwise gets 24 hours and
+    /// starts. The range refuses zero, because a cutoff of nothing is not a lenient policy — it is
+    /// the rule silently disabled, and the operator who typed it deserves a startup failure rather
+    /// than a discovery.
+    /// </para>
+    /// </remarks>
+    [Range(1, 30 * 24)]
+    public int CancellationCutoffHours { get; set; } = 24;
+
+    /// <summary>
     /// Availability requests permitted per caller per minute (03-nfr.md §2).
     /// </summary>
     /// <remarks>
@@ -83,12 +105,21 @@ internal sealed class ClinicScheduling
             value.MinimumLeadTimeMinutes,
             value.HorizonDays);
 
+        CancellationCutoff = CancellationCutoffPolicy.Of(value.CancellationCutoffHours);
         MaxWindowDays = value.MaxWindowDays;
         AvailabilityRequestsPerMinute = value.AvailabilityRequestsPerMinute;
     }
 
     /// <summary>What the solver reads.</summary>
+    /// <remarks>
+    /// The cancellation cutoff is <b>not</b> in here, and its absence is the design rather than an
+    /// oversight — see <see cref="SchedulingOptions.CancellationCutoffHours"/> and
+    /// <see cref="CancellationCutoff"/>.
+    /// </remarks>
     public SchedulingParameters Parameters { get; }
+
+    /// <summary>What the two lifecycle transitions read, and the solver never does.</summary>
+    public CancellationCutoffPolicy CancellationCutoff { get; }
 
     /// <summary>What the endpoint validates the requested window against.</summary>
     public int MaxWindowDays { get; }

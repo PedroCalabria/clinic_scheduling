@@ -202,6 +202,8 @@ internal sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appoin
             .HasConversion<string>()
             .HasMaxLength(16);
 
+        builder.Property(appointment => appointment.RescheduledFromId).HasColumnName("rescheduled_from_id");
+
         builder.Property(appointment => appointment.CreatedAtUtc).HasColumnName("created_at_utc");
 
         // Read-through and derived members. StartsAt and EndsAt exist for callers and are the
@@ -234,6 +236,22 @@ internal sealed class AppointmentConfiguration : IEntityTypeConfiguration<Appoin
         builder.HasOne<AppointmentType>()
             .WithMany()
             .HasForeignKey(appointment => appointment.AppointmentTypeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        // The reschedule link (booking-lifecycle, design C5). Self-referencing and nullable: an
+        // appointment booked outright has nothing to point at.
+        //
+        // This DOES get an index, unlike the window read above, and the distinction is worth
+        // stating rather than looking like an inconsistency. The exclusion constraint's GiST
+        // index covers (professional_id, time_range) and answers overlap questions; this is an
+        // equality lookup on a different column entirely, so nothing existing serves it.
+        //
+        // Restrict, like its four neighbours, though nothing deletes an appointment (I10) — so
+        // the clause describes an event that cannot happen and is present for consistency rather
+        // than for effect.
+        builder.HasOne<Appointment>()
+            .WithMany()
+            .HasForeignKey(appointment => appointment.RescheduledFromId)
             .OnDelete(DeleteBehavior.Restrict);
     }
 }

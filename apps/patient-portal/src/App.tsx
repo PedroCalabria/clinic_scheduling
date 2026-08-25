@@ -8,6 +8,8 @@ import {
 } from '@clinic/shared';
 import { useTranslation } from 'react-i18next';
 import { Link, Route, Routes, useNavigate } from 'react-router';
+import { AppointmentsPage } from './features/appointments/AppointmentsPage';
+import { ReschedulePage } from './features/appointments/ReschedulePage';
 import { BookingSearchPage } from './features/booking/BookingSearchPage';
 import { BookingSuccessPage } from './features/booking/BookingSuccessPage';
 import { ConfirmBookingPage } from './features/booking/ConfirmBookingPage';
@@ -18,10 +20,10 @@ import { ProfilePage } from './features/profile/ProfilePage';
  * The patient portal's surface after change 2: the public door (P1) and the patient's own
  * record (P7).
  *
- * The booking flow's first three screens arrive with `booking-core`: P2 searches real
- * availability, P3 confirms and commits, P4 reassures. P5 and P6 — the patient's own list, and
- * reschedule or cancel — belong to `booking-lifecycle`, which is why P4's onward link points at the
- * profile for now.
+ * The booking flow's first three screens arrived with `booking-core`: P2 searches real
+ * availability, P3 confirms and commits, P4 reassures. `booking-lifecycle` adds the other two — P5
+ * lists the patient's own appointments and P6 moves one — so P4's onward link now points where it
+ * always meant to, and the temporary destination that change named is closed.
  *
  * All three are behind `RequireAuth`: availability is readable by any authenticated caller and
  * booking is the patient's own act, so there is no anonymous browsing of the schedule.
@@ -65,6 +67,28 @@ export function App() {
           <RequireAuth signInPath="/">
             <Shell>
               <BookingSuccessPage />
+            </Shell>
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/appointments"
+        element={
+          <RequireAuth signInPath="/">
+            <Shell>
+              <AppointmentsPage />
+            </Shell>
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/appointments/:id/reschedule"
+        element={
+          <RequireAuth signInPath="/">
+            <Shell>
+              <ReschedulePage />
             </Shell>
           </RequireAuth>
         }
@@ -116,6 +140,15 @@ function Shell({ children }: { children: React.ReactNode }) {
                 {/* The one action this portal exists for, reachable from every screen in it. */}
                 <Link to="/book" className="text-sm font-medium text-primary underline">
                   {t('portal.bookAppointment')}
+                </Link>
+
+                {/*
+                  P5 reachable from every screen, not only from P4. A patient who wants to change
+                  something arrives wanting their list, and hunting for it through a confirmation
+                  they closed days ago is not a path.
+                */}
+                <Link to="/appointments" className="text-sm text-meta underline">
+                  {t('portal.myAppointments')}
                 </Link>
 
                 <Link to="/profile" className="text-sm text-meta underline">

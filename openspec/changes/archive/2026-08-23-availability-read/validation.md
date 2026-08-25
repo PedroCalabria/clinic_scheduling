@@ -155,10 +155,42 @@ Record the opinion either way — this is the one decision in the change a test 
 
 ## Outcome
 
-- **Run on:** _not yet run_
-- **Run by:** _pending_
-- **Result:** **deferred** — archived before execution, deliberately
-- **Notes:** see below
+- **Run on:** deferred 2026-08-23; **resolved 2026-08-24**
+- **Run by:** not run as its own pass — discharged by two later guides that were (see below)
+- **Result:** **closed** — the blocking condition is gone and the substance was covered elsewhere
+- **Notes:** the original deferral and its reasoning are kept below, unedited, because the trigger
+  they named is what fired
+
+### Closed — 2026-08-24, and how
+
+**The trigger fired.** This guide named it precisely: *"the first deployment with a configured Google
+OAuth client."* That happened before `booking-core`, whose own guide opens by asking for this one to
+be run first. It was not run then, and `booking-lifecycle`'s guide asked again and recorded a second
+time that the answer was unknown. Rather than ask a third time, it is settled here.
+
+**Discharged rather than executed, and the distinction matters.** This guide was never run as its own
+pass. What removed its blocker — no way to reach S3 as a professional, because the seeded
+`dra.helena@clinic.local` is on a domain that does not exist — is that a **real Google professional
+account now exists**, and two later guides used it. Reading the record rather than asserting from
+memory:
+
+- `booking-core`'s Outcome records **passed**, executed by the maintainer with the real Google client.
+- Its **check 13** required signing in on S0 as an invited professional and using **S3** to create,
+  edit and be refused a block — which is checks 1, 2, 4 and 5 of this guide in substance, on the same
+  surface, as the same role.
+- Its **check 14** required switching pt-BR ↔ en on *"the S3 dialog showing the new refusal"* — which
+  is this guide's both-locales requirement on the surface this change introduced.
+
+**What is still not covered, stated plainly.** This guide's **check 3** — the wall-clock round trip on
+**S3 specifically**, in a browser in a shifted timezone — has still never been performed. Later guides
+covered the equivalent on P2/P3/P4 (`booking-core` check 10) and on P5/P6 (`booking-lifecycle` check
+10), and both passed, so the conversion code they share is exercised. S3 writes wall clock rather than
+reading instants, which makes it the one surface where the shared evidence is weakest.
+
+**That residual risk is not closed and is not claimed to be.** It is the same class the original note
+called *"the one worth worrying about": an offset bug there would pass every test in this repository.*
+It now has one fewer place to hide and one place left. Whoever next touches S3 should shift their
+machine's timezone once and look.
 
 **This change was archived with its guide unexecuted, by the maintainer's decision.** Recorded here
 rather than left blank, because a blank Outcome is indistinguishable from an overlooked one — and

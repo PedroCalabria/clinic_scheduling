@@ -57,3 +57,86 @@ internal sealed record AppointmentResponse(
     string EndsAt,
     string Status,
     string Timezone);
+
+/// <summary>
+/// A patient moving an appointment to a new time (design C3).
+/// </summary>
+/// <remarks>
+/// <para>
+/// <b>One field, and the three that are absent are the point.</b> No professional, no appointment
+/// type, no room. A reschedule keeps the first two by definition and the server assigns the third,
+/// so "a reschedule cannot change the professional" is structural rather than a rule somebody
+/// validates — the same shape that made server-side room assignment structural in
+/// <see cref="BookAppointmentRequest"/>.
+/// </para>
+/// <para>
+/// Moving to a different professional is a cancellation followed by a new booking, through the two
+/// paths that already exist. That is what it means, and it also keeps the professional-scoped lock
+/// single-keyed, so the deadlock a two-professional reschedule would introduce does not exist to
+/// be solved.
+/// </para>
+/// <para>
+/// A <b>UTC instant</b> like every other slot reference on the wire (Q4), never a wall-clock label.
+/// </para>
+/// </remarks>
+internal sealed record RescheduleAppointmentRequest(string? StartsAt);
+
+/// <summary>
+/// One appointment as P5 lists it.
+/// </summary>
+/// <param name="CanChange">
+/// Whether the caller may still reschedule or cancel it — <b>decided by the server</b> (design
+/// C10).
+/// </param>
+/// <param name="IsUpcoming">Whether it has yet to finish, which is how the two lists are split.</param>
+/// <remarks>
+/// <para>
+/// <see cref="CanChange"/> is a decision rather than the inputs to one, and the cutoff duration is
+/// deliberately not sent. A browser's clock is not the clinic's and is user-settable; a screen
+/// computing the rule locally could show an enabled action the server will refuse, and the entire
+/// point of P5 showing the rule is that the rule shown is the rule enforced.
+/// </para>
+/// <para>
+/// It folds two causes together — terminal, and inside the cutoff — because a screen needs to know
+/// only that the action is unavailable. The reason it *shows* comes from
+/// <see cref="Status"/> plus <see cref="StartsAt"/>, which it already has.
+/// </para>
+/// </remarks>
+internal sealed record MyAppointment(
+    Guid Id,
+    Guid ProfessionalId,
+    Guid AppointmentTypeId,
+    string StartsAt,
+    string EndsAt,
+    string Status,
+    bool CanChange,
+    bool IsUpcoming)
+{
+    /// <summary>
+    /// The same shape a booking returns, so P6's success and P3's success are one type on the
+    /// client.
+    /// </summary>
+    internal AppointmentResponse ToAppointmentResponse(Clinic.Api.Infrastructure.Time.ClinicTimezone timezone) =>
+        new(Id, ProfessionalId, AppointmentTypeId, StartsAt, EndsAt, Status, timezone.Id);
+}
+
+/// <summary>
+/// P5's payload — the caller's own appointments, split by time.
+/// </summary>
+/// <remarks>
+/// <para>
+/// Split by <b>time</b> rather than by status, with terminal appointments annotated where they
+/// fall: "what happened to my 3pm?" is the question a patient asks, and a cancelled appointment
+/// belongs where they would look for it rather than in a third section. Recorded as design Open
+/// Question 1 — the validation guide collects a human opinion before this hardens.
+/// </para>
+/// <para>
+/// <see cref="Timezone"/> travels with the payload for the same reason the availability response
+/// carries it: every time above is an instant, and clinic wall clock is the only correct way to
+/// render it.
+/// </para>
+/// </remarks>
+internal sealed record MyAppointmentsResponse(
+    IReadOnlyList<MyAppointment> Upcoming,
+    IReadOnlyList<MyAppointment> Past,
+    string Timezone);

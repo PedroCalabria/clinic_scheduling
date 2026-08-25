@@ -145,5 +145,6 @@ app.MapTimeBlockEndpoints();
 // schema rather than of the code above it.
 app.MapBookingOptionsEndpoints();
 app.MapBookingEndpoints();
+app.MapAppointmentLifecycleEndpoints();
 
 app.Run();

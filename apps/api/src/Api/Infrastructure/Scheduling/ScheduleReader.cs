@@ -67,12 +67,34 @@ internal sealed class ScheduleReader(
     /// One professional, or null for every professional qualified for the type. The booking path
     /// always names one; the availability read may not (design F7).
     /// </param>
+    /// <param name="excludingAppointmentId">
+    /// An appointment to leave out of the busy set — the one being rescheduled (design C7).
+    /// </param>
+    /// <remarks>
+    /// <b>Why the exclusion is a parameter here rather than a filter the caller applies
+    /// afterwards.</b> <c>booking-lifecycle</c>'s design said the reschedule handler would strip
+    /// its own appointment from this step's <em>output</em>, leaving this class untouched. That
+    /// turned out to be impossible: a <see cref="BusyInterval"/> carries a start, an end and a
+    /// cause, and deliberately no identity — which is the whole reason blocks and appointments can
+    /// share one list. Matching on the range instead would be guessing, so the row is excluded
+    /// where it can be named, in the query.
+    /// <para>
+    /// The booking path passes nothing and is behaviourally untouched, which was the actual point
+    /// of that design note.
+    /// </para>
+    /// <para>
+    /// Without it, a near reschedule refuses itself: at load time the appointment being moved is
+    /// still <c>Scheduled</c>, so the patient would be told their own outgoing appointment blocks
+    /// their new one.
+    /// </para>
+    /// </remarks>
     internal async Task<ScheduleInputs> ReadAsync(
         AppointmentType appointmentType,
         LocalDate fromDate,
         LocalDate toDate,
         Guid? professionalId,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? excludingAppointmentId = null)
     {
         // Every room of the required type, with its type's turnaround buffer, ordered by name so
         // the solver's "first free one" is a stable and explicable choice rather than whatever the
@@ -153,6 +175,7 @@ internal sealed class ScheduleReader(
             windowStart,
             windowEnd,
             rooms.Count == 0 ? 0 : rooms.Max(room => room.BufferMinutes),
+            excludingAppointmentId,
             cancellationToken);
 
         // The seam fill (design B11). An appointment contributes to TWO lists — its professional's
@@ -210,7 +233,8 @@ internal sealed class ScheduleReader(
     internal async Task<bool> PatientIsBusyAsync(
         Guid patientId,
         TimeRange range,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Guid? excludingAppointmentId = null)
     {
         var (connection, transaction) = await ScheduleMutation.EnlistAsync(database, cancellationToken);
 
@@ -222,6 +246,7 @@ internal sealed class ScheduleReader(
                 where patient_id = @patientId
                   and status = @live
                   and time_range && tstzrange(@from, @to, '[)')
+                  and (@excluding::uuid is null or id <> @excluding)
             )
             """,
             new
@@ -230,6 +255,11 @@ internal sealed class ScheduleReader(
                 live = nameof(AppointmentStatus.Scheduled),
                 from = range.Start.ToDateTimeUtc(),
                 to = range.End.ToDateTimeUtc(),
+
+                // The reschedule's own appointment. I6 is about the patient being in two places
+                // at once, and an appointment they are in the act of vacating is not a second
+                // place.
+                excluding = excludingAppointmentId,
             },
             transaction,
             cancellationToken: cancellationToken));
@@ -310,6 +340,7 @@ internal sealed class ScheduleReader(
         Instant windowStart,
         Instant windowEnd,
         int maxBufferMinutes,
+        Guid? excludingAppointmentId,
         CancellationToken cancellationToken)
     {
         if (professionalIds.Count == 0 && resourceIds.Count == 0)
@@ -335,6 +366,7 @@ internal sealed class ScheduleReader(
             where status = @live
               and time_range && tstzrange(@from, @to, '[)')
               and (professional_id = any(@professionalIds) or resource_id = any(@resourceIds))
+              and (@excluding::uuid is null or id <> @excluding)
             """,
             new
             {
@@ -343,6 +375,10 @@ internal sealed class ScheduleReader(
                 to = windowEnd.ToDateTimeUtc(),
                 professionalIds = professionalIds.ToArray(),
                 resourceIds = resourceIds.ToArray(),
+
+                // Null on every path but the reschedule. Named in SQL rather than branched on in
+                // C#, so there is one query with one plan instead of two that could drift.
+                excluding = excludingAppointmentId,
             },
             transaction,
             cancellationToken: cancellationToken));

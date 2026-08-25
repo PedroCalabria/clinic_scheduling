@@ -26,7 +26,7 @@ Every error response carries a machine-readable body:
 | 401 | not authenticated | `auth.session_expired` |
 | 403 | authenticated but not allowed | `auth.forbidden`, `auth.ownership_denied` |
 | 404 | not found | `booking.appointment_not_found` |
-| 409 | conflict (state/race) | `booking.slot_taken`, `booking.slot_blocked`, `booking.patient_busy`, `booking.block_overlaps_appointment` |
+| 409 | conflict (state/race) | `booking.slot_taken`, `booking.slot_blocked`, `booking.patient_busy`, `booking.block_overlaps_appointment`, `booking.appointment_not_changeable` |
 | 422 | valid shape, violates a business rule | `booking.cutoff_passed`, `booking.outside_working_hours` |
 | 429 | rate-limited | `auth.rate_limited` |
 | 503 | dependency unavailable | `availability.unavailable`, `calendar.sync_failed` |
@@ -81,8 +81,9 @@ Every error response carries a machine-readable body:
 | `booking.horizon_exceeded` | 422 | beyond scheduling horizon |
 | `booking.specialty_mismatch` | 422 | professional lacks the appointment type's specialty (I2) |
 | `booking.resource_unavailable` | 409 | no free resource of the required type |
-| `booking.cutoff_passed` | 422 | patient reschedule/cancel inside the 24h cutoff (F3) |
-| `booking.appointment_not_found` | 404 | unknown / soft-deleted appointment |
+| `booking.cutoff_passed` | 422 | reschedule/cancel inside the cancellation cutoff (F3, default 24 h) — first used in `booking-lifecycle`. The rule takes an *authority* rather than a role, so the same refusal admits a caller the cutoff does not apply to; the front-desk override that passes it is `booking-desk`'s, not this one's |
+| `booking.appointment_not_found` | 404 | unknown appointment, on a path whose caller is entitled to distinguish absence from denial. **No patient path uses it**: a patient naming an appointment that is not theirs and one naming an id that never existed both get `auth.ownership_denied`, so the response cannot be used to discover which appointments exist — the same reasoning as `patient.not_found` above. Not "soft-deleted": `booking-core` gave `appointments` no such column, because the status *is* the history |
+| `booking.appointment_not_changeable` | 409 | the appointment is already in a terminal state, so there is nothing left to cancel or move — added in `booking-lifecycle`. **Flagged for review**: the proposal claimed this change needed no new code, and it does. The catalogue had no honest answer — `appointment_not_found` would deny a row the patient can see on P5, `ownership_denied` is about who rather than about state, and `cutoff_passed` would give a time-based reason for a state-based refusal, which is the confusion `slot_blocked` was split from `slot_taken` to avoid. The same argument `booking.patient_busy` was added under |
 | `booking.block_overlaps_appointment` | 409 | internal block collides with an active appointment (I7 refusal) |
 
 ### calendar — capability `calendar-integration`

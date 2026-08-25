@@ -35,6 +35,17 @@ internal static class BookingRefusals
         BookingRefusal.SpecialtyMismatch =>
             ApiError.Result(ErrorCodes.BookingSpecialtyMismatch, StatusCodes.Status422UnprocessableEntity),
 
+        // The lifecycle rule. 422 like its neighbours above: the request is well-formed, the
+        // appointment exists and is the caller's, and a business rule says not this close.
+        BookingRefusal.CutoffPassed =>
+            ApiError.Result(ErrorCodes.BookingCutoffPassed, StatusCodes.Status422UnprocessableEntity),
+
+        // 409 rather than 422, because it is a conflict with state that exists rather than a rule
+        // about the request: the appointment was changed, quite possibly by this same patient in
+        // another tab.
+        BookingRefusal.AppointmentNotChangeable =>
+            ApiError.Result(ErrorCodes.BookingAppointmentNotChangeable, StatusCodes.Status409Conflict),
+
         // 409 — a conflict with state that exists. The three that a race can also produce, which
         // is why the constraint mapping below answers with exactly these.
         BookingRefusal.SlotBlocked =>

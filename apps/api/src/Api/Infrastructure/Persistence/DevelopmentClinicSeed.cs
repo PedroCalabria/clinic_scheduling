@@ -261,6 +261,37 @@ internal sealed class DevelopmentClinicSeed(
                     AppointmentSource.SelfService),
                 scheduling.Parameters,
                 instantNow,
+                now),
+
+            // --- booking-lifecycle: the one that CANNOT be changed ---------------------
+            // P5 shows the cancellation cutoff as a locked state, and a locked state nobody can
+            // see is a claim rather than a screen. So the seed carries an appointment inside the
+            // cutoff as well as two outside it, and the very first load of P5 on a fresh stack
+            // shows both halves of domain-model F3.
+            //
+            // Placed a few hours from NOW rather than at a clinic wall-clock time on a fixed
+            // date, and that is the whole point: "inside the cutoff" is a fact about the distance
+            // to the present, so a fixed date would stop being inside it the following day and
+            // the locked state would quietly disappear from the demo. Six hours clears the
+            // default one-hour lead time comfortably and sits well inside the default 24.
+            //
+            // It may land outside the professional's working hours, which is harmless: the seed
+            // constructs appointments through the factory, working hours are the solver's
+            // concern, and no slot is offered there for it to contradict.
+            Appointment.Book(
+                new AppointmentBooking(
+                    patient.Id,
+                    professional.Id,
+                    consultingRoomOne.Id,
+                    cardiologyVisit.Id,
+                    instantNow + Duration.FromHours(6),
+                    DurationMinutes: 40,
+                    ProfessionalHoldsDurationForType: true,
+                    consultingRoom.Id,
+                    cardiologyVisit.RequiredResourceTypeId,
+                    AppointmentSource.SelfService),
+                scheduling.Parameters,
+                instantNow,
                 now));
 
         await database.SaveChangesAsync(cancellationToken);
@@ -269,7 +300,7 @@ internal sealed class DevelopmentClinicSeed(
             "Seeded a development clinic: {Specialties} specialties, {Types} appointment types, "
             + "{Professional} with {Segments} working-hour segments and {Blocks} blocked periods, "
             + "and {Patient} with {Appointments} appointments.",
-            2, 3, ProfessionalEmail, segments.Count, 2, PatientEmail, 2);
+            2, 3, ProfessionalEmail, segments.Count, 2, PatientEmail, 3);
     }
 
     /// <summary>A clinic wall-clock time on a date, as the instant a block stores.</summary>

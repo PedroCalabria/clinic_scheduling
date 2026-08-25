@@ -271,6 +271,37 @@ nothing and make an idempotent read look like a command.
   `availability.window_invalid`; **revisit** when P2 lands and a real window is exercised in a
   browser.
 
+  **CLOSED — measured 2026-08-24**, two changes later than intended. `booking-core` performed the
+  check and did not write the figure down; `booking-lifecycle` carried the debt and shipped without
+  it. Measured here instead of in a browser, and deliberately so: the prediction was about
+  *scaling*, and the demo clinic has two professionals, so a browser number would have answered a
+  question nobody asked. Measured through the API against a real PostgreSQL — 8:00–18:00 working
+  days, the configured 15-minute step, a 60-minute visit, four rooms, **any professional**:
+
+  | Professionals | Window | Slots | Payload | Time |
+  |---|---|---|---|---|
+  | 1 | 14 d | 74 | 12.4 KiB | ~10 ms |
+  | 2 | 31 d | 370 | 61.6 KiB | ~8 ms |
+  | 5 | 31 d | 925 | 153.7 KiB | ~10 ms |
+  | 10 | 31 d | 1 850 | 307.3 KiB | ~12 ms |
+  | 20 | 31 d | 3 700 | 614.4 KiB | ~18 ms |
+
+  **The prediction was exactly right and the conclusion is that it does not matter yet.** Growth is
+  linear in professionals and in window, at a steady **≈170 bytes per slot**. What the prediction did
+  not say, and what the numbers do, is that **the cost is entirely payload and not compute** — the
+  solver answers a twenty-professional month in under 20 ms, so `F1`'s "solver-in-Domain is a bet on
+  small inputs" is a bet that is currently winning by a wide margin.
+
+  614 KiB uncompressed is the number worth remembering, and it is the worst realistic case: the
+  widest window the API permits, every professional in a large clinic, at the finest step. It is also
+  highly repetitive JSON that gzip flattens, and no response served today comes close — the seeded
+  clinic's widest window is 62 KiB.
+
+  **The trigger is therefore re-armed rather than discharged:** the mitigations named originally (a
+  narrower default window, day-level pagination, coarser steps at distance) stay unbuilt, and the
+  thing to watch is a clinic passing roughly **ten professionals**, where a month crosses 300 KiB.
+  `booking-desk` adds S4 and S5 as consumers; neither changes the shape of this.
+
 - **Solver-in-Domain is a bet on small inputs** (F1). → Revisit trigger recorded in F1. The bet is
   cheap to lose: the input read is already the only thing that would change.
 

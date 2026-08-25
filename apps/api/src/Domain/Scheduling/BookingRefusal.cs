@@ -85,6 +85,38 @@ public enum BookingRefusal
     /// "not qualified for this kind of visit" and the specialty check comes along for free.
     /// </remarks>
     SpecialtyMismatch = 8,
+
+    /// <summary>
+    /// The appointment starts sooner than the cancellation cutoff allows —
+    /// <c>booking.cutoff_passed</c>, 422 (domain-model F3, added in <c>booking-lifecycle</c>).
+    /// </summary>
+    /// <remarks>
+    /// Produced only when the cutoff <em>applies</em> to the caller. The rule is stated in terms
+    /// of an authority rather than a role (<see cref="CancellationCutoffPolicy"/>), so a caller
+    /// entitled to act inside the cutoff never reaches this value — rather than reaching it and
+    /// being excused afterwards.
+    /// </remarks>
+    CutoffPassed = 9,
+
+    /// <summary>
+    /// The appointment is already in a terminal state — <c>booking.appointment_not_changeable</c>,
+    /// 409 (added in <c>booking-lifecycle</c>).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>A new code, and the same argument 5a made for <c>booking.patient_busy</c>.</b> The
+    /// catalogue had no answer for this: an appointment already cancelled is not missing
+    /// (<c>appointment_not_found</c> would be a lie about a row the patient can see on P5), not
+    /// somebody else's (<c>ownership_denied</c> is about who, not about state), and not late
+    /// (<c>cutoff_passed</c> would give a time-based reason for a state-based refusal — exactly
+    /// the confusion <c>slot_blocked</c> was split from <c>slot_taken</c> to avoid).
+    /// </para>
+    /// <para>
+    /// Reachable in one ordinary way rather than as a curiosity: a patient with P5 open in two
+    /// places, or one who cancelled and then used the back button.
+    /// </para>
+    /// </remarks>
+    AppointmentNotChangeable = 10,
 }
 
 /// <summary>

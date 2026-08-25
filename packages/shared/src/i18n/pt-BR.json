@@ -27,7 +27,8 @@
     "signInNote": "Usamos sua conta Google para que você não precise de mais uma senha.",
     "myProfile": "Meu perfil",
     "signedInAs": "Conectado como {{email}}",
-    "bookAppointment": "Agendar consulta"
+    "bookAppointment": "Agendar consulta",
+    "myAppointments": "Minhas consultas"
   },
   "profile": {
     "title": "Perfil e consentimentos",
@@ -149,7 +150,9 @@
     "booking_horizon_exceeded": "Essa data é mais distante do que a clínica aceita agendamentos.",
     "booking_specialty_mismatch": "Esse profissional não oferece mais esse tipo de consulta.",
     "booking_block_overlaps_appointment": "Você tem uma consulta nesse período. Cancele-a primeiro ou bloqueie outro horário.",
-    "availability_unavailable": "Não foi possível calcular os horários livres agora. Tente novamente em instantes."
+    "availability_unavailable": "Não foi possível calcular os horários livres agora. Tente novamente em instantes.",
+    "booking_cutoff_passed": "Esta consulta está próxima demais para ser alterada pelo site. Por favor, ligue para a recepção.",
+    "booking_appointment_not_changeable": "Esta consulta já foi cancelada ou remarcada."
   },
   "catalog": {
     "specialtiesTitle": "Especialidades",
@@ -313,7 +316,36 @@
     "timezoneNote": "Horários no fuso da clínica ({{timezone}}).",
     "whatNextTitle": "Próximos passos",
     "whatNextBody": "Chegue alguns minutos antes. Se precisar alterar ou cancelar, entre em contato com a recepção.",
-    "viewProfile": "Ir para meu perfil",
-    "bookAnother": "Agendar outra consulta"
+    "bookAnother": "Agendar outra consulta",
+    "viewAppointments": "Ver minhas consultas"
+  },
+  "appointments": {
+    "title": "Minhas consultas",
+    "subtitle": "Tudo o que você agendou, e tudo o que já aconteceu.",
+    "loading": "Carregando suas consultas…",
+    "upcomingTitle": "Próximas",
+    "upcomingEmpty": "Nada agendado ainda.",
+    "pastTitle": "Anteriores",
+    "pastEmpty": "Nada por aqui ainda.",
+    "reschedule": "Mudar horário",
+    "cancel": "Cancelar",
+    "cancelConfirm": "Cancelar esta consulta?",
+    "cancelYes": "Sim, cancelar",
+    "cancelNo": "Manter",
+    "locked": "Esta consulta está próxima demais para ser alterada pelo site. Por favor, ligue para a recepção.",
+    "notFound": "Esta consulta não está na sua lista.",
+    "backToList": "Voltar para minhas consultas",
+    "bookAnother": "Agendar outra consulta",
+    "rescheduleTitle": "Escolha um novo horário",
+    "rescheduleSubtitle": "Escolha qualquer horário livre abaixo. Nada muda até você escolher um.",
+    "movingFrom": "Agendada atualmente para",
+    "movingTo": "Novos horários disponíveis, no fuso horário da clínica ({{timezone}}).",
+    "sameProfessionalNote": "O profissional e o tipo de consulta permanecem os mesmos. Para ver outro profissional, cancele esta consulta e agende uma nova.",
+    "status": {
+      "Cancelled": "Cancelada",
+      "Rescheduled": "Remarcada para outro horário",
+      "Completed": "Realizada",
+      "NoShow": "Não compareceu"
+    }
   }
 }

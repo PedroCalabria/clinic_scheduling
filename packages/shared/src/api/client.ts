@@ -862,6 +862,90 @@ export async function bookAppointment(input: {
   }))!;
 }
 
+/** One appointment as P5 lists it. */
+export interface MyAppointment {
+  id: string;
+  professionalId: string;
+  appointmentTypeId: string;
+  startsAt: string;
+  endsAt: string;
+  /** Any of the five values; `booking-lifecycle` can produce three of them. */
+  status: string;
+  /**
+   * Whether the caller may still reschedule or cancel it — **the server's decision, not inputs
+   * to one**.
+   *
+   * The cancellation cutoff is deliberately not sent. A browser's clock is not the clinic's and
+   * is user-settable, so a screen computing the rule locally could offer an action the server
+   * will refuse — and the whole point of P5 showing the rule is that the rule shown is the rule
+   * enforced. It folds two causes together (terminal, and inside the cutoff) because a screen
+   * needs only to know the action is unavailable; what it *says* comes from `status` and
+   * `startsAt`, which it already has.
+   */
+  canChange: boolean;
+  /** Whether it has yet to finish. How the two lists are split. */
+  isUpcoming: boolean;
+}
+
+/** P5's payload — the caller's own appointments, split by time rather than by status. */
+export interface MyAppointmentsResponse {
+  upcoming: MyAppointment[];
+  past: MyAppointment[];
+  /** The zone to render every instant above in, so the browser never guesses. */
+  timezone: string;
+}
+
+/**
+ * The caller's own appointments, upcoming and past.
+ *
+ * Terminal appointments are present rather than filtered out, annotated where they fall in time:
+ * "what happened to my 3pm?" is the question a patient asks, and a cancelled appointment belongs
+ * where they would look for it.
+ */
+export async function listMyAppointments(): Promise<MyAppointmentsResponse> {
+  return (await apiFetch<MyAppointmentsResponse>('/appointments'))!;
+}
+
+/**
+ * Cancels the caller's own appointment, freeing the time it held.
+ *
+ * Refused with `booking.cutoff_passed` inside the cancellation cutoff, and with
+ * `booking.appointment_not_changeable` if it is already cancelled or rescheduled — the two-tab
+ * case. An appointment belonging to somebody else and an id that never existed both answer
+ * `auth.ownership_denied`, so this cannot be used to discover which appointments are real.
+ *
+ * **Requires no active consent**, unlike {@link rescheduleAppointment}: refusing to let somebody
+ * leave because they withdrew consent to data processing would trap them as a consequence of
+ * exercising a right.
+ */
+export async function cancelAppointment(id: string): Promise<AppointmentResponse> {
+  return (await apiFetch<AppointmentResponse>(`/appointments/${id}/cancel`, {
+    method: 'POST',
+  }))!;
+}
+
+/**
+ * Moves the caller's own appointment to a new time.
+ *
+ * **Carries an instant and nothing else.** No professional, no appointment type, no room — a
+ * reschedule keeps the first two by definition and the server assigns the third, so "a reschedule
+ * cannot change the professional" is structural rather than validated. Moving to a different
+ * professional is a cancellation followed by a new booking, through the two calls above.
+ *
+ * Returns the **new** appointment; the original is now `Rescheduled` and keeps its own time, so
+ * the history stays readable. Refused for every reason a booking of the same instant would be
+ * refused, plus the cutoff and the already-terminal cases.
+ */
+export async function rescheduleAppointment(
+  id: string,
+  input: { startsAt: string },
+): Promise<AppointmentResponse> {
+  return (await apiFetch<AppointmentResponse>(`/appointments/${id}/reschedule`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }))!;
+}
+
 /**
  * Grants a consent again, at the version currently in force.
  *

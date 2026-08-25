@@ -80,17 +80,29 @@ public sealed class DevelopmentClinicSeedTests(ApiFixture fixture)
 
             var appointments = await database.Appointments.ToListAsync();
 
-            // Two, in two different rooms and of two different lengths, so a fresh stack shows the
+            // Three: two in different rooms and of different lengths, so a fresh stack shows the
             // subtraction removing time from BOTH halves of the tri-constraint rather than only
-            // from a professional's diary.
-            Assert.Equal(2, appointments.Count);
+            // from a professional's diary — plus booking-lifecycle's third, below.
+            Assert.Equal(3, appointments.Count);
             Assert.Equal(2, appointments.Select(a => a.ResourceId).Distinct().Count());
             Assert.Equal(2, appointments.Select(a => a.EndsAt - a.StartsAt).Distinct().Count());
             Assert.All(appointments, a => Assert.Equal(AppointmentStatus.Scheduled, a.Status));
 
             // And they are in the future, so the seed keeps demonstrating its own feature instead
             // of quietly drifting past the horizon into a set of historical rows.
-            Assert.All(appointments, a => Assert.True(a.StartsAt > SystemClock.Instance.GetCurrentInstant()));
+            var clockNow = SystemClock.Instance.GetCurrentInstant();
+
+            Assert.All(appointments, a => Assert.True(a.StartsAt > clockNow));
+
+            // booking-lifecycle: one of them is INSIDE the default 24-hour cancellation cutoff and
+            // the others are outside it, so the first load of P5 on a fresh stack shows both the
+            // changeable and the locked state. Asserted rather than assumed, because the locked
+            // state is the half a demo is most likely to be missing — and because an appointment
+            // pinned to a fixed date would silently stop being inside the cutoff the next day.
+            var cutoff = Duration.FromHours(24);
+
+            Assert.Single(appointments, a => a.StartsAt - clockNow < cutoff);
+            Assert.Equal(2, appointments.Count(a => a.StartsAt - clockNow >= cutoff));
         });
     }
 
