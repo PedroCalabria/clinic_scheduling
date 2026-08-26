@@ -510,4 +510,107 @@ public sealed class StaffAccountTests(ApiFixture fixture)
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
+
+    [Fact]
+    public async Task An_administrator_restores_a_disabled_account()
+    {
+        // The other half of disabling, missing until calendar-connection: 00-context.md §5 has
+        // called disabling "a reversible off-switch" since change 2 while nothing could reverse it.
+        var (admin, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _admin = admin;
+
+        var (client, user) = await fixture.AsRoleAsync(Role.FrontDesk);
+        using var _client = client;
+
+        await Ok(admin.PostAsync($"/api/staff-accounts/{user.Id}/disable"));
+
+        // Access really ended — the session this client holds is refused on its next request.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/session")).StatusCode);
+
+        await Ok(admin.PostAsync($"/api/staff-accounts/{user.Id}/enable"));
+
+        await fixture.WithDatabaseAsync(async database =>
+        {
+            var restored = await database.Users.SingleAsync(candidate => candidate.Id == user.Id);
+
+            Assert.Equal(UserStatus.Active, restored.Status);
+            Assert.True(restored.CanAuthenticate);
+        });
+
+        // Sessions are NOT resurrected: restoring makes the account able to sign in again, it
+        // does not hand back the sessions that were revoked.
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/auth/session")).StatusCode);
+    }
+
+    [Fact]
+    public async Task Restoring_an_unclaimed_invitation_leaves_it_claimable()
+    {
+        var (admin, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _admin = admin;
+
+        var email = $"dr.restore-{Guid.NewGuid():N}@example.test";
+        var created = await Ok(admin.PostAsync(
+            "/api/staff-accounts", new { email, role = nameof(Role.Professional) }));
+
+        using var document = JsonDocument.Parse(await created.Content.ReadAsStringAsync());
+        var id = document.RootElement.GetProperty("id").GetGuid();
+
+        await Ok(admin.PostAsync($"/api/staff-accounts/{id}/disable"));
+        await Ok(admin.PostAsync($"/api/staff-accounts/{id}/enable"));
+
+        await fixture.WithDatabaseAsync(async database =>
+        {
+            var restored = await database.Users.SingleAsync(candidate => candidate.Id == id);
+
+            // Not Active: an invitation restored as active would be an account that may hold a
+            // session while having no identity behind it.
+            Assert.Equal(UserStatus.PendingClaim, restored.Status);
+            Assert.True(restored.AwaitsClaim);
+        });
+    }
+
+    [Fact]
+    public async Task A_deactivated_account_cannot_be_restored()
+    {
+        // Deactivation released the address, so it may already belong to a live account.
+        var (admin, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _admin = admin;
+
+        var (_, user) = await fixture.AsRoleAsync(Role.FrontDesk);
+
+        await Ok(admin.PostAsync($"/api/staff-accounts/{user.Id}/deactivate"));
+
+        var response = await admin.PostAsync($"/api/staff-accounts/{user.Id}/enable");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Only_an_administrator_may_restore_an_account()
+    {
+        var (admin, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _admin = admin;
+
+        var (desk, user) = await fixture.AsRoleAsync(Role.FrontDesk);
+        using var _desk = desk;
+
+        await Ok(admin.PostAsync($"/api/staff-accounts/{user.Id}/disable"));
+
+        var (other, _) = await fixture.AsRoleAsync(Role.FrontDesk);
+        using var _other = other;
+
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            (await other.PostAsync($"/api/staff-accounts/{user.Id}/enable")).StatusCode);
+    }
+
+    /// <summary>Asserts the call succeeded, reporting the body when it did not.</summary>
+    private static async Task<HttpResponseMessage> Ok(Task<HttpResponseMessage> call)
+    {
+        var response = await call;
+
+        Assert.True(response.IsSuccessStatusCode, await response.Content.ReadAsStringAsync());
+
+        return response;
+    }
 }

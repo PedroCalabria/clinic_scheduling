@@ -121,15 +121,20 @@ public sealed record AppointmentBooking(
 /// <b><c>rescheduledFromId</c> exists as of <c>booking-lifecycle</c>; <c>externalEventId</c> still
 /// does not.</b> The rule 5a stated has not changed — no column for a producer that does not
 /// exist — it is that the producer now exists. <see cref="RescheduleTo"/> writes the link;
-/// nothing writes an external event id, because change 6 is where a calendar first appears.
+/// nothing writes an external event id. <b>Still true after change 6a</b>, which establishes the
+/// calendar CONNECTION and propagates nothing: the column arrives with 6b's outbox, the producer
+/// that would fill it.
 /// </para>
 /// <para>
 /// <b>Two of the four terminal transitions are reachable.</b> <see cref="Cancel"/> and
 /// <see cref="RescheduleTo"/> are here; there is no <c>Complete()</c> and no <c>MarkNoShow()</c>,
 /// so <see cref="AppointmentStatus.Completed"/> and <see cref="AppointmentStatus.NoShow"/> remain
 /// unreachable <em>by inspection</em> rather than by reading a transition table. They are
-/// front-desk observations about a visit that has already happened, and the screen that records
-/// them is <c>booking-desk</c>'s.
+/// front-desk observations about a visit that has already happened.
+/// <b>Correction, made in change 6a:</b> this comment used to say <c>booking-desk</c> would
+/// record them. It shipped without doing so, which left the two states owned by nobody — they
+/// now belong to the <c>visit-outcome</c> change (<c>05-openspec-workflow.md</c> §3), which is
+/// where <c>Complete()</c> and <c>MarkNoShow()</c> arrive.
 /// </para>
 /// </remarks>
 public sealed class Appointment

@@ -42,6 +42,25 @@ internal static class AuthCookies
     /// <summary>Path the OAuth state cookie is scoped to — it has no business anywhere else.</summary>
     internal const string OAuthStatePath = "/api/auth";
 
+    /// <summary>
+    /// Holds <c>state</c> for one in-flight calendar authorization (change 6a, design K2).
+    /// </summary>
+    /// <remarks>
+    /// A separate cookie from <see cref="OAuthState"/>, scoped to a separate path, and this is
+    /// the cheapest place to see why. The two flows have opposite obligations — the sign-in
+    /// callback establishes a session and may create a user, the calendar callback must do
+    /// neither — so a shared cookie would let one flow's half-finished state be presented to the
+    /// other's callback. Separate names and separate paths make that impossible rather than
+    /// carefully avoided.
+    ///
+    /// It carries <b>no nonce</b>: a nonce binds an ID token to a request, and this flow
+    /// validates no ID token. Carrying one would be cargo.
+    /// </remarks>
+    internal const string CalendarState = "clinic.calendar";
+
+    /// <summary>Path the calendar state cookie is scoped to.</summary>
+    internal const string CalendarStatePath = "/api/calendar";
+
     internal static CookieOptions ForSession(DateTimeOffset expiresAtUtc) => new()
     {
         HttpOnly = true,
@@ -84,6 +103,27 @@ internal static class AuthCookies
             Secure = true,
             SameSite = SameSiteMode.Lax,
             Path = "/",
+        });
+
+    internal static CookieOptions ForCalendarState(DateTimeOffset expiresAtUtc) => new()
+    {
+        HttpOnly = true,
+        Secure = true,
+        // Lax for the same reason the sign-in state cookie needs it: the browser comes back from
+        // Google by top-level navigation, and under Strict this cookie would not be sent — the
+        // flow would fail looking exactly like a state bug.
+        SameSite = SameSiteMode.Lax,
+        Path = CalendarStatePath,
+        Expires = expiresAtUtc,
+    };
+
+    internal static void DeleteCalendarState(HttpResponse response) =>
+        response.Cookies.Delete(CalendarState, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.Lax,
+            Path = CalendarStatePath,
         });
 
     internal static void DeleteOAuthState(HttpResponse response) =>

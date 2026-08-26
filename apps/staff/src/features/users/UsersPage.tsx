@@ -18,6 +18,7 @@ import {
   createStaffAccount,
   deactivateStaffAccount,
   disableStaffAccount,
+  enableStaffAccount,
   findStaffAccountByEmail,
   listStaffAccounts,
   useApiErrorMessage,
@@ -79,6 +80,14 @@ export function UsersPage() {
     },
   });
 
+  const enable = useMutation({
+    mutationFn: (id: string) => enableStaffAccount(id),
+    onSuccess: () => {
+      setNotice(t('users.enabled'));
+      void queryClient.invalidateQueries({ queryKey: ACCOUNTS_QUERY_KEY });
+    },
+  });
+
   // --- The recovery path (design D4/D5) ---------------------------------------------
   //
   // `undefined` means nobody has looked yet, `null` means nobody holds the address.
@@ -128,6 +137,7 @@ export function UsersPage() {
 
       {notice ? <Alert tone="success">{notice}</Alert> : null}
       {disable.isError ? <Alert tone="error">{describeError(disable.error)}</Alert> : null}
+      {enable.isError ? <Alert tone="error">{describeError(enable.error)}</Alert> : null}
 
       <Card>
         <CardHeader>
@@ -261,6 +271,11 @@ export function UsersPage() {
                   disable.mutate(account.id);
                 }}
                 disabling={disable.isPending}
+                onEnable={() => {
+                  setNotice(null);
+                  enable.mutate(account.id);
+                }}
+                enabling={enable.isPending}
               />
             ))}
           </tbody>
@@ -351,11 +366,15 @@ function TakenAddressRecovery({
 function AccountRow({
   account,
   onDisable,
+  onEnable,
   disabling,
+  enabling,
 }: {
   account: StaffAccountResponse;
   onDisable: () => void;
+  onEnable: () => void;
   disabling: boolean;
+  enabling: boolean;
 }) {
   const { t } = useTranslation();
 
@@ -373,7 +392,17 @@ function AccountRow({
         {account.authProvider === 'Google' ? t('users.providerGoogle') : t('users.providerInternal')}
       </TableCell>
       <TableCell>
-        {account.status === 'Disabled' ? null : (
+        {/*
+          A disabled account showed no action at all until now, which made "disable" a one-way
+          door that `00-context.md` §5 nonetheless described as a reversible off-switch. Restoring
+          is the reverse of exactly that action: it keeps the address, unlike retiring, which
+          releases it.
+        */}
+        {account.status === 'Disabled' ? (
+          <Button variant="secondary" size="sm" onClick={onEnable} disabled={enabling}>
+            {t('users.enable')}
+          </Button>
+        ) : (
           <Button variant="secondary" size="sm" onClick={onDisable} disabled={disabling}>
             {t('users.disable')}
           </Button>

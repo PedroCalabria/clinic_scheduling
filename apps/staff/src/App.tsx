@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Route, Routes } from 'react-router';
 import { AppShell } from './components/AppShell';
 import { BlockedTimePage } from './features/blocks/BlockedTimePage';
+import { CalendarConnectionPage } from './features/calendar/CalendarConnectionPage';
 import { AppointmentTypesPage } from './features/catalog/AppointmentTypesPage';
 import { ResourcesPage } from './features/catalog/ResourcesPage';
 import { SpecialtiesPage } from './features/catalog/SpecialtiesPage';
@@ -17,8 +18,8 @@ import { UsersPage } from './features/users/UsersPage';
  * The staff console: sign-in (S0), the app-shell, users (S11), and the clinic catalog
  * (S8-S10, added by `clinic-catalog`).
  *
- * S3 arrived with change 4, and S1/S4/S5 with change 5c; S2 and S6 come with the calendar
- * changes and mount into the same shell. The catch-all route
+ * S3 arrived with change 4, S1/S4/S5 with change 5c, and S2 with change 6a; S6 comes with
+ * `calendar-inbound` and mounts into the same shell. The catch-all route
  * stays for the reason it existed in change 1: a full reload of `/staff/anything` must render
  * this app, which is the client half of Caddy's per-prefix SPA fallback (design D2).
  */
@@ -142,6 +143,20 @@ export function App() {
         element={
           <Guarded allow={['FrontDesk', 'Administrator']}>
             <DeskBookingPage />
+          </Guarded>
+        }
+      />
+
+      {/*
+        S2 — the professional's own calendar connection (change 6a). Professional-only in the
+        guard AND at the API: an administrator cannot connect a calendar on somebody's behalf,
+        because the grant is the professional's to give.
+      */}
+      <Route
+        path="/calendar"
+        element={
+          <Guarded allow={['Professional']}>
+            <CalendarConnectionPage />
           </Guarded>
         }
       />

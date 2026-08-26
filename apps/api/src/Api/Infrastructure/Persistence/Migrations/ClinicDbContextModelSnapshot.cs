@@ -86,6 +86,57 @@ namespace Clinic.Api.Infrastructure.Persistence.Migrations
                     b.ToTable("platform_marker", (string)null);
                 });
 
+            modelBuilder.Entity("Clinic.Domain.Calendar.CalendarConnection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("ConnectedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("connected_at_utc");
+
+                    b.Property<Guid>("ProfessionalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("professional_id");
+
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("provider");
+
+                    b.Property<string>("SealedCredential")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("refresh_token_sealed");
+
+                    b.Property<DateTimeOffset>("StateObservedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("state_observed_at_utc");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TargetCalendarId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("target_calendar_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProfessionalId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_calendar_connections_professional_id");
+
+                    b.ToTable("calendar_connections", (string)null);
+                });
+
             modelBuilder.Entity("Clinic.Domain.Configuration.AppointmentType", b =>
                 {
                     b.Property<Guid>("Id")
@@ -600,7 +651,7 @@ namespace Clinic.Api.Infrastructure.Persistence.Migrations
                     b.HasIndex("AuthProvider", "ExternalSubjectId")
                         .IsUnique()
                         .HasDatabaseName("ix_users_provider_subject")
-                        .HasFilter("external_subject_id IS NOT NULL");
+                        .HasFilter("external_subject_id IS NOT NULL AND deleted_at_utc IS NULL");
 
                     b.ToTable("users", (string)null);
                 });
@@ -713,6 +764,15 @@ namespace Clinic.Api.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Clinic.Domain.Calendar.CalendarConnection", b =>
+                {
+                    b.HasOne("Clinic.Domain.Configuration.Professional", null)
+                        .WithMany()
+                        .HasForeignKey("ProfessionalId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

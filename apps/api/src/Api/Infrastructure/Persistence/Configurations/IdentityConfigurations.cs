@@ -83,12 +83,27 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasFilter("deleted_at_utc IS NULL")
             .HasDatabaseName("ix_users_email_live");
 
-        // One provider identity maps to exactly one user. Filtered because an unclaimed
-        // professional invitation legitimately has no subject id yet, and several of those
-        // must be able to coexist.
+        // One provider identity maps to exactly one LIVE user. Filtered twice, and both halves
+        // are load-bearing:
+        //
+        //   external_subject_id IS NOT NULL — an unclaimed professional invitation legitimately
+        //   has no subject yet, and several of those must coexist.
+        //
+        //   deleted_at_utc IS NULL — added by `calendar-connection` after this index made the
+        //   product's own documented recovery path impossible. Deactivation releases the address
+        //   (ix_users_email_live is filtered the same way), so an administrator can invite it
+        //   anew — but the deactivated row went on owning the Google subject, so the invitation
+        //   could never be CLAIMED. The claim wrote the same subject and the database refused it,
+        //   surfacing as an unhandled 500 at the end of a Google sign-in.
+        //
+        // The application already believed this: the sign-in path resolves a subject with
+        // `DeletedAtUtc == null` (see CompleteGoogleSignIn), so the code treated a deactivated
+        // account as no longer holding its identity while the index treated it as still holding
+        // it. The two now agree, and the one that changed is the one that disagreed with I10's
+        // meaning — a deleted account "stops existing to the product".
         builder.HasIndex(user => new { user.AuthProvider, user.ExternalSubjectId })
             .IsUnique()
-            .HasFilter("external_subject_id IS NOT NULL")
+            .HasFilter("external_subject_id IS NOT NULL AND deleted_at_utc IS NULL")
             .HasDatabaseName("ix_users_provider_subject");
     }
 }

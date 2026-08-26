@@ -234,6 +234,57 @@ public sealed class User
     /// <summary>Turns the account off. Existing sessions are revoked by the caller.</summary>
     public void Disable() => Status = UserStatus.Disabled;
 
+    /// <summary>
+    /// Turns the account back on, restoring the state it should hold rather than a fixed one.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The state to return to is derived, not remembered.</b> Nothing records what the account
+    /// was before it was disabled, and storing a previous-status column would be a second source
+    /// of truth to keep correct. It is derivable exactly: a federated account with no provider
+    /// subject is an invitation nobody has claimed, so it returns to
+    /// <see cref="UserStatus.PendingClaim"/> and stays claimable; anything else returns to
+    /// <see cref="UserStatus.Active"/>. Restoring an unclaimed invitation as active would
+    /// produce an account that can hold a session but has no identity behind it.
+    /// </para>
+    /// <para>
+    /// <b>The failed-attempt streak is cleared, and a lockout does not survive.</b> An
+    /// administrator deliberately restoring access is a stronger and more recent signal than a
+    /// stale streak of bad passwords, and leaving the count in place would let the account
+    /// re-lock on the next attempt — a restore that looks broken. The same reasoning
+    /// <see cref="SetPassword"/> already applies.
+    /// </para>
+    /// <para>
+    /// <b>A deleted account is refused</b>, and this one is not a nicety: deactivation releases
+    /// the address (<see cref="SoftDelete"/>), so it may already belong to a live account.
+    /// Restoring would either produce two live accounts on one address or fail against the
+    /// filtered unique index — an error from the database rather than from the rule that means
+    /// it. Recovery from deactivation is inviting the address anew, which is what
+    /// <c>00-context.md</c> §5 has always said.
+    /// </para>
+    /// <para>
+    /// <b>What does NOT come back:</b> an external-calendar authorization withdrawn when the
+    /// account was disabled (<c>calendar-connection</c> design K16). The grant was handed back to
+    /// the provider and the credential destroyed, so there is nothing to resume; the professional
+    /// reconnects, which is one click on S2. Restoring an account silently re-acquiring write
+    /// access to somebody's personal calendar would be the wrong default even if it were possible.
+    /// </para>
+    /// </remarks>
+    public void Enable()
+    {
+        if (IsDeleted)
+        {
+            throw new DomainRuleViolationException(
+                "A deactivated account cannot be restored; its address may already belong to another account. Invite the address anew instead.");
+        }
+
+        Status = AuthProvider == AuthProvider.Google && ExternalSubjectId is null
+            ? UserStatus.PendingClaim
+            : UserStatus.Active;
+
+        FailedSignInCount = 0;
+    }
+
     /// <summary>Soft-delete (I10) — the row stays; the account stops existing to the product.</summary>
     public void SoftDelete(DateTimeOffset deletedAtUtc)
     {

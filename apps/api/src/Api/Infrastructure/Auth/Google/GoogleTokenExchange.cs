@@ -14,9 +14,16 @@ namespace Clinic.Api.Infrastructure.Auth.Google;
 /// </para>
 /// <para>
 /// The request asks for nothing but the code exchange: no <c>access_type=offline</c>, so
-/// Google returns no refresh token, and this change therefore stores no long-lived
-/// credential and needs no token-encryption key. That surface arrives with change 6, which is
-/// the capability that actually uses it (design A6).
+/// Google returns no refresh token, and <b>the sign-in path still stores no long-lived
+/// credential</b>. That has not changed and must not.
+/// </para>
+/// <para>
+/// What has changed: change 6a added <c>Infrastructure/Calendar/GoogleCalendarTokens</c>, which
+/// does obtain and store one. It is a separate type rather than a second method here, and
+/// deliberately so — this class asks for an <c>id_token</c> and is forbidden from keeping a
+/// refresh token, that one does the opposite, and a single class serving both would branch on
+/// which flow it is in, one mistaken branch away from a sign-in exchange returning a long-lived
+/// credential (design K2).
 /// </para>
 /// </remarks>
 internal sealed class GoogleTokenExchange(
@@ -64,7 +71,8 @@ internal sealed class GoogleTokenExchange(
 
     /// <summary>
     /// Only <c>id_token</c> is read. <c>access_token</c> and <c>refresh_token</c> are not
-    /// modelled here on purpose — nothing in this change may store them.
+    /// modelled here on purpose — nothing reached through the SIGN-IN flow may store them, which
+    /// is still true now that the calendar flow (6a) stores one through its own type.
     /// </summary>
     private sealed record TokenResponse(
         [property: JsonPropertyName("id_token")] string? IdToken);

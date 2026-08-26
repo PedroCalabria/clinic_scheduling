@@ -547,9 +547,13 @@ public sealed class BookingDeskTests(ApiFixture fixture)
         var soon = await SoonAppointmentAsync(clinic, patientId);
         var far = await BookAsync(patient, clinic, ClinicBuilder.At(clinic.Date, 9));
 
-        var today = SystemClock.Instance.GetCurrentInstant().InZone(ClinicBuilder.Clinic).Date;
+        // The day the SOON appointment actually falls on, not "today". Three hours from now is
+        // tomorrow once it is past 21:00 in the clinic's zone, and asking for today then returns
+        // a day the appointment is not on — a failure that only appears in the evening. Found
+        // during `calendar-connection`, at 22:33.
+        var soonDay = (await AppointmentAsync(soon)).StartsAt.InZone(ClinicBuilder.Clinic).Date;
 
-        var soonBody = await DayAsync(staff, today);
+        var soonBody = await DayAsync(staff, soonDay);
         var farBody = await DayAsync(staff, clinic.Date);
 
         Assert.False(Find(soonBody, soon).GetProperty("patientCanChange").GetBoolean());

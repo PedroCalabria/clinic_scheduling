@@ -31,7 +31,8 @@ internal sealed record SessionPrincipal(
 /// <para>
 /// CAVEAT (recorded, not overlooked): expiry is enforced on read and nothing deletes expired
 /// rows, so the table grows with traffic. Bounded by session lifetime and this project's
-/// volume, which is negligible. The revisit trigger is Hangfire arriving in change 6, when a
+/// volume, which is negligible. The revisit trigger is Hangfire arriving in change 6b (6a is
+/// request/response throughout and adds no scheduler), when a
 /// sweep costs almost nothing to add — see the non-goal in this change's design.
 /// </para>
 /// </remarks>

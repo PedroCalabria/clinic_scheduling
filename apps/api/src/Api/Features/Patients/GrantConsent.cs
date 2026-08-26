@@ -58,6 +58,21 @@ internal static class GrantConsent
                 new Dictionary<string, object?> { ["field"] = "type" });
         }
 
+        // Narrowed by calendar-connection (6a, design K12). This endpoint accepted ANY consent
+        // type, which was harmless only while DataProcessing was the sole one a screen could
+        // reach: a patient granting themselves a CalendarSync consent recorded a permission
+        // nobody had asked them for and nothing acted on. It now corresponds to a real Google
+        // authorization, so a consent must only ever be recorded at a moment that particular
+        // permission was actually requested — and the calendar's one producer is completing the
+        // connect flow, which a patient cannot start.
+        if (consentType != ConsentType.DataProcessing)
+        {
+            return ApiError.Result(
+                ErrorCodes.ConsentRequired,
+                StatusCodes.Status422UnprocessableEntity,
+                new Dictionary<string, object?> { ["type"] = consentType.ToString() });
+        }
+
         var userId = principal.UserId();
         var version = options.Value.ConsentVersion;
 

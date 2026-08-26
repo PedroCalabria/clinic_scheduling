@@ -312,6 +312,19 @@ export function disableStaffAccount(id: string): Promise<undefined> {
 }
 
 /**
+ * Turns a disabled account back on — the other half of {@link disableStaffAccount}.
+ *
+ * The account returns to the state it should hold, which the server derives: an unclaimed
+ * professional invitation stays claimable rather than becoming active.
+ *
+ * A calendar authorization withdrawn when the account was disabled does **not** come back with
+ * it; the professional reconnects on S2.
+ */
+export function enableStaffAccount(id: string): Promise<undefined> {
+  return apiFetch<undefined>(`/staff-accounts/${id}/enable`, { method: 'POST' }) as Promise<undefined>;
+}
+
+/**
  * Which account holds an address, or `null` if none does.
  *
  * S11 lists staff only, so the account most likely to be blocking an invitation — a patient
@@ -1119,4 +1132,78 @@ export async function resolvePatientByEmail(email: string): Promise<ResolvedPati
   return (await apiFetch<ResolvedPatient>(
     `/patients/by-email?email=${encodeURIComponent(email)}`,
   ))!;
+}
+
+// --- Calendar connection (change 6a) ------------------------------------------------
+
+/**
+ * What S2 knows about a professional's calendar authorization.
+ *
+ * `stateObservedAtUtc` travels beside `status` on purpose, and the screen must render both.
+ * Nothing calls Google on a schedule in 6a, so the status is the result of the last look
+ * rather than current truth — showing it alone would state a fact more confidently than the
+ * server can support.
+ *
+ * There is no field for the credential, sealed or otherwise, and there never should be.
+ */
+export interface CalendarConnectionResponse {
+  /** True only when the connection could actually be used. */
+  connected: boolean;
+  /** `Connected` · `Revoked` · `Disconnected` · `NotConnected`. */
+  status: string;
+  provider: string | null;
+  targetCalendarId: string | null;
+  connectedAtUtc: string | null;
+  /** When `status` was last observed to be what it says. */
+  stateObservedAtUtc: string | null;
+  /** The calendar consent in force, so the professional can see what they agreed to. */
+  consentVersion: string | null;
+  consentGrantedAtUtc: string | null;
+}
+
+export interface CalendarDisconnectResponse {
+  connection: CalendarConnectionResponse;
+  /**
+   * Whether the grant is confirmed gone from Google's side.
+   *
+   * `false` is not a failure — the local withdrawal happened either way — but it is not success
+   * either, and the screen says so rather than reporting an unqualified success it cannot vouch
+   * for.
+   */
+  revokedAtProvider: boolean;
+}
+
+export async function getCalendarConnection(): Promise<CalendarConnectionResponse> {
+  return (await apiFetch<CalendarConnectionResponse>('/calendar/connection'))!;
+}
+
+/**
+ * Asks Google whether the stored grant still stands, reading no calendar content.
+ *
+ * Explicit rather than automatic: probing on every page load would tie this screen to Google's
+ * availability, and probing on a hidden throttle would decide for the professional how stale is
+ * acceptable. The button plus "last checked" is the honest version.
+ */
+export async function checkCalendarConnection(): Promise<CalendarConnectionResponse> {
+  return (await apiFetch<CalendarConnectionResponse>('/calendar/connection/check', {
+    method: 'POST',
+  }))!;
+}
+
+export async function disconnectCalendar(): Promise<CalendarDisconnectResponse> {
+  return (await apiFetch<CalendarDisconnectResponse>('/calendar/connection/disconnect', {
+    method: 'POST',
+  }))!;
+}
+
+/**
+ * Where the browser goes to start the authorization.
+ *
+ * A plain URL rather than a fetch, because connecting is a **top-level navigation** to Google
+ * and back — the state cookie has to be set on a real request the browser then follows. Calling
+ * this with `fetch` would follow the redirect to Google's consent screen inside XHR and fail on
+ * CORS, which is a confusing way to learn the flow is not an API call.
+ */
+export function calendarConnectUrl(returnTo: string): string {
+  return `/api/calendar/connect?returnTo=${encodeURIComponent(returnTo)}`;
 }

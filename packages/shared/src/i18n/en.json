@@ -74,7 +74,8 @@
     "navBlocks": "Blocked time",
     "navSchedule": "My schedule",
     "navDay": "Day view",
-    "navDeskBooking": "Book for a patient"
+    "navDeskBooking": "Book for a patient",
+    "navCalendar": "Calendar"
   },
   "users": {
     "title": "Users",
@@ -107,7 +108,9 @@
     "holderSummary": "{{email}} — {{role}}, {{status}}.",
     "retire": "Retire this account and free the address",
     "retireNote": "Access ends immediately and the address becomes available again. The account and its history are kept, and no role is changed — you register the address afresh as a new account.",
-    "retired": "Account retired. The address is free — register it again above."
+    "retired": "Account retired. The address is free — register it again above.",
+    "enable": "Restore access",
+    "enabled": "Access restored."
   },
   "roles": {
     "Patient": "Patient",
@@ -155,7 +158,12 @@
     "booking_block_overlaps_appointment": "You have an appointment in that period. Cancel it first, or block a different time.",
     "availability_unavailable": "Free times cannot be worked out right now. Please try again shortly.",
     "booking_cutoff_passed": "This appointment is too close to change online. Please call reception.",
-    "booking_appointment_not_changeable": "This appointment has already been cancelled or moved."
+    "booking_appointment_not_changeable": "This appointment has already been cancelled or moved.",
+    "calendar_not_connected": "There is no connected calendar to act on.",
+    "calendar_consent_revoked": "Your calendar permission was withdrawn at Google. Reconnect to restore it.",
+    "calendar_sync_failed": "We could not reach Google just now. Your connection has not been changed — try again in a moment.",
+    "calendar_scope_declined": "Calendar permission was not granted. Connect again and allow calendar access.",
+    "calendar_connect_failed": "Google did not return the permission we need. Connect again and allow calendar access."
   },
   "catalog": {
     "specialtiesTitle": "Specialties",
@@ -439,5 +447,37 @@
     "moved": "Moved to {{time}}.",
     "backToDay": "Back to the day view",
     "moveNotFound": "This appointment is not on the day that was opened. Go back to the day view and choose Move again."
+  },
+  "calendar": {
+    "title": "Google Calendar",
+    "description": "Connect your Google Calendar so your appointments here can appear in it. This is separate from signing in, and you can withdraw it at any time.",
+    "nothingSyncsYet": "Connecting does not move anything yet — appointments start appearing in your calendar in the next increment. Connecting now means nothing has to be set up later.",
+    "statusConnected": "Connected",
+    "statusRevoked": "Access was withdrawn at Google",
+    "statusDisconnected": "Disconnected",
+    "statusNotConnected": "No calendar connected",
+    "connectedExplanation": "Your Google Calendar is connected.",
+    "revokedExplanation": "This clinic no longer has permission to your calendar. Reconnect to restore it.",
+    "disconnectedExplanation": "You withdrew this clinic's access to your calendar.",
+    "notConnectedExplanation": "You have not connected a calendar. Nothing is required of you — connect when you want to.",
+    "lastChecked": "Last checked {{when}}",
+    "neverChecked": "Not checked yet",
+    "staleNote": "This is what we saw when we last checked. Use “Check connection” to ask Google again.",
+    "connectedOn": "Connected on {{when}}",
+    "calendar": "Calendar: {{name}}",
+    "consentGranted": "Calendar permission granted on {{when}} (version {{version}}).",
+    "connect": "Connect Google Calendar",
+    "reconnect": "Reconnect",
+    "check": "Check connection",
+    "checking": "Checking…",
+    "checkedOk": "Google confirms the connection is working.",
+    "disconnect": "Disconnect",
+    "disconnectTitle": "Disconnect Google Calendar?",
+    "disconnectExplanation": "This withdraws your calendar permission and deletes the credential stored here. We also ask Google to remove this clinic's access.",
+    "disconnectConfirm": "Yes, disconnect",
+    "cancel": "Cancel",
+    "disconnected": "Your calendar has been disconnected.",
+    "disconnectedNotAtProvider": "Your calendar has been disconnected here, but we could not confirm it with Google. Remove “Consult Rio” from your Google account permissions to finish: myaccount.google.com/permissions",
+    "unavailable": "Calendar connection is not configured for this deployment."
   }
 }

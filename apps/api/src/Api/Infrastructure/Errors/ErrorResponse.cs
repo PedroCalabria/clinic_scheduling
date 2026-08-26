@@ -356,6 +356,68 @@ internal static class ErrorCodes
     /// </remarks>
     internal const string BookingAppointmentNotChangeable = "booking.appointment_not_changeable";
 
+    /// <summary>
+    /// The professional has no calendar connection to act on — 422 (change 6a).
+    /// </summary>
+    /// <remarks>
+    /// Reserved during planning in <c>07-error-codes.md</c> and first used here. It answers
+    /// "check my connection" and "disconnect me" when there is nothing to check or disconnect;
+    /// it is not what a professional who has simply never connected sees on S2, because reading
+    /// a state of "not connected" is a successful read of a real state, not a refusal.
+    /// </remarks>
+    internal const string CalendarNotConnected = "calendar.not_connected";
+
+    /// <summary>
+    /// The provider no longer honours this authorization — 422 (change 6a).
+    /// </summary>
+    /// <remarks>
+    /// The professional (or Google) withdrew the grant on Google's side. The remedy is to
+    /// reconnect, and the distinction from <see cref="CalendarScopeDeclined"/> is exactly that
+    /// remedy: here the permission existed and lapsed; there it was never given.
+    /// </remarks>
+    internal const string CalendarConsentRevoked = "calendar.consent_revoked";
+
+    /// <summary>
+    /// The provider could not be reached — 503 (change 6a).
+    /// </summary>
+    /// <remarks>
+    /// An operator/network fact, not a caller mistake, and deliberately <b>not</b> recorded as a
+    /// revocation (design K8): a Google outage that flipped a connection to revoked would tell a
+    /// professional to reconnect something that is working. 6b reuses this code for a failed
+    /// dispatch.
+    /// </remarks>
+    internal const string CalendarSyncFailed = "calendar.sync_failed";
+
+    /// <summary>
+    /// The authorization completed without granting calendar access — 422 (change 6a, design K5).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// New in this change, because none of the reserved codes says this. Google's consent screen
+    /// is granular: a professional can approve the request and untick calendar access, and the
+    /// flow still returns a valid token response. Nothing about the redirect says the ask was
+    /// refused.
+    /// </para>
+    /// <para>
+    /// Distinct from <see cref="CalendarConsentRevoked"/> because the two need different
+    /// sentences on the same screen. "You declined" invites granting permission; "it was
+    /// revoked" invites reconnecting. Reporting one as the other sends the professional to the
+    /// wrong action.
+    /// </para>
+    /// </remarks>
+    internal const string CalendarScopeDeclined = "calendar.scope_declined";
+
+    /// <summary>
+    /// The connection could not be completed because no credential was obtained — 422 (design K6).
+    /// </summary>
+    /// <remarks>
+    /// Google issues a refresh token only on the first grant for a client/user pair, so an
+    /// authorization can succeed and carry nothing. When nothing is held either, there is no
+    /// connection to record — and recording one anyway would mean a status of "connected" that
+    /// 6b could never dispatch against.
+    /// </remarks>
+    internal const string CalendarConnectFailed = "calendar.connect_failed";
+
     /// <summary>Unhandled error — 500. Never leaks internals.</summary>
     internal const string ServerUnexpected = "server.unexpected";
 }

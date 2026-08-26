@@ -74,7 +74,8 @@
     "navBlocks": "Períodos bloqueados",
     "navSchedule": "Minha agenda",
     "navDay": "Agenda do dia",
-    "navDeskBooking": "Agendar para paciente"
+    "navDeskBooking": "Agendar para paciente",
+    "navCalendar": "Agenda externa"
   },
   "users": {
     "title": "Usuários",
@@ -107,7 +108,9 @@
     "holderSummary": "{{email}} — {{role}}, {{status}}.",
     "retire": "Encerrar esta conta e liberar o e-mail",
     "retireNote": "O acesso termina na hora e o endereço fica livre outra vez. A conta e o seu histórico são preservados, e nenhum papel é alterado — você cadastra o endereço de novo, como uma conta nova.",
-    "retired": "Conta encerrada. O endereço está livre — cadastre-o novamente acima."
+    "retired": "Conta encerrada. O endereço está livre — cadastre-o novamente acima.",
+    "enable": "Restaurar acesso",
+    "enabled": "Acesso restaurado."
   },
   "roles": {
     "Patient": "Paciente",
@@ -155,7 +158,12 @@
     "booking_block_overlaps_appointment": "Você tem uma consulta nesse período. Cancele-a primeiro ou bloqueie outro horário.",
     "availability_unavailable": "Não foi possível calcular os horários livres agora. Tente novamente em instantes.",
     "booking_cutoff_passed": "Esta consulta está próxima demais para ser alterada pelo site. Por favor, ligue para a recepção.",
-    "booking_appointment_not_changeable": "Esta consulta já foi cancelada ou remarcada."
+    "booking_appointment_not_changeable": "Esta consulta já foi cancelada ou remarcada.",
+    "calendar_not_connected": "Não há agenda conectada para esta ação.",
+    "calendar_consent_revoked": "Sua permissão de agenda foi revogada no Google. Reconecte para restaurar.",
+    "calendar_sync_failed": "Não conseguimos falar com o Google agora. Sua conexão não foi alterada — tente de novo em instantes.",
+    "calendar_scope_declined": "A permissão de agenda não foi concedida. Conecte de novo e permita o acesso à agenda.",
+    "calendar_connect_failed": "O Google não retornou a permissão necessária. Conecte de novo e permita o acesso à agenda."
   },
   "catalog": {
     "specialtiesTitle": "Especialidades",
@@ -439,5 +447,37 @@
     "moved": "Remarcado para {{time}}.",
     "backToDay": "Voltar para a agenda do dia",
     "moveNotFound": "Este agendamento não está no dia que foi aberto. Volte para a agenda do dia e clique em Remarcar novamente."
+  },
+  "calendar": {
+    "title": "Google Agenda",
+    "description": "Conecte sua Google Agenda para que seus atendimentos aqui possam aparecer nela. Isso é separado do login, e você pode revogar quando quiser.",
+    "nothingSyncsYet": "Conectar ainda não move nada — os atendimentos começam a aparecer na sua agenda no próximo incremento. Conectar agora significa que nada precisará ser configurado depois.",
+    "statusConnected": "Conectada",
+    "statusRevoked": "Acesso revogado no Google",
+    "statusDisconnected": "Desconectada",
+    "statusNotConnected": "Nenhuma agenda conectada",
+    "connectedExplanation": "Sua Google Agenda está conectada.",
+    "revokedExplanation": "Esta clínica não tem mais permissão para sua agenda. Reconecte para restaurar.",
+    "disconnectedExplanation": "Você revogou o acesso desta clínica à sua agenda.",
+    "notConnectedExplanation": "Você não conectou uma agenda. Nada é exigido de você — conecte quando quiser.",
+    "lastChecked": "Última verificação: {{when}}",
+    "neverChecked": "Ainda não verificada",
+    "staleNote": "Isto é o que vimos na última verificação. Use “Verificar conexão” para perguntar ao Google de novo.",
+    "connectedOn": "Conectada em {{when}}",
+    "calendar": "Agenda: {{name}}",
+    "consentGranted": "Permissão de agenda concedida em {{when}} (versão {{version}}).",
+    "connect": "Conectar Google Agenda",
+    "reconnect": "Reconectar",
+    "check": "Verificar conexão",
+    "checking": "Verificando…",
+    "checkedOk": "O Google confirma que a conexão está funcionando.",
+    "disconnect": "Desconectar",
+    "disconnectTitle": "Desconectar a Google Agenda?",
+    "disconnectExplanation": "Isso revoga sua permissão de agenda e apaga a credencial guardada aqui. Também pedimos ao Google que remova o acesso desta clínica.",
+    "disconnectConfirm": "Sim, desconectar",
+    "cancel": "Cancelar",
+    "disconnected": "Sua agenda foi desconectada.",
+    "disconnectedNotAtProvider": "Sua agenda foi desconectada aqui, mas não conseguimos confirmar com o Google. Remova “Consult Rio” das permissões da sua conta Google para concluir: myaccount.google.com/permissions",
+    "unavailable": "A conexão de agenda não está configurada nesta instalação."
   }
 }

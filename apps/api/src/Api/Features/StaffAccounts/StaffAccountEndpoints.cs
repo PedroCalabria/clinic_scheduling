@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 using Clinic.Api.Infrastructure.Auth;
+using Clinic.Api.Infrastructure.Calendar;
 using Clinic.Api.Infrastructure.Errors;
 using Clinic.Api.Infrastructure.Persistence;
 using Clinic.Domain;
@@ -41,6 +42,7 @@ internal static class StaffAccountEndpoints
         group.MapGet("/by-email", FindByEmailAsync).WithName("FindStaffAccountByEmail");
         group.MapPost("/", CreateAsync).WithName("CreateStaffAccount");
         group.MapPost("/{userId:guid}/disable", DisableAsync).WithName("DisableStaffAccount");
+        group.MapPost("/{userId:guid}/enable", EnableAsync).WithName("EnableStaffAccount");
         group.MapPost("/{userId:guid}/deactivate", DeactivateAsync).WithName("DeactivateStaffAccount");
 
         return endpoints;
@@ -233,10 +235,30 @@ internal static class StaffAccountEndpoints
                 account.AwaitsClaim));
     }
 
+    /// <summary>
+    /// Turns an account off: ends its access, and takes back what that access was holding.
+    /// </summary>
+    /// <remarks>
+    /// <b>The calendar withdrawal was added in <c>calendar-connection</c> (6a, design K16), and
+    /// it is the interesting half now.</b> Revoking sessions ends access to <em>this</em> system;
+    /// it does nothing about the standing authorization the clinic holds to write to that
+    /// professional's personal Google Calendar. Leaving that alive would mean an account the
+    /// clinic has deliberately switched off still carrying live write access to somebody's
+    /// private calendar — the authorization outliving the person's role, which is exactly
+    /// backwards.
+    /// <para>
+    /// The withdrawal takes away nothing recoverable, because <b>there is no un-disable</b> — see
+    /// <see cref="DeactivateAsync"/>, which has said so since <c>staff-google-guard</c>. If an
+    /// account re-enable is ever built, it inherits one question from here: a restored account's
+    /// calendar does not come back with it, and must not silently try. The professional reconnects
+    /// on S2, which is one click.
+    /// </para>
+    /// </remarks>
     private static async Task<IResult> DisableAsync(
         Guid userId,
         ClinicDbContext database,
         SessionStore sessions,
+        CalendarWithdrawal calendar,
         ILogger<StaffAccountMarker> logger,
         CancellationToken cancellationToken)
     {
@@ -257,7 +279,66 @@ internal static class StaffAccountEndpoints
         // deliberately, because "the account is off" should not depend on one mechanism.
         await sessions.RevokeAllForUserAsync(account.Id, cancellationToken);
 
-        logger.LogWarning("Disabled account {UserId} and revoked its sessions.", account.Id);
+        // A no-op for every account that never connected one, which is most of them. Not
+        // conditioned on the role here: "does this account hold a calendar grant" is one
+        // question, and it has one place to be asked.
+        var withdrawal = await calendar.WithdrawForUserAsync(account.Id, cancellationToken);
+
+        logger.LogWarning(
+            "Disabled account {UserId}, revoked its sessions, and withdrew its calendar " +
+            "connection (had one: {HadConnection}, confirmed at provider: {RevokedAtProvider}).",
+            account.Id, withdrawal.HadConnection, withdrawal.RevokedAtProvider);
+
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// <c>POST /api/staff-accounts/{userId}/enable</c> — turns a disabled account back on (S11).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <b>The other half of <see cref="DisableAsync"/>, and it was missing.</b> <c>00-context.md</c>
+    /// §5 has described disabling as "a reversible off-switch" since change 2, and nothing could
+    /// reverse it: <c>User</c> had <c>Disable()</c> and no <c>Enable()</c>, while every catalog
+    /// entity and the <c>Professional</c> record all had <c>Reactivate()</c>. So the document
+    /// described an intent and the product did not honour it, which is the kind of gap that only
+    /// shows up when somebody asks. <see cref="DeactivateAsync"/>'s "there is no un-disable" is
+    /// what this change makes false, deliberately.
+    /// </para>
+    /// <para>
+    /// No session is issued and nothing is revoked here — restoring an account only makes it able
+    /// to sign in again. The state it returns to is decided by the domain, which derives it rather
+    /// than remembering it (see <c>User.Enable</c>).
+    /// </para>
+    /// <para>
+    /// <b>A withdrawn calendar authorization does not come back with the account</b>
+    /// (<c>calendar-connection</c> design K16): the grant was handed back to Google and the
+    /// credential destroyed, so there is nothing to resume. The professional reconnects on S2.
+    /// </para>
+    /// </remarks>
+    private static async Task<IResult> EnableAsync(
+        Guid userId,
+        ClinicDbContext database,
+        ILogger<StaffAccountMarker> logger,
+        CancellationToken cancellationToken)
+    {
+        var account = await database.Users.SingleOrDefaultAsync(
+            user => user.Id == userId && user.DeletedAtUtc == null,
+            cancellationToken);
+
+        if (account is null)
+        {
+            // Covers "no such account" and "deactivated" with one answer, matching every other
+            // action here: a released address is not an account this endpoint can act on, and the
+            // domain refuses it too.
+            return ApiError.Result(ErrorCodes.AccountNotFound, StatusCodes.Status404NotFound);
+        }
+
+        account.Enable();
+        await database.SaveChangesAsync(cancellationToken);
+
+        logger.LogWarning(
+            "Restored {Role} account {UserId} to {Status}.", account.Role, account.Id, account.Status);
 
         return Results.NoContent();
     }
@@ -279,12 +360,17 @@ internal static class StaffAccountEndpoints
     /// address is free the moment the row is soft-deleted (I10 — the row and its history stay).
     /// </para>
     /// <para>
-    /// Kept as a SECOND action rather than folded into <see cref="DisableAsync"/>, tempting as
-    /// that is given there is no un-disable: a soft-deleted account is not found by the password
-    /// sign-in lookup, so merging them would quietly turn <c>auth.account_disabled</c> into
-    /// <c>auth.invalid_credentials</c> for a deactivated internal account — a behaviour change on
-    /// a path this change is not meant to touch. Revisit after change 5: if <c>disable</c> is
-    /// still unused by any real workflow, collapse the two deliberately.
+    /// Kept as a SECOND action rather than folded into <see cref="DisableAsync"/>: a soft-deleted
+    /// account is not found by the password sign-in lookup, so merging them would quietly turn
+    /// <c>auth.account_disabled</c> into <c>auth.invalid_credentials</c> for a deactivated
+    /// internal account.
+    /// <para>
+    /// <b>The revisit trigger this comment used to carry is now discharged.</b> It said "there is
+    /// no un-disable" and proposed collapsing the two actions if <c>disable</c> stayed unused.
+    /// <see cref="EnableAsync"/> exists as of <c>calendar-connection</c>, so the two are now
+    /// genuinely different: disabling is reversible and keeps the address, deactivating is not
+    /// and releases it. Collapsing them would remove the only reversible option an administrator
+    /// has.
     /// </para>
     /// <para>
     /// Reachable for an account of ANY role, patients included. That is the point — the account
@@ -296,6 +382,7 @@ internal static class StaffAccountEndpoints
         ClaimsPrincipal principal,
         ClinicDbContext database,
         SessionStore sessions,
+        CalendarWithdrawal calendar,
         TimeProvider clock,
         ILogger<StaffAccountMarker> logger,
         CancellationToken cancellationToken)
@@ -325,11 +412,19 @@ internal static class StaffAccountEndpoints
 
         await sessions.RevokeAllForUserAsync(account.Id, cancellationToken);
 
+        // Deactivating does everything disabling does and more (02/identity-session), so the
+        // calendar withdrawal belongs to both. If anything it matters more here: this releases
+        // the address, so the account will never be reachable again to withdraw it later.
+        var withdrawal = await calendar.WithdrawForUserAsync(account.Id, cancellationToken);
+
         // Warning level with the actor named: this releases an identity, and six months from now
         // the question "who retired this account, and what was it?" needs an answer.
         logger.LogWarning(
-            "Administrator {ActorId} deactivated {Role} account {UserId}, releasing its address, and revoked its sessions.",
-            principal.UserId(), account.Role, account.Id);
+            "Administrator {ActorId} deactivated {Role} account {UserId}, releasing its address, " +
+            "revoked its sessions, and withdrew its calendar connection (had one: {HadConnection}, " +
+            "confirmed at provider: {RevokedAtProvider}).",
+            principal.UserId(), account.Role, account.Id,
+            withdrawal.HadConnection, withdrawal.RevokedAtProvider);
 
         return Results.NoContent();
     }

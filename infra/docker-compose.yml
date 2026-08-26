@@ -85,6 +85,11 @@ services:
       - Auth__Google__ClientId
       - Auth__Google__ClientSecret
       - Auth__Google__RedirectUri
+      # The calendar connection (change 6a). Passing these through empty is fine and the API
+      # still starts — but setting Calendar__RedirectUri without the key is a startup failure
+      # on purpose, rather than a refresh token stored in clear.
+      - Calendar__RedirectUri
+      - Calendar__TokenEncryptionKey
     depends_on:
       db:
         # Waits for pg_isready, so the startup migration does not race the database.
