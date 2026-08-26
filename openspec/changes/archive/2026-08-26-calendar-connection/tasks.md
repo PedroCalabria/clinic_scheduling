@@ -183,4 +183,11 @@
 - [x] 11.6 CI still needs no Google credentials: the token exchange goes through the substituted handler seam from change 2, while the envelope, the state check, the scope verification and the domain state machine all run for real (design K14)
 - [x] 11.7 **Run 2026-08-25/26 against a local stack, in both locales, with a real Google account, including the revoke-in-Google-and-come-back check. All thirteen checks pass.** Four defects were found getting there, three of them in the configuration and documentation this guide prescribes and the fourth a shipped `identity-session` defect (group 14). Outcome recorded, including three things explicitly not examined
 - [x] 11.8 **All four answered.** 1 and 2 were the maintainer's, and both came back during apply: **1 (key rotation) — accepted**, no runbook, revisit trigger armed at ~10 connected professionals or a compliance requirement; **2 (disabling a user) — yes**, which became design K16 and task group 12 rather than staying a note. Previously recorded: Written up in `design.md`. **3** — the connection is keyed on the `Professional` row and an unconfigured professional is refused exactly as S3 refuses them, following the precedent rather than inventing a second behaviour for the same state; tested. **4**, provisionally — "never connected" is presented as a state with no warning styling, because in 6a a connected calendar does nothing yet; guide check 11 asks a human to confirm that reads as honest.
-- [ ] 11.9 Change archived into the living spec, creating the `calendar-integration` capability and folding the one modified `identity-session` requirement. State the requirement counts before and after, and confirm the MODIFIED operation found its target header
+- [x] 11.9 **Archived 2026-08-26.** All 13 operations resolved cleanly — 11 ADDED were genuinely
+  new, 2 MODIFIED found their target headers, no REMOVED and no RENAMED. Counts after the fold:
+  **`calendar-integration` created with 11 requirements** (the project's sixth capability, and the
+  first added since change 4), **`identity-session` 14 → 14** — both operations modified in place,
+  which is the assertion that matters: a MODIFIED that missed its target would have appeared as a
+  fifteenth. No duplicate header in either file, and `openspec validate --all --strict` passes on
+  all six capabilities. The generated `Purpose` placeholder was replaced with a real one; the
+  README status cell was flipped in this change's own feature commit per `00-context.md` §8
