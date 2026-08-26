@@ -3,7 +3,7 @@
 **A scheduling system for clinics where appointments, professionals and rooms all have to line up
 at the same time.**
 
-*A portfolio project, built in nine reviewed increments. Six are built and running; three remain.
+*A portfolio project, built in ten reviewed increments. Seven are built and running; three remain.
 The order is deliberate — infrastructure first, then identity, then the domain — and every
 increment leaves the system working end to end.*
 
@@ -60,7 +60,8 @@ claimed.
 | 3b | Professional configuration | **running** | What each professional does and when: their specialties, how long each kind of visit takes them, and their working hours. A duration can only be set for something they are qualified to do, and revoking a qualification something depends on is refused. |
 | 4 | Availability | **running** | Free times computed for a date range: working hours minus days off, converted against the clinic's timezone, cut into slots as long as that professional takes, minus the periods they have blocked. A professional blocks their own time on their own screen. The patient and room halves of the three-way check arrive with the appointments they need — increment 5. |
 | 5 | Booking | **running** | A patient searches real availability and books: only genuinely free times, then a confirmation. Two people cannot take the same slot, the same room, or double-book themselves — the database refuses it, not the code. A professional can no longer block time over an appointment they already have. A patient can also see their own appointments and move or cancel one, up to a day before it starts — after that the screen says to call reception, rather than offering a button that fails — and reception can. The staff console now runs the day: a professional sees their own schedule, reception sees every professional's with the room shown, books a walk-in for an existing patient, and cancels or moves an appointment the patient is no longer allowed to change. |
-| 6 | Calendar — outbound | not yet built | A booked appointment appears in the professional's Google Calendar, reliably, even if Google is briefly unreachable. |
+| 6a | Calendar — connection | **running** | A professional connects their own Google Calendar from the staff console, separately from signing in, and the screen tells them the truth about it — including when it last checked, and what to do when the permission has been withdrawn at Google. They can withdraw it here too, which also hands the grant back to Google. The credential this produces is the first thing in the system encrypted at rest. |
+| 6b | Calendar — outbound | not yet built | A booked appointment appears in the professional's Google Calendar, reliably, even if Google is briefly unreachable. |
 | 7 | Calendar — inbound | not yet built | A block made in Google Calendar becomes unavailability here, and collisions are queued for a human. |
 | 8 | Reminders | not yet built | A reminder email before the appointment. |
 
@@ -95,6 +96,24 @@ start without knowing which timezone the clinic runs in, rather than guessing:
 ```
 Clinic__Timezone=America/Sao_Paulo
 ```
+
+**Connecting a Google Calendar is optional and off by default.** Leave `Calendar__RedirectUri`
+empty and everything else runs exactly as before. To turn it on, follow
+[docs/08-google-setup.md](docs/08-google-setup.md) — it adds two clicks in the Google Console and
+one generated key:
+
+```
+Calendar__RedirectUri=http://localhost:8080/api/calendar/connect/callback
+Calendar__TokenEncryptionKey=
+```
+
+The key is one you generate — `openssl rand -base64 32` prints it, and the output goes in as the
+value. [docs/08-google-setup.md](docs/08-google-setup.md) has the alternatives if you have no
+`openssl`.
+
+That key protects a professional's Google credential in the database, so it has to survive
+redeploys — the API refuses to start if the feature is on and the key is missing, rather than
+storing the credential in clear.
 
 **The first build takes several minutes** — it compiles the API and both web apps from source, then
 waits up to 30 seconds for database migrations on first boot. It has not hung.

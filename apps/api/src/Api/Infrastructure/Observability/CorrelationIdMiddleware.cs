@@ -12,7 +12,7 @@ namespace Clinic.Api.Infrastructure.Observability;
 /// written while handling the request carries it without any call site passing it along.
 ///
 /// Registered outermost so that the error-envelope middleware's logs are also correlated.
-/// The same mechanism extends to Hangfire jobs and webhook handlers in changes 6-8, which
+/// The same mechanism extends to Hangfire jobs and webhook handlers in changes 6b-8, which
 /// is why it is worth establishing now on a request path that has nothing to correlate yet.
 ///
 /// <c>X-Correlation-ID</c> was chosen over W3C <c>traceparent</c>: trace context buys

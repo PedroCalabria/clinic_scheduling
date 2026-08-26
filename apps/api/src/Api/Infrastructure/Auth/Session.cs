@@ -50,7 +50,8 @@ internal sealed class Session
     /// </summary>
     /// <remarks>
     /// Expiry is evaluated here, on read, rather than by a job that deletes stale rows: there
-    /// is no scheduler until Hangfire arrives (change 6), and correctness must not wait for
+    /// is no scheduler until Hangfire arrives (change 6b — 6a deliberately adds none), and
+    /// correctness must not wait for
     /// one. A sweep is the documented revisit trigger — see <c>SessionStore</c>.
     /// </remarks>
     public bool IsUsableAt(DateTimeOffset nowUtc) => RevokedAtUtc is null && ExpiresAtUtc > nowUtc;

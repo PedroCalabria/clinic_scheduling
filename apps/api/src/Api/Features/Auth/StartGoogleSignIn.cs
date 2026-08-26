@@ -18,10 +18,15 @@ namespace Clinic.Api.Features.Auth;
 /// <para>
 /// The scope list is the decision worth noticing: <c>openid email profile</c> and nothing
 /// else. No calendar scope and no <c>access_type=offline</c>, so this flow cannot come back
-/// with a refresh token even by accident. The professional's calendar scope is requested in
-/// change 6 through incremental authorization (design A6) — which is also why change 6 must
-/// send <c>include_granted_scopes=true</c>, or its consent screen will silently drop the
-/// identity grant this one obtained.
+/// with a refresh token even by accident. <b>Still true, and now asserted from both sides</b>:
+/// <c>CalendarConnectionTests</c> checks that this URL never grows a calendar scope, and that
+/// the calendar flow's URL carries <c>include_granted_scopes=true</c> — the warning this comment
+/// used to make about change 6 is a test rather than a hope.
+/// </para>
+/// <para>
+/// The professional's calendar scope is requested by
+/// <c>Features/CalendarSync/CalendarEndpoints</c>, from a deliberate click on S2, over the grant
+/// this flow obtained (change 6a, design K1).
 /// </para>
 /// </remarks>
 internal static class StartGoogleSignIn

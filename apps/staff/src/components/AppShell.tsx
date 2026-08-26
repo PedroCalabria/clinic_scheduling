@@ -22,6 +22,7 @@ const NAVIGATION: readonly NavigationEntry[] = [
   { to: '/', labelKey: 'staff.navHealth' },
   { to: '/schedule', labelKey: 'staff.navSchedule', roles: ['Professional'] },
   { to: '/blocks', labelKey: 'staff.navBlocks', roles: ['Professional'] },
+  { to: '/calendar', labelKey: 'staff.navCalendar', roles: ['Professional'] },
   { to: '/day', labelKey: 'staff.navDay', roles: ['FrontDesk', 'Administrator'] },
   { to: '/book', labelKey: 'staff.navDeskBooking', roles: ['FrontDesk', 'Administrator'] },
   { to: '/users', labelKey: 'staff.navUsers', roles: ['Administrator'] },

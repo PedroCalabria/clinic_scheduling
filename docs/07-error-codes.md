@@ -89,9 +89,13 @@ Every error response carries a machine-readable body:
 ### calendar — capability `calendar-integration`
 | Code | Status | When |
 |---|---|---|
-| `calendar.not_connected` | 422 | professional has no calendar connection |
-| `calendar.consent_revoked` | 422 | OAuth consent revoked (S2 revoked state) |
-| `calendar.sync_failed` | 503 | Google API unreachable / sync error |
+| `calendar.not_connected` | 422 | professional has no calendar connection to act on — first used in `calendar-connection` (6a) by *check* and *disconnect*. **Not** what a professional who has simply never connected sees on S2: reading a state of "not connected" is a successful read of a real state, not a refusal |
+| `calendar.consent_revoked` | 422 | the grant is gone on Google's side and we observed it — an `invalid_grant` from a refresh exchange. S2's revoked state, and the remedy is reconnecting |
+| `calendar.sync_failed` | 503 | Google unreachable. **Deliberately not recorded as a revocation** (6a design K8): an outage that flipped a connection to revoked would tell a professional to reconnect something that is working. 6b reuses it for a failed dispatch |
+| `calendar.scope_declined` | 422 | the authorization completed **without** calendar access — added in `calendar-connection` (6a). Google's consent screen is granular, so a professional can approve the request and untick calendar access while the token response stays perfectly valid; nothing about the redirect says the ask was refused. Distinct from `consent_revoked` because the two need different sentences: "you declined" invites granting permission, "it was revoked" invites reconnecting, and reporting one as the other sends the professional to the wrong action |
+| `calendar.connect_failed` | 422 | the authorization returned no long-lived credential and none is held — added in `calendar-connection` (6a). Google issues a refresh token only on the first grant for a client/user pair, so a successful authorization can carry nothing; recording a connection anyway would mean a status of "connected" that 6b could never dispatch against |
+
+A missing Google client reuses **`auth.google_unavailable`** rather than minting a calendar-specific twin: it is the same operator fact (this deployment has no Google client), and §5's rule is to reuse a code the catalogue already has.
 
 ### clinic configuration — capability `clinic-configuration`
 | Code | Status | When |

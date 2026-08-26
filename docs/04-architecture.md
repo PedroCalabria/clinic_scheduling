@@ -76,6 +76,13 @@ Solves the **dual-write problem**: there is no distributed transaction between l
 - Delivery semantics are **at-least-once**; paired with **idempotent** event creation (keyed on `externalEventId`, never created twice), repeated dispatch is harmless. This pair is the complete mature pattern.
 - **Why it matters here (not just technically):** a silently failed outbound sync means the professional's Google Calendar doesn't show the appointment, so they may book a personal conflict over it — exactly the failure the product exists to prevent. Honest cost: one table + one job, and eventual consistency (the event appears seconds later), which is irrelevant for a calendar.
 
+**Implementation specifics (locked for `calendar-outbound`, 6b):**
+- The outbox INSERT goes through the **same Dapper connection/transaction that holds the professional-scoped advisory lock** on the booking write path — never a nearby EF `DbContext`. Off that transaction, the outbox stops guaranteeing what it exists to guarantee.
+- Payloads are **snapshots**, not pointers: the row carries the intent + the data to execute it at enqueue time. A pointer would re-read mutable state at dispatch, so a cancel dispatched after a reschedule would read a row that has already moved.
+- **Reschedule = patch/move**, not delete+create (same professional → the new appointment inherits the old `external_event_id`; one idempotent operation, no double-show — see `02-domain-model.md` §5).
+- A booking for a professional with **no `CalendarConnection`** does not fail and writes **no outbox row**; there is **no backfill** when they connect later (future bookings sync only). Recorded as a seam.
+- A **dead-lettered** row has no first-class surface in 6b — it is visible on the **Hangfire dashboard, admin-only, behind Caddy** (never public). The front-desk reconciliation surface (S6) arrives in `calendar-inbound` (7).
+
 ## 6. Inbound sync & reconciliation (V, P-2)
 
 - **Primary (low latency):** Google push webhook → Hangfire job fetches changes via `syncToken` (incremental sync, keeping call volume low) → upserts external `TimeBlock`s → if one collides with an active appointment, creates a `ReconciliationConflict(Open)` for the front desk (human-in-the-loop). Webhook deliveries repeat → dedupe by event ID.

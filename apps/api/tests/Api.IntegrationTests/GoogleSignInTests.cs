@@ -666,6 +666,82 @@ public sealed class GoogleSignInTests(ApiFixture fixture)
         });
     }
 
+    [Fact]
+    public async Task A_deactivated_google_account_releases_its_identity_as_well_as_its_address()
+    {
+        // The recovery path 00-context.md §5 prescribes, run end to end for the first time —
+        // and it did not work. Deactivation released the address (ix_users_email_live is
+        // filtered on deleted_at_utc), so the invitation succeeded; but ix_users_provider_subject
+        // was filtered only on external_subject_id IS NOT NULL, so the deactivated row went on
+        // owning the Google identity and the CLAIM collided with it. The failure surfaced as an
+        // unhandled 500 at the end of a real Google sign-in, which is how it was found.
+        //
+        // The code already believed a deactivated account holds no identity: the subject lookup
+        // in CompleteGoogleSignIn filters DeletedAtUtc == null. The index now agrees.
+        var email = $"reclaim-{Guid.NewGuid():N}@example.test";
+        var subject = $"sub-{Guid.NewGuid():N}";
+
+        var (administrator, _) = await fixture.AsRoleAsync(Role.Administrator);
+        using var _administrator = administrator;
+
+        var invited = await administrator.PostAsync(
+            "/api/staff-accounts", new { email, role = nameof(Role.Professional) });
+
+        Assert.Equal(HttpStatusCode.Created, invited.StatusCode);
+
+        var (firstClient, firstPending) = await StartFlowAsync("/staff/");
+        using var _first = firstClient;
+
+        fixture.Google.NextIdToken = fixture.Google.MintIdToken(subject, email, firstPending.Nonce);
+        await CompleteFlowAsync(firstClient, firstPending.State);
+
+        var originalId = Guid.Empty;
+
+        await fixture.WithDatabaseAsync(async database =>
+            originalId = await database.Users
+                .Where(user => user.Email == email && user.DeletedAtUtc == null)
+                .Select(user => user.Id)
+                .SingleAsync());
+
+        // The administrator retires it and invites the address afresh.
+        Assert.True((await administrator.PostAsync($"/api/staff-accounts/{originalId}/deactivate")).IsSuccessStatusCode);
+
+        var reinvited = await administrator.PostAsync(
+            "/api/staff-accounts", new { email, role = nameof(Role.Professional) });
+
+        Assert.Equal(HttpStatusCode.Created, reinvited.StatusCode);
+
+        // The same person signs in with the same Google account. This is the step that used to
+        // fail with server.unexpected.
+        var (secondClient, secondPending) = await StartFlowAsync("/staff/");
+        using var _second = secondClient;
+
+        fixture.Google.NextIdToken = fixture.Google.MintIdToken(subject, email, secondPending.Nonce);
+
+        var reclaimed = await CompleteFlowAsync(secondClient, secondPending.State);
+
+        Assert.Equal("/staff/", reclaimed.Headers.Location!.ToString());
+        Assert.Equal(HttpStatusCode.OK, (await secondClient.GetAsync("/api/auth/session")).StatusCode);
+
+        await fixture.WithDatabaseAsync(async database =>
+        {
+            var live = await database.Users.SingleAsync(
+                user => user.Email == email && user.DeletedAtUtc == null);
+
+            // A NEW account, not the old one revived — recovery replaces rather than edits, which
+            // is what keeps the access log honest about who held which role when.
+            Assert.NotEqual(originalId, live.Id);
+            Assert.Equal(subject, live.ExternalSubjectId);
+            Assert.Equal(UserStatus.Active, live.Status);
+
+            // And the retired row keeps its history, subject included. It simply no longer owns it.
+            var retired = await database.Users.SingleAsync(user => user.Id == originalId);
+
+            Assert.NotNull(retired.DeletedAtUtc);
+            Assert.Equal(subject, retired.ExternalSubjectId);
+        });
+    }
+
     /// <summary>Starts the flow and reads back the state and nonce the server issued.</summary>
     /// <remarks>
     /// Reading them from the cookie is legitimate rather than a shortcut: neither value is a

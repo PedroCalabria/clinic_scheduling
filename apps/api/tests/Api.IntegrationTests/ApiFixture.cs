@@ -1,6 +1,7 @@
 using System.Net;
 using Clinic.Api.Infrastructure.Auth;
 using Clinic.Api.Infrastructure.Auth.Google;
+using Clinic.Api.Infrastructure.Calendar;
 using Clinic.Api.Infrastructure.Persistence;
 using Clinic.Domain.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -63,6 +64,16 @@ public sealed class ApiFixture : IAsyncLifetime
     /// </remarks>
     public const string ClinicTimezoneId = "America/Sao_Paulo";
 
+    /// <summary>
+    /// The key every host in this collection protects calendar credentials with (change 6a).
+    /// </summary>
+    /// <remarks>
+    /// A fixed test value, and it being fixed is what lets a test assert that a stored column is
+    /// not the plaintext token while still being able to open it. Thirty-two bytes, because
+    /// anything else is refused at startup — the validator is not decorative.
+    /// </remarks>
+    public const string CalendarEncryptionKey = "Y2xpbmljLXNjaGVkdWxpbmctdGVzdC1rZXktMzJieXQ=";
+
     // Same tag as infra/docker-compose.yml — that agreement is the point of pinning
     // (00-context.md §1).
     private readonly PostgreSqlContainer _database =
@@ -76,6 +87,17 @@ public sealed class ApiFixture : IAsyncLifetime
 
     /// <summary>Google, stubbed at its two seams (design A4).</summary>
     public GoogleTestDouble Google { get; } = new();
+
+    /// <summary>
+    /// Stands in for Google's calendar token and revocation endpoints (change 6a).
+    /// </summary>
+    /// <remarks>
+    /// Deliberately a second double rather than a widening of <see cref="Google"/>: the two
+    /// flows are separate all the way down (design K2), and a shared double would let a test
+    /// stage a refresh token that the sign-in flow could then be shown to return — which is
+    /// precisely the state this change's design says must be unreachable.
+    /// </remarks>
+    public CalendarTestDouble Calendar { get; } = new();
 
     public string ConnectionString => _database.GetConnectionString();
 
@@ -322,6 +344,13 @@ public sealed class ApiFixture : IAsyncLifetime
             builder.UseSetting("Auth:Google:RedirectUri", "https://localhost/api/auth/google/callback");
             builder.UseSetting("Auth:Google:Issuer", GoogleTestDouble.Issuer);
 
+            // The calendar feature, on for every host in this collection (change 6a). Setting
+            // the redirect URI is what turns it on, and the key must then be present or the host
+            // refuses to start — which CalendarStartupTests asserts deliberately, using its own
+            // host so no other test trips over it.
+            builder.UseSetting("Calendar:RedirectUri", "https://localhost/api/calendar/connect/callback");
+            builder.UseSetting("Calendar:TokenEncryptionKey", CalendarEncryptionKey);
+
             // Required configuration with no default (design E3): without it every host in
             // this collection fails to start, which is the behaviour ClinicTimezoneTests
             // asserts deliberately and every other test must not trip over.
@@ -345,6 +374,12 @@ public sealed class ApiFixture : IAsyncLifetime
                     .ConfigurePrimaryHttpMessageHandler(
                         provider => new GoogleTestDouble.TokenEndpointHandler(
                             provider.GetRequiredService<GoogleTestDouble>()));
+
+                services.AddSingleton(Calendar);
+                services.AddHttpClient<GoogleCalendarTokens>()
+                    .ConfigurePrimaryHttpMessageHandler(
+                        provider => new CalendarTestDouble.Handler(
+                            provider.GetRequiredService<CalendarTestDouble>()));
             });
         });
 

@@ -229,6 +229,79 @@ public sealed class UserTests
         Assert.NotNull(deleted.DeletedAtUtc);
     }
 
+    [Fact]
+    public void Restoring_a_disabled_staff_account_makes_it_usable_again()
+    {
+        var user = User.CreateInternalStaff("desk@clinic.test", "hash", Role.FrontDesk, Now);
+        user.Disable();
+
+        user.Enable();
+
+        Assert.Equal(UserStatus.Active, user.Status);
+        Assert.True(user.CanAuthenticate);
+    }
+
+    [Fact]
+    public void Restoring_an_unclaimed_invitation_leaves_it_claimable_rather_than_active()
+    {
+        // The state is derived rather than remembered, and this is the case that makes the
+        // derivation worth having: restoring an invitation as Active would produce an account
+        // that may hold a session while having no identity behind it.
+        var invitation = User.InviteProfessional("dr.a@example.test", Now);
+        invitation.Disable();
+
+        invitation.Enable();
+
+        Assert.Equal(UserStatus.PendingClaim, invitation.Status);
+        Assert.True(invitation.AwaitsClaim);
+        Assert.False(invitation.CanAuthenticate);
+    }
+
+    [Fact]
+    public void Restoring_a_claimed_professional_returns_it_to_active()
+    {
+        var professional = User.InviteProfessional("dr.b@example.test", Now);
+        professional.ClaimWithGoogleIdentity("google-subject-1");
+        professional.Disable();
+
+        professional.Enable();
+
+        Assert.Equal(UserStatus.Active, professional.Status);
+        Assert.True(professional.CanAuthenticate);
+    }
+
+    [Fact]
+    public void Restoring_clears_the_failed_attempt_streak_so_it_cannot_immediately_relock()
+    {
+        // Leaving the count in place would let the next bad password re-lock the account — a
+        // restore that looks broken. An administrator acting now outranks a stale streak.
+        var user = User.CreateInternalStaff("desk@clinic.test", "hash", Role.FrontDesk, Now);
+        user.RecordFailedSignIn(lockoutThreshold: 2);
+        user.RecordFailedSignIn(lockoutThreshold: 2);
+
+        Assert.Equal(UserStatus.Locked, user.Status);
+
+        user.Disable();
+        user.Enable();
+
+        Assert.Equal(UserStatus.Active, user.Status);
+        Assert.Equal(0, user.FailedSignInCount);
+    }
+
+    [Fact]
+    public void A_deactivated_account_cannot_be_restored()
+    {
+        // Deactivation releases the address, so it may already belong to a live account.
+        // Restoring would produce two live accounts on one address, or fail against the filtered
+        // unique index — a database error standing in for the rule that means it.
+        var user = User.CreateInternalStaff("desk@clinic.test", "hash", Role.FrontDesk, Now);
+        user.SoftDelete(Now);
+
+        Assert.Throws<DomainRuleViolationException>(user.Enable);
+        Assert.True(user.IsDeleted);
+        Assert.False(user.CanAuthenticate);
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData("   ")]

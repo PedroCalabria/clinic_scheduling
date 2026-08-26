@@ -1,4 +1,5 @@
 using Clinic.Api.Infrastructure.Auth;
+using Clinic.Domain.Calendar;
 using Clinic.Domain.Configuration;
 using Clinic.Domain.Identity;
 using Clinic.Domain.Scheduling;
@@ -68,6 +69,12 @@ internal sealed class ClinicDbContext(DbContextOptions<ClinicDbContext> options)
     /// constraints EF does not model — see the <c>BookingCore</c> migration.
     /// </summary>
     public DbSet<Appointment> Appointments => Set<Appointment>();
+
+    /// <summary>
+    /// A professional's authorization to their external calendar (change 6a). One per
+    /// professional; nothing reads it to make a scheduling decision until 6b.
+    /// </summary>
+    public DbSet<CalendarConnection> CalendarConnections => Set<CalendarConnection>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

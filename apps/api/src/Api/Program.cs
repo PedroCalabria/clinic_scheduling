@@ -2,11 +2,13 @@ using Clinic.Api.Features.AdminConfig;
 using Clinic.Api.Features.Auth;
 using Clinic.Api.Features.Availability;
 using Clinic.Api.Features.Booking;
+using Clinic.Api.Features.CalendarSync;
 using Clinic.Api.Features.Health;
 using Clinic.Api.Features.Patients;
 using Clinic.Api.Features.Schedule;
 using Clinic.Api.Features.StaffAccounts;
 using Clinic.Api.Infrastructure.Auth;
+using Clinic.Api.Infrastructure.Calendar;
 using Clinic.Api.Infrastructure.Errors;
 using Clinic.Api.Infrastructure.Observability;
 using Clinic.Api.Infrastructure.Persistence;
@@ -79,6 +81,12 @@ builder.Services.AddScoped<ScheduleReader>();
 builder.Services.AddClinicAuth(builder.Configuration);
 builder.Services.AddLoginRateLimiting();
 
+// --- Calendar authorization (change 6a, design K4) ----------------------------------
+// Conditional validation, unlike the two above: a deployment with no calendar configuration
+// starts exactly as before, while one that HAS configured it and supplied no encryption key
+// refuses to start rather than storing a long-lived Google credential in clear.
+builder.Services.AddClinicCalendar(builder.Configuration);
+
 // The second limiter Decision R anticipated, on the endpoint 03-nfr.md §2 names as the
 // abusable surface. Separate policy, separate budget, shared rejection envelope.
 builder.Services.AddAvailabilityRateLimiting();
@@ -147,6 +155,10 @@ app.MapTimeBlockEndpoints();
 app.MapBookingOptionsEndpoints();
 app.MapBookingEndpoints();
 app.MapAppointmentLifecycleEndpoints();
+
+// The calendar connection (change 6a). S2 only: this establishes the authorization 6b's
+// outbox will ride on, and writes nothing to any calendar.
+app.MapCalendarEndpoints();
 
 // The staff console (change 5c). One read behind S1 and S4, and the lookup S5 starts from. These
 // are the first screens that show a patient to somebody who is not that patient, which is why both

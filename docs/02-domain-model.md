@@ -86,7 +86,7 @@ Grouped by responsibility. All entities are soft-delete only (I10).
 
 - `Scheduled` is the only live state. Entry is **atomic** and **optimistic**: the domain validates the tri-constraint, and the DB `EXCLUDE` constraint rejects any losing racer with a friendly "slot just taken" message. No pessimistic slot holds are needed — the race is resolved at the correct layer.
 - `Rescheduled` is terminal and **spawns a new linked `Scheduled` appointment** (`rescheduledFromId`), preserving history for audit/LGPD.
-- `Completed` / `No-show` are set by the front desk (No-show feeds SC-4 metrics).
+- `Completed` / `No-show` are set by the front desk in the **`visit-outcome`** change — observations about a visit that already happened, independent of calendar sync; 5a *defined* the states and 5a–5c deliberately left them unwired. No-show feeds SC-4 metrics.
 - Reconciliation conflicts do **not** appear as a state (Decision E); the front desk resolves them via a normal transition (Cancelled or Rescheduled).
 
 ---
@@ -117,7 +117,7 @@ For **"any professional of specialty X"**, the solver runs this across every eli
 - **Cancellation / reschedule (F3):** the patient may cancel or reschedule their own appointment up to a **configurable cutoff (default 24 h)** before start; inside the cutoff, only the front desk can. This is the concrete demonstration of RBAC + ownership-based authorization coexisting — the patient has power over their own data, bounded by a temporal business rule. The rule (patient-facing) lands in `booking-lifecycle`; the front-desk **override** is exercised in `booking-desk` — the transition method takes an *authority* (a `cutoffApplies` fact), keeping the core role-agnostic (same design bargain as I2's qualification fact).
 - **Reschedule is scoped to the same professional** and appointment type; moving to a different professional is a **cancel + new booking**, not a reschedule (this also keeps the professional-scoped lock single-keyed — no two-lock deadlock).
 - **Reschedule statement ordering (load-bearing):** the `EXCLUDE` indexes are partial (`WHERE status='Scheduled'`) and **non-deferrable** (evaluated per statement). So a reschedule must, within one transaction under the professional lock, **UPDATE the old row to `Rescheduled` first** (it leaves the partial index), **then INSERT the new row** — the reverse order fires the patient constraint against the still-live old row and always fails a same-patient reschedule. A naive test (move far away) passes while a near move fails, so an integration test moves an appointment a few minutes to catch it.
-- On cancel, the corresponding Google Calendar event is removed (outbound sync); on reschedule, the old event is removed and a new one created.
+- On cancel, the corresponding Google Calendar event is removed (outbound sync). On reschedule (same professional), the **new appointment inherits the old `external_event_id` and the outbox emits a single patch/move** to the new time — *not* delete-then-create, which would show the visit twice if the delete fails and the create succeeds.
 
 ---
 
